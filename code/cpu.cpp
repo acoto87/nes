@@ -1552,14 +1552,14 @@ CPUStep StepCPU(NES *nes)
         {
             case CPU_INTERRUPT_RES:
             {
-                HandleInterrupt(nes, CPU_RESET_ADDRESS, false);
+                HandleInterrupt(nes, CPU_RESET_ADDRESS, FALSE);
                 break;
             }
 
             // non-maskable interrupt
             case CPU_INTERRUPT_NMI:
             {
-                HandleInterrupt(nes, CPU_NMI_ADDRESS, false);
+                HandleInterrupt(nes, CPU_NMI_ADDRESS, FALSE);
                 break;
             }
 
@@ -1567,13 +1567,17 @@ CPUStep StepCPU(NES *nes)
             {
                 if (!GetBitFlag(cpu->p, INTERRUPT_FLAG))
                 {
-                    HandleInterrupt(nes, CPU_IRQ_ADDRESS, false);
+                    HandleInterrupt(nes, CPU_IRQ_ADDRESS, FALSE);
                 }
                 break;
             }
         }
 
         cpu->interrupt = CPU_INTERRUPT_NON;
+
+        step.cycles = cpu->cycles - startCpuCycles;
+        step.instruction = NULL;
+        return step;
     }
 
     CPUInstruction *instruction = GetNextInstruction(nes);

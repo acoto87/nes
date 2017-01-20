@@ -282,18 +282,14 @@ struct PPU
     u8 x;   // fine x scroll (3 bit)
     u8 w;   // write toggle (1 bit)
 
-    u16 shiftReg1;
-    u16 shiftReg2;
-    u8 shiftReg3;
-    u8 shiftReg4;
-
     // background temporary variables
     u8 nameTableByte;
     u8 attrTableByte;
     u8 lowTileByte;
     u8 highTileByte;
-
     u64 tileData;
+
+
 };
 
 struct Win32BackBuffer

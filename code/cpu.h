@@ -623,19 +623,7 @@ inline void WriteCPUU8(NES *nes, u16 address, u8 value)
         {
             case 0x4014:
             {
-                u16 readAddress = value * 0x100;
-
-                for (u16 offset = 0; offset < 0x100; ++offset)
-                {
-                    u8 data = ReadCPUU8(nes, readAddress + offset);
-
-                    //nes_cpuCycled(nes);
-                        
-                    WriteU8(&nes->oamMemory, offset, data);
-
-                    //nes_cpuCycled(nes);
-                }
-
+                WriteDMA(nes, value);
                 break;
             }
 

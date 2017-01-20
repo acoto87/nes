@@ -307,9 +307,8 @@ int CALLBACK WinMain(
                     // POR AHORA PARECE QUE ESTA EJECUTANDOSE BIEN HASTA LA INSTRUCCION: '0x85DC'
                     // ESTA ES EL HANDLER DE 'VBLANK', EN LA QUE SE EJECUTAN LAS INSTRUCCIONES DE LOS SPRITES
                     // LUEGO, REVISAR BIEN LA FUNCIONALIDAD DE SPRITES, OAMADDRESS, OAMDATA Y DEMAS.
-                    // HASTA ESTE PUNTO TODO COINCIDE CON NINTENDULATOR, DESPUES DE ESCRIBIR EN '4014' DIFIEREN LA CANTIDAD
-                    // DE CICLOS DEL PPU, PROBABLMENTE PORQUE EL CPU DEBA ESPERAR UNA CIERTA CANTIDAD DE CICLOS CORRESPONDIENTE
-                    // A LA SUPUESTA COPIA DE LOS 256 BYTES DE LOS SPRITES.
+                    // HASTA ESTE PUNTO TODO COINCIDE CON NINTENDULATOR, DESPUES DE ESCRIBIR EN '4014' la memoria de OAM no 
+                    // es igual a la de Nintendulator, chequear esto. Tampoco es igual despues de unas cuantas instrucciones VRAM address.
                     
                     // REVISAR TAMBIEN ESTA SECCION DEL CODIGO PARA CUANDO SE PONGA UNA DIRECCION EN LA SECCION DE INSTRUCCTIONS
                     // SE VAYA A LA INSTRUCCION MAS CERCANA, Y NO COJA LA DIRECCION LITERAL, YA QUE PUEDE QUE EN ESA DIRECCION NO
@@ -548,7 +547,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "STACK", nk_rect(windowWidth - 310, 340, 300, windowHeight - 350), flags))
+                if (nk_begin(ctx, "OAM", nk_rect(windowWidth - 310, 340, 300, windowHeight - 350), flags))
                 {
                     static const float ratio[] = { 100, 100 };
                     static char text[12];
@@ -560,19 +559,19 @@ int CALLBACK WinMain(
 
                     nk_layout_row_dynamic(ctx, 20, 1);
 
-                    u16 address = 0x0100;
+                    u16 address = 0x00;
 
                     if (len > 0)
                     {
                         text[len] = 0;
                         address = (u16)strtol(text, NULL, 16);
-                        if (address < 0x0100 || address > 0x0200)
+                        if (address < 0x00 || address > 0x100)
                         {
-                            address = 0x0100;
+                            address = 0x00;
                         }
                     }
 
-                    for (s32 i = 0; i < 16; ++i)
+                    for (s32 i = 0; i < 32; ++i)
                     {
                         memset(debugBuffer, 0, sizeof(debugBuffer));
 
@@ -580,7 +579,7 @@ int CALLBACK WinMain(
 
                         for (s32 j = 0; j < 8; ++j)
                         {
-                            u8 v = ReadU8(&nes->cpuMemory, address + i * 8 + j);
+                            u8 v = ReadU8(&nes->oamMemory, address + i * 8 + j);
                             col += sprintf(debugBuffer + col, " %02X", v);
                         }
 

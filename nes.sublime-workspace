@@ -1,0 +1,564 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"candidate",
+				"candidate_cost"
+			],
+			[
+				"Q",
+				"QDOC_LIB_PATH"
+			]
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "Packages/C++/C++ Single File.sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					""
+				],
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					"Run"
+				]
+			],
+			[
+				"Packages/C++/C++ Single File.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 219.0,
+		"last_filter": "hex",
+		"selected_items":
+		[
+			[
+				"hex",
+				"Hex Viewer: Toggle Hex View"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"sublime",
+				"Preferences: SublimeGDB Settings – Default"
+			],
+			[
+				"gdb",
+				"SublimeGDB: Start Debugging"
+			],
+			[
+				"Install Package",
+				"Package Control: Install Package"
+			],
+			[
+				"install package",
+				"Package Control: Install Package"
+			],
+			[
+				"nes-",
+				"nes-build"
+			],
+			[
+				"Install",
+				"Package Control: Install Package"
+			],
+			[
+				"install pa	",
+				"Package Control: Install Package"
+			],
+			[
+				"sshtml",
+				"Set Syntax: HTML"
+			],
+			[
+				"ssxaml",
+				"Set Syntax: XAML"
+			],
+			[
+				"sssql",
+				"Set Syntax: SQL"
+			],
+			[
+				"ssHtml",
+				"Set Syntax: HTML"
+			],
+			[
+				"ssC",
+				"Set Syntax: C#"
+			],
+			[
+				"ssjson",
+				"Set Syntax: JSON"
+			],
+			[
+				"ssxml",
+				"Set Syntax: XML"
+			],
+			[
+				"ssphp",
+				"Set Syntax: PHP"
+			],
+			[
+				"ssc",
+				"Set Syntax: C#"
+			],
+			[
+				"vb",
+				"Set Syntax: VB.NET"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"Package Control: ",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 432.0
+	},
+	"console":
+	{
+		"height": 126.0,
+		"history":
+		[
+			"import urllib.request,os,hashlib; h = '261dd1222b4693ce6d4f85f9c827ac06' + '6d5ab8ebdd020086947172a8a1356bb6'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)",
+			"import urllib.request,os,hashlib; h = '2915d1851351e5ee549c20394736b442' + '8bc59f460fa1548d1514676163dafc88'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/D/Work/vW/nes",
+		"/D/Work/vW/nes/code",
+		"/D/Work/vW/nes/misc"
+	],
+	"file_history":
+	[
+		"/C/Users/Alejandro/Desktop/correo para Wilmer",
+		"/D/Work/vW/nes/build/nestestlog",
+		"/D/Work/vW/nes/misc/nintendulator0970src/src/NES.cpp",
+		"/D/Work/vW/nes-brianwill/nes/nes/memory.go",
+		"/D/Work/vW/nes-brianwill/nes/util/roms.go",
+		"/D/Work/vW/nes-brianwill/nes/nes/console.go",
+		"/D/Work/vW/nes-brianwill/nes/nes/nes_types.go",
+		"/D/Work/vW/nes-fogleman/nes/nes/cartridge.go",
+		"/D/Work/vW/nes-fogleman/nes/util/roms.go",
+		"/D/Work/vW/nes-fogleman/nes/nes/console.go",
+		"/D/Work/vW/nes-fogleman/nes/nes/ines.go",
+		"/D/Work/vW/nes/build/BOMBMAN.NES",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/HexViewer/hex_viewer.sublime-settings",
+		"/D/Work/vW/nes/build/nestest.nes",
+		"/D/Work/vW/nes/code/nes.cpp",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/SublimeGDB/SublimeGDB.sublime-settings",
+		"/D/Work/vW/Handmade Hero/handmade/code/build.bat",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/SublimeGDB.sublime-settings",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/Default.sublime-commands",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/nes-build.sublime-build",
+		"/D/Work/vW/nes/build.bat",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/Default (Windows).sublime-keymap",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/Default/Default (Windows).sublime-keymap",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/Preferences.sublime-settings",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/Default/Preferences.sublime-settings",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/Default/Default.sublime-commands",
+		"/D/Work/vW/Handmade Hero/handmade/code/win32_handmade.cpp",
+		"/D/Work/vW/nes/misc/shell.bat",
+		"/C/Users/Alejandro/Downloads/nestest.nes",
+		"/D/Work/vW/Handmade Hero/handmade/misc/emacs_keybindings.txt",
+		"/D/Work/vW/Dagon/examples/config.lua",
+		"/D/Work/vW/Dagon/readme.md",
+		"/F/Software/Media/TechSmith Camtasia Studio 8.0.3.994/Instrucciones.txt",
+		"/C/ProgramData/Blizzard Entertainment/Battle.net/offline",
+		"/D/Android/sdk/android-sdk/platform-tools/log.txt",
+		"/D/Work/vW/dolphin/Source/Core/Core/PowerPC/PowerPC.cpp",
+		"/D/Work/vW/(working) Space Explorer/(Android) (Unity 5.3.5f1) SpaceExplorer/Builds/Android/AndroidManifest.xml",
+		"/E/__BACKUP__/random_test.js",
+		"/E/__BACKUP__/random_text.py",
+		"/D/Work/vW/(working) Space Explorer/(Standalone) (Unity 5.3.5f1) SpaceExplorer/Assets/Scripts/LevelUp/GameLevelUpAssets.cs",
+		"/D/Work/vW/(working) Space Explorer/(Android) (Unity 5.3.5f1) SpaceExplorer/Assets/Plugins/Soomla/Store/AndroidImpl/SoomlaStoreAndroid.cs",
+		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Views/Explorer.xaml",
+		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MaterialDesignInXamlToolkit/MaterialDesignThemes.Wpf/Themes/MaterialDesignTheme.Menu.xaml",
+		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Views/Explorer.xaml.vb",
+		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Views/Groups/GroupView.xaml",
+		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Views/Groups/GroupView.xaml.vb",
+		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MaterialDesignInXamlToolkit/MaterialDesignThemes.Wpf/Themes/MaterialDesignTheme.Shadows.xaml",
+		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MahApps.Metro/MahApps.Metro/Styles/Controls.DataGrid.xaml",
+		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MahApps.Metro/MahApps.Metro/Styles/Controls.TabControl.xaml",
+		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Core/Objects/ObjectContext.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Infrastructure/DbEntityEntry`.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Internal/EntityEntries/InternalEntityEntry.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/DbSet.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/DbSet`.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Infrastructure/DbQuery.cs",
+		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/bin/Debug/QDoc.exe.config",
+		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/bin/Debug/QDoc.exe.Config",
+		"/C/Users/Alejandro/Downloads/QDoc.exe.Config",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Files/FileManager/WSLocalFileManager.vb",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Files/FileManager/Tools/WSSecurity.vb",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Users/WSLoginView.xaml.vb",
+		"/D/Work/vW/Karel/(working) QSuite v8/wpftoolkit-117060/Main/Source/ExtendedWPFToolkitSolution/Src/Xceed.Wpf.Toolkit/AutoSelectTextBox/Implementation/AutoSelectTextBox.cs",
+		"/D/Work/vW/Karel/(working) QSuite v8/WPF Autocomplete Textbox User Control/C#/WPFAutoCompleteTextbox/AutoCompleteEntry.cs",
+		"/D/Work/vW/Karel/(working) QSuite v8/WPF Autocomplete Textbox User Control/C#/WPFAutoCompleteTextbox/AutoCompleteTextBox.xaml",
+		"/D/Work/vW/Karel/(working) QSuite v8/WPF Autocomplete Textbox User Control/C#/WPFAutoCompleteTextbox/AutoCompleteTextBox.xaml.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/QueryableExtensions.cs",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Users/WSLoginView.xaml",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Users/WSUsersView.xaml",
+		"/D/Work/vW/Entity Framework/entityframework/src/Common/IEnumerableExtensions.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/Common/DatabaseName.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/Common/TypeExtensions.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Infrastructure/IDbAsyncQueryProvider.cs",
+		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Infrastructure/IDbAsyncEnumeratorExtensions.cs",
+		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess/Generals/QPContext.vb",
+		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess/Views/ExplorerView.xaml",
+		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess/Views/ExplorerView.xaml.vb",
+		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MaterialDesignInXamlToolkit/MaterialDesignThemes.Wpf/TreeHelper.cs",
+		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MahApps.Metro/MahApps.Metro/Styles/Controls.TreeView.xaml",
+		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Application.xaml",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Validators/WSEmailValidationRule.vb",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Licenses/WSLicenseManager.vb",
+		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MahApps.Metro/MahApps.Metro/Converters/TreeViewMarginConverter.cs",
+		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess.Common/Data/Group.vb",
+		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess.Common/Data/Partials/Group.partial.vb",
+		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Datos/Models/Group.partial.vb",
+		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Datos/Repositories/GroupRepository.vb",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationContext.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Design/Styles/Common.xaml",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Design/Converters/ValidationResultsToSeverityConverter.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/EntityBase.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/IValidationRule.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/IValidationContext.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationRule.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidableObject.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationService.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/Validator.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationRulesManager.cs",
+		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/Extensions/GeneralExtensions.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationResultCollection.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationResult.cs",
+		"/D/Work/vW/Karel/(working) QSuite v8/FluentValidation/src/FluentValidation/IValidator.cs",
+		"/D/Work/vW/Karel/(working) QSuite v8/FluentValidation/src/FluentValidation/ValidationContext.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Design/Converters/FlatErrorContentConverter.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/IValidable.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Design/Styles/Vitacoder/TextBoxLabelStyles.xaml",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Resources/WSResources.xaml",
+		"/D/Work/vW/(done) InHand/InHand/InHand.UI/Common/Resources/CommonStyles.xaml",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/FlowDocumentToHtml.xslt",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Validators/WSStringRangeValidationRule.vb",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/InHandModel.Context.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/Entities.Partials/InHandModelContainer.partial.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/EntityExtensions.cs",
+		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/InHand.Data.Partials.cs",
+		"/D/Work/vW/(working) Space Explorer/(PC) (Unity 5.3.5f1) SpaceExplorer/Builds/PC/SpaceExplorer_Data/output_log.txt",
+		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Migrations/Core/MigrationManager.vb",
+		"/D/Work/vW/Handmade Hero/tinyobjloader/test.cc",
+		"/D/Work/vW/Handmade Hero/tinyobjloader/tiny_obj_loader.cc",
+		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/System/Data/QueryManager.cs",
+		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/System/Data/FilteredDataSource.cs",
+		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/System/Data/Virtualization/VirtualizingCollection.cs",
+		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/System/Data/Virtualization/VirtualizedDataSource.cs",
+		"/C/Users/Alejandro/Downloads/dataJul-14-2016 (2).csv",
+		"/C/Users/Alejandro/Downloads/dataJul-14-2016 (2).sql",
+		"/C/Users/Alejandro/Downloads/group_names.txt",
+		"/D/Work/vW/Karel/(working) QSuite v8/roles-names",
+		"/D/Work/vW/Karel/(working) QSuite v8/roles.sql",
+		"/D/Work/vW/Karel/(working) QSuite v8/dbo.Roles.Table.sql",
+		"/C/Users/Alejandro/Downloads/dataJul-14-2016 (1).csv"
+	],
+	"find":
+	{
+		"height": 34.0
+	},
+	"find_in_files":
+	{
+		"height": 90.0,
+		"where_history":
+		[
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"LoadNESFile",
+			"iNESFileMagic",
+			"iNESFileHeader",
+			"OpenFileiNES",
+			"ctrl+shift+b",
+			"Win32ResizeDIBSection",
+			"WinMain",
+			"I/Unity",
+			"ShowLeaderboardUI can only be called after authentication.",
+			"I/Unity",
+			"Unity",
+			"GetInternalSetWithCheck",
+			"AsNoTracking",
+			"_stateEntry",
+			"State",
+			"_internalEntityEntry",
+			"void Attach",
+			"Attach",
+			"UserPermission_PropertyChanged",
+			"LoadTreeView",
+			"ResetGroupContext",
+			"templateRoot",
+			"AttemptLogin",
+			"CommonAsNoTracking",
+			"CommonInclude",
+			"Include",
+			"Validation.Errors",
+			"RunRules",
+			"LocalTo",
+			"Converter",
+			"TView",
+			"([A-Z])([A-Z]+)",
+			"\",",
+			"Admin",
+			"\",\"",
+			"|\"",
+			"ExecutionsPg",
+			"\\n",
+			"Admin",
+			"currentFormat",
+			"MailExchange",
+			".wxd",
+			"D",
+			" D",
+			"Converting file:",
+			"\\n",
+			"\\r\\n",
+			"207",
+			"<td class=\"centered percent5\">.*</td>",
+			"<td>.*</td>",
+			"<tr>",
+			"<tbody>",
+			".wld\"",
+			".wld",
+			"Doc",
+			".wxd",
+			"Converting file: ",
+			"logoff",
+			"log_off",
+			"LoadUserPermissions",
+			"ChangeCulture",
+			"SendTestEmailSubject",
+			"current-user-holder",
+			"CGeneral.Current.CurrentUser",
+			"Transferir",
+			"GetInternalSetWithCheck",
+			"Remove",
+			"_sortDefinitions",
+			"Find",
+			"LocalTo",
+			"SelectedUser",
+			"GetMetadataBoolValue",
+			"CSharp",
+			"http://www.InHand.com",
+			"UI",
+			"PART_Popup",
+			"Activate with root item ",
+			"ConvertFromVisio",
+			"Background",
+			"DynamicResource",
+			"WindowChrome",
+			"Window",
+			"titleBar",
+			"PART_TitleBar",
+			"Paginator",
+			"CalculatePropertyAccessibility",
+			"#if",
+			"root",
+			"cgi.force_redirect",
+			"Estado",
+			"GetCloseReminders",
+			"SendRemin",
+			"VirtualPrinter",
+			"Time",
+			"Timeout",
+			"MailExchange",
+			"Mail(",
+			"Creating Hub",
+			"UploadDocument",
+			"Copying to dir",
+			"OpenGroup",
+			"Opened",
+			"_displayingSearch",
+			"_curSortCol",
+			"_displayingSearch",
+			"DisplayingSearch",
+			"SelectedGroup",
+			"DisplayingSearch",
+			"RightClickSelectedGroup",
+			"DoDragDrop",
+			"DragDrop",
+			"TextBoxLabel",
+			"Fuente",
+			"Delete",
+			"Groups",
+			"diagnostics",
+			"Configuration",
+			"rastreo",
+			"EntityTrack",
+			"public class EntityTrack",
+			"EntityTrack",
+			"(1)(1)",
+			"No se pudo generar",
+			"Conviertiendo fichero ",
+			".wld",
+			"1048",
+			"OpenXpsDocument",
+			"Collect"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"$1\\L$2",
+			"",
+			"|",
+			"",
+			"\",\\n",
+			".wld",
+			".wxd\",",
+			"\"D",
+			"D",
+			"",
+			",\\n",
+			",\\r\\n",
+			"",
+			".wld\",",
+			".wld\"",
+			"\"Doc",
+			".wld",
+			"",
+			"DisplayingSearch"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 23.0
+	},
+	"input":
+	{
+		"height": 31.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 67.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"output.hex_viewer_inspector":
+	{
+		"height": 135.0
+	},
+	"pinned_build_system": "Packages/User/nes-build.sublime-build",
+	"project": "nes.sublime-project",
+	"replace":
+	{
+		"height": 62.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 213.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

@@ -185,6 +185,9 @@ $3F1D-$3F1F  Sprite palette 3
 
 #define PPU_NUM_SYSTEM_COLOURS 64 
 
+// this is a forward reference to a function in cpu.h, so WriteDMA could compile.
+inline u8 ReadCPUU8(NES *nes, u16 address);
+
 // palette adapted from http://nesdev.parodius.com/NESTechFAQ.htm 
 global Color systemPalette[PPU_NUM_SYSTEM_COLOURS] = 
 { 
@@ -428,12 +431,13 @@ inline u8 ReadStatus(NES *nes)
 
 inline void WriteStatus(NES *nes, u8 value)
 {
+    // This register is read only
 }
 
 inline u8 ReadOamAddr(NES *nes)
 {
-    PPU *ppu = &nes->ppu;
-    return ppu->oamAddress;
+    // This register is write only
+    return 0;
 }
 
 inline void WriteOamAddr(NES *nes, u8 value)
@@ -448,14 +452,14 @@ inline void WriteOamAddr(NES *nes, u8 value)
 inline u8 ReadOamData(NES *nes)
 {
     PPU *ppu = &nes->ppu;
-    return ppu->oamData;
+    return ReadPPUU8(nes, ppu->oamAddress);
 }
 
 inline void WriteOamData(NES *nes, u8 value)
 {
     // TODO: write here to oamAddress: WriteU8(oamAddress, value); ??
     PPU *ppu = &nes->ppu;
-    ppu->oamData = value;
+    WritePPUU8(nes, ppu->oamAddress, value);
     ppu->oamAddress++;
 
     // Least significant bits previously written into a PPU register goes into PPUSTATUS
@@ -577,6 +581,29 @@ inline void WriteVramData(NES *nes, u8 value)
 
     // Least significant bits previously written into a PPU register goes into PPUSTATUS
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
+}
+
+// This is the fastest method and how is usually implemented in emulators
+// I'll try for now doing it using the cpu cycles
+inline void WriteDMA(NES *nes, u8 value)
+{
+    CPU *cpu = &nes->cpu;
+    PPU *ppu = &nes->ppu;
+
+    u16 readAddress = ((u16)value << 8);
+
+    for (u16 offset = 0; offset < 0x100; ++offset)
+    {
+        u8 data = ReadCPUU8(nes, readAddress + offset);
+        WriteU8(&nes->oamMemory, ppu->oamAddress, data);
+
+        ppu->oamAddress++;
+    }
+
+    // set something to cpu to stall it for 513 or 514 (if is and odd cycle) cycles
+    cpu->waitCycles = 513;
+    if (cpu->cycles & 0x01)
+        ++cpu->waitCycles;
 }
 
 void ResetPPU(NES *nes);

@@ -556,6 +556,50 @@ void StepPPU(NES *nes)
         }
     }
 
+    if (renderSprites)
+    {
+        if (ppu->cycle >= 1 && ppu->cycle <= 64)
+        {
+            // Cycles 1 - 64: Secondary OAM(32 - byte buffer for current sprites on scanline) is initialized to $FF - 
+            // attempting to read $2004 will return $FF.Internally, the clear operation is implemented by reading from 
+            // the OAM and writing into the secondary OAM as usual, only a signal is active that makes the read always return $FF.
+        }
+        else if (ppu->cycle >= 65 && ppu->cycle <= 256)
+        {
+            /*Cycles 65 - 256: Sprite evaluation
+                On odd cycles, data is read from(primary) OAM
+                On even cycles, data is written to secondary OAM(unless secondary OAM is full, in which case it will read the value in secondary OAM instead)
+                1. Starting at n = 0, read a sprite's Y-coordinate (OAM[n][0], copying it to the next open slot in secondary OAM (unless 8 sprites have been found, in which case the write is ignored).
+                1a.If Y - coordinate is in range, copy remaining bytes of sprite data(OAM[n][1] thru OAM[n][3]) into secondary OAM.
+                2. Increment n
+                2a.If n has overflowed back to zero(all 64 sprites evaluated), go to 4
+                2b.If less than 8 sprites have been found, go to 1
+                2c.If exactly 8 sprites have been found, disable writes to secondary OAM because it is full.This causes sprites in back to drop out.
+                3. Starting at m = 0, evaluate OAM[n][m] as a Y - coordinate.
+                3a.If the value is in range, set the sprite overflow flag in $2002 and read the next 3 entries of OAM(incrementing 'm' after each byte and incrementing 'n' when 'm' overflows); if m = 3, increment n
+                3b.If the value is not in range, increment n and m(without carry).If n overflows to 0, go to 4; otherwise go to 3
+                The m increment is a hardware bug - if only n was incremented, the overflow flag would be set whenever more than 8 sprites were present on the same scanline, as expected.
+                4. Attempt(and fail) to copy OAM[n][0] into the next free slot in secondary OAM, and increment n(repeat until HBLANK is reached)*/
+        }
+        else if (ppu->cycle >= 257 && ppu->cycle <= 320)
+        {
+            /*Cycles 257 - 320: Sprite fetches(8 sprites total, 8 cycles per sprite)
+                1 - 4 : Read the Y - coordinate, tile number, attributes, and X - coordinate of the selected sprite from secondary OAM
+                5 - 8 : Read the X - coordinate of the selected sprite from secondary OAM 4 times(while the PPU fetches the sprite tile data)
+                For the first empty sprite slot, this will consist of sprite #63's Y-coordinate followed by 3 $FF bytes; for subsequent empty sprite slots, this will be four $FF bytes*/
+        }
+        else if (ppu->cycle >= 257 && ppu->cycle <= 320)
+        {
+            /*Cycles 321 - 340 + 0: Background render pipeline initialization
+                Read the first byte in secondary OAM(while the PPU fetches the first two background tiles for the next scanline)*/
+        }
+        else
+        {
+            // no deberia llegar aqui
+            ASSERT(FALSE);
+        }
+    }
+
     ppu->cycle++;
     ppu->totalCycles++;
 
