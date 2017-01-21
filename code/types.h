@@ -289,7 +289,8 @@ struct PPU
     u8 highTileByte;
     u64 tileData;
 
-
+    u8 spriteN, spriteM;
+    u8 spriteCount;
 };
 
 struct Win32BackBuffer

@@ -558,11 +558,22 @@ void StepPPU(NES *nes)
 
     if (renderSprites)
     {
+        // Implementar algo como lo de Fogleman, y luego volvemos a esta evaluacion de los sprites
+
         if (ppu->cycle >= 1 && ppu->cycle <= 64)
         {
             // Cycles 1 - 64: Secondary OAM(32 - byte buffer for current sprites on scanline) is initialized to $FF - 
-            // attempting to read $2004 will return $FF.Internally, the clear operation is implemented by reading from 
+            // attempting to read $2004 will return $FF. Internally, the clear operation is implemented by reading from 
             // the OAM and writing into the secondary OAM as usual, only a signal is active that makes the read always return $FF.
+            //
+            // I think is one cycle for the reading and other for the writing. 
+            // The read through $2004 should return 0xFF if the ppu is in this phase.
+            // For now, I'll skip the reading part and only write 0xFF to oamMemory2.
+
+            if (ppu->cycle & 0x01)
+            {
+                WriteU8(&nes->oamMemory2, ppu->cycle / 2, 0xFF);
+            }
         }
         else if (ppu->cycle >= 65 && ppu->cycle <= 256)
         {
@@ -570,23 +581,88 @@ void StepPPU(NES *nes)
                 On odd cycles, data is read from(primary) OAM
                 On even cycles, data is written to secondary OAM(unless secondary OAM is full, in which case it will read the value in secondary OAM instead)
                 1. Starting at n = 0, read a sprite's Y-coordinate (OAM[n][0], copying it to the next open slot in secondary OAM (unless 8 sprites have been found, in which case the write is ignored).
-                1a.If Y - coordinate is in range, copy remaining bytes of sprite data(OAM[n][1] thru OAM[n][3]) into secondary OAM.
+                    1a.If Y - coordinate is in range, copy remaining bytes of sprite data(OAM[n][1] thru OAM[n][3]) into secondary OAM.
                 2. Increment n
-                2a.If n has overflowed back to zero(all 64 sprites evaluated), go to 4
-                2b.If less than 8 sprites have been found, go to 1
-                2c.If exactly 8 sprites have been found, disable writes to secondary OAM because it is full.This causes sprites in back to drop out.
+                    2a.If n has overflowed back to zero(all 64 sprites evaluated), go to 4
+                    2b.If less than 8 sprites have been found, go to 1
+                    2c.If exactly 8 sprites have been found, disable writes to secondary OAM because it is full.This causes sprites in back to drop out.
                 3. Starting at m = 0, evaluate OAM[n][m] as a Y - coordinate.
-                3a.If the value is in range, set the sprite overflow flag in $2002 and read the next 3 entries of OAM(incrementing 'm' after each byte and incrementing 'n' when 'm' overflows); if m = 3, increment n
-                3b.If the value is not in range, increment n and m(without carry).If n overflows to 0, go to 4; otherwise go to 3
-                The m increment is a hardware bug - if only n was incremented, the overflow flag would be set whenever more than 8 sprites were present on the same scanline, as expected.
+                    3a.If the value is in range, set the sprite overflow flag in $2002 and read the next 3 entries of OAM(incrementing 'm' after each byte and incrementing 'n' when 'm' overflows); if m = 3, increment n
+                    3b.If the value is not in range, increment n and m(without carry).If n overflows to 0, go to 4; otherwise go to 3
+                        The m increment is a hardware bug - if only n was incremented, the overflow flag would be set whenever more than 8 sprites were present on the same scanline, as expected.
                 4. Attempt(and fail) to copy OAM[n][0] into the next free slot in secondary OAM, and increment n(repeat until HBLANK is reached)*/
+
+            if (ppu->cycle == 65)
+            {
+                ppu->spriteN = 0;
+                ppu->spriteM = 0;
+                ppu->spriteCount = 0;
+            }
+
+            // Este proceso deberia respetar los tiempos de los ciclos del PPU
+            if (ppu->spriteN < 64)
+            {
+                u8 h = GetBitFlag(ppu->control, 0x20) ? 16 : 8;
+                u8 spriteY = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 0);
+
+                if (ppu->spriteCount < 8)
+                {
+                    WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 0, spriteY);
+
+                    u8 row = (u8)ppu->scanline - spriteY;
+                    if (row >= 0 && row < h)
+                    {
+                        u8 patternIndex = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 1);
+                        WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 1, patternIndex);
+
+                        u8 attr = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 2);
+                        WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 2, attr);
+
+                        u8 spriteX = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 3);
+                        WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 3, spriteX);
+                    }
+
+                    ppu->spriteCount++;
+                }
+                
+                ppu->spriteN++;
+
+                if (ppu->spriteCount < 64)
+                {
+                    if (ppu->spriteCount = 8)
+                    {
+                        u8 spriteY = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + ppu->spriteM);
+                        u8 row = (u8)ppu->scanline - spriteY;
+                        if (row >= 0 && row < h)
+                        {
+                            SetBitFlag(&ppu->status, 0x20);
+                        }
+                        else
+                        {
+                            ppu->spriteN++;
+
+                            // The m increment is a hardware bug - if only n was incremented, 
+                            // the overflow flag would be set whenever more than 8 sprites were present on the same scanline, as expected.
+                            ppu->spriteM++;
+                        }
+                    }
+                }
+            }
         }
         else if (ppu->cycle >= 257 && ppu->cycle <= 320)
         {
+            if (ppu->cycle = 257)
+            {
+                ppu->spriteN = 0;
+                ppu->spriteM = 0;
+            }
+
             /*Cycles 257 - 320: Sprite fetches(8 sprites total, 8 cycles per sprite)
                 1 - 4 : Read the Y - coordinate, tile number, attributes, and X - coordinate of the selected sprite from secondary OAM
                 5 - 8 : Read the X - coordinate of the selected sprite from secondary OAM 4 times(while the PPU fetches the sprite tile data)
                 For the first empty sprite slot, this will consist of sprite #63's Y-coordinate followed by 3 $FF bytes; for subsequent empty sprite slots, this will be four $FF bytes*/
+
+
         }
         else if (ppu->cycle >= 257 && ppu->cycle <= 320)
         {
