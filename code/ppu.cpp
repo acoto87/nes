@@ -38,8 +38,8 @@ internal u8 GetPatternColorIndex(NES *nes, u16 basePatternAddress, u8 patternTil
 {
     PPU *ppu = &nes->ppu;
 
-    u16 horizontalOffset = patternTileNumber * PPU_PATTERN_BYTES_PER_TILE;
-    u16 verticalOffset = (y % PPU_VERTICAL_PIXELS_PER_TILE);
+    u16 horizontalOffset = patternTileNumber * 16;
+    u16 verticalOffset = (y % 8);
 
     u16 pattern1Address = basePatternAddress + horizontalOffset + verticalOffset;
     u16 pattern2Address = pattern1Address + 8;
@@ -48,11 +48,11 @@ internal u8 GetPatternColorIndex(NES *nes, u16 basePatternAddress, u8 patternTil
     u8 pattern2 = ReadPPUU8(nes, pattern2Address);
 
     // combine pattern bytes
-    pattern1 = pattern1 << (x % PPU_HORIZONTAL_PIXELS_PER_TILE);
-    pattern1 = pattern1 >> (PPU_HORIZONTAL_PIXELS_PER_TILE - 1);
+    pattern1 = pattern1 << (x % 8);
+    pattern1 = pattern1 >> (8 - 1);
 
-    pattern2 = pattern2 << (x % PPU_HORIZONTAL_PIXELS_PER_TILE);
-    pattern2 = pattern2 >> (PPU_HORIZONTAL_PIXELS_PER_TILE - 1);
+    pattern2 = pattern2 << (x % 8);
+    pattern2 = pattern2 >> (8 - 1);
     pattern2 = pattern2 << 1;
 
     u8 patternIndex = pattern1 + pattern2;
@@ -195,46 +195,66 @@ internal u8 GetBackgroundColor(NES *nes)
     return backgroundColorIndex;
 }
 
-internal u8 GetSpriteColor(NES *nes, u8 backgroundColorIndex)
+internal u8 GetSpritePatternColorIndex(NES *nes, u8 index, u8 x, u8 y)
 {
     PPU *ppu = &nes->ppu;
 
-    u8 spriteColorIndex = 0;
+    u8 row1 = ReadPPUU8(nes, index * 16 + y);
+    u8 row2 = ReadPPUU8(nes, index * 16 + 8 + y);
 
-    if (GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG))
-    {
-        //u8 screenX = GetCurrentX(ppu);
+    u8 h = ((row2 >> (7 - x)) & 0x1);
+    u8 l = ((row1 >> (7 - x)) & 0x1);
+    u8 v = (h << 0x1) | l;
 
-        //u8 systemColorIndex = 0;
+    return v;
+    /*{
+        for (s32 y = 0; y < 8; ++y)
+        {
+            for (s32 x = 0; x < 8; ++x)
+            {
+                Color c = {};
+                c.a = 0xFF;
 
-        //if (!ppu->spriteColorsForScanlineSet[screenX])
-        //{
-        //    u16 address = PPU_BACKGROUND_PALETTE_FIRST_ADDRESS + backgroundColorIndex;
-        //    systemColorIndex = ReadPPUU8(nes, address);
+                u8 h = ((row2 >> (7 - x)) & 0x1);
+                u8 l = ((row1 >> (7 - x)) & 0x1);
+                u8 v = (h << 0x1) | l;
+                switch (v)
+                {
+                    case 1:
+                    {
+                        c.r = 0xFF;
+                        break;
+                    }
 
-        //    // one of the lower two bits set
-        //}
-        //else if ((ppu->spriteColorsForScanlineIsBehindBackground[screenX]) && (backgroundColorIndex % 4 != 0))
-        //{
-        //    u16 address = PPU_BACKGROUND_PALETTE_FIRST_ADDRESS + backgroundColorIndex;
-        //    systemColorIndex = ReadPPUU8(nes, address);
+                    case 2:
+                    {
+                        c.g = 0xFF;
+                        break;
+                    }
 
-        //    SetBitFlag(&ppu->status, HIT_FLAG);
-        //}
-        //else
-        //{
-        //    u16 address = PPU_SPRITE_PALETTE_FIRST_ADDRESS + ppu->spriteColorsForScanline[screenX];
-        //    systemColorIndex = ReadPPUU8(nes, address);
+                    case 3:
+                    {
+                        c.b = 0xFF;
+                        break;
+                    }
 
-        //    SetBitFlag(&ppu->status, HIT_FLAG);
-        //}
+                    default:
+                    {
+                        break;
+                    }
+                }
 
-        //ASSERT(systemColorIndex < PPU_NUM_SYSTEM_COLOURS);
+                s32 x1 = (index % 16) * 8 + x;
+                s32 y1 = (index / 16) * 8 + y;
+                s32 b = y1 * 128 + x1;
 
-        //spriteColorIndex = systemColorIndex;
-    }
-
-    return spriteColorIndex;
+                pixels[b * 4 + 0] = c.b;
+                pixels[b * 4 + 1] = c.g;
+                pixels[b * 4 + 2] = c.r;
+                pixels[b * 4 + 3] = c.a;
+            }
+        }
+    }*/
 }
 
 internal void RenderPixel(NES *nes)
@@ -242,25 +262,65 @@ internal void RenderPixel(NES *nes)
     PPU *ppu = &nes->ppu;
     GUI *gui = &nes->gui;
 
-    //if (ppu->cycle == 0)
-    //{
-    //    // calculate the colors for the current scanline
-    //    CalculateSpriteColorsForScanline(nes);
-    //}
+    b32 renderBackground = GetBitFlag(ppu->mask, BACKGROUND_ENABLED_FLAG);
+    b32 renderSprites = GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG);
 
-    u32 x = GetCurrentX(ppu);
-    u32 y = GetCurrentY(ppu);
+    u8 backgroundColorIndex = 0;
+    u8 spriteColorIndex = 0;
 
-    // get the background color
-    //u8 backgroundColorIndex = GetBackgroundColor(nes);
+    u8 x = GetCurrentX(ppu);
+    u8 y = GetCurrentY(ppu);
 
-    u8 backgroundColorIndex = ((ppu->tileData >> 32) >> ((7 - ppu->x) * 4)) & 0x0F;
+    if (renderBackground)
+    {
+        backgroundColorIndex = ((ppu->tileData >> 32) >> ((7 - ppu->x) * 4)) & 0xF;
+    }
 
-    // get the sprite color
-    // u8 spriteColorIndex = GetSpriteColor(nes, backgroundColorIndex);
+    if (renderSprites)
+    {
+        for (s32 i = 0; i < ppu->spriteCount; ++i)
+        {
+            u8 spriteY = ReadU8(&nes->oamMemory2, i * 4 + 0);
+            u8 spriteIdx = ReadU8(&nes->oamMemory2, i * 4 + 1);
+            u8 spriteAttr = ReadU8(&nes->oamMemory2, i * 4 + 2);
+            u8 spriteX = ReadU8(&nes->oamMemory2, i * 4 + 3);
+
+            u8 rowOffset = y - spriteY;
+            u8 colOffset = x - spriteX;
+
+            if (colOffset >= 0 && colOffset < 8)
+            {
+                spriteColorIndex = GetSpritePatternColorIndex(nes, spriteIdx, rowOffset, colOffset);
+                if (spriteColorIndex % 4 != 0)
+                {
+                    break;
+                }
+            }
+        }
+    }
 
     // get color from palettes
-    Color color = systemPalette[backgroundColorIndex % 64];
+    u8 colorIndex;
+
+    if (spriteColorIndex != 0 && backgroundColorIndex != 0)
+    {
+        colorIndex = spriteColorIndex;
+    }
+    else if (spriteColorIndex != 0)
+    {
+        colorIndex = spriteColorIndex;
+    }
+    else if (backgroundColorIndex != 0)
+    {
+        colorIndex = backgroundColorIndex;
+    }
+    else
+    {
+        colorIndex = 0;
+    }
+
+    colorIndex = ReadPPUU8(nes, colorIndex % 64);
+    Color color = systemPalette[colorIndex];
 
     // draw pixel at 'x', 'y' with color 'color'
     SetPixel(gui, x, y, color);
@@ -404,8 +464,9 @@ void StepPPU(NES *nes)
 
     b32 renderBackground = GetBitFlag(ppu->mask, BACKGROUND_ENABLED_FLAG);
     b32 renderSprites = GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG);
+    b32 renderEnabled = renderBackground || renderSprites;
 
-    if (renderBackground)
+    if (renderEnabled)
     {
         /*
         * After rendering 1 dummy scanline, the PPU starts to render the
@@ -556,124 +617,165 @@ void StepPPU(NES *nes)
         }
     }
 
-    if (renderSprites)
+    if (renderEnabled)
     {
-        // Implementar algo como lo de Fogleman, y luego volvemos a esta evaluacion de los sprites
-
-        if (ppu->cycle >= 1 && ppu->cycle <= 64)
+        if (ppu->scanline >= 0 && ppu->scanline <= 239)
         {
-            // Cycles 1 - 64: Secondary OAM(32 - byte buffer for current sprites on scanline) is initialized to $FF - 
-            // attempting to read $2004 will return $FF. Internally, the clear operation is implemented by reading from 
-            // the OAM and writing into the secondary OAM as usual, only a signal is active that makes the read always return $FF.
-            //
-            // I think is one cycle for the reading and other for the writing. 
-            // The read through $2004 should return 0xFF if the ppu is in this phase.
-            // For now, I'll skip the reading part and only write 0xFF to oamMemory2.
-
-            if (ppu->cycle & 0x01)
+            if (ppu->cycle == 257)
             {
-                WriteU8(&nes->oamMemory2, ppu->cycle / 2, 0xFF);
-            }
-        }
-        else if (ppu->cycle >= 65 && ppu->cycle <= 256)
-        {
-            /*Cycles 65 - 256: Sprite evaluation
-                On odd cycles, data is read from(primary) OAM
-                On even cycles, data is written to secondary OAM(unless secondary OAM is full, in which case it will read the value in secondary OAM instead)
-                1. Starting at n = 0, read a sprite's Y-coordinate (OAM[n][0], copying it to the next open slot in secondary OAM (unless 8 sprites have been found, in which case the write is ignored).
-                    1a.If Y - coordinate is in range, copy remaining bytes of sprite data(OAM[n][1] thru OAM[n][3]) into secondary OAM.
-                2. Increment n
-                    2a.If n has overflowed back to zero(all 64 sprites evaluated), go to 4
-                    2b.If less than 8 sprites have been found, go to 1
-                    2c.If exactly 8 sprites have been found, disable writes to secondary OAM because it is full.This causes sprites in back to drop out.
-                3. Starting at m = 0, evaluate OAM[n][m] as a Y - coordinate.
-                    3a.If the value is in range, set the sprite overflow flag in $2002 and read the next 3 entries of OAM(incrementing 'm' after each byte and incrementing 'n' when 'm' overflows); if m = 3, increment n
-                    3b.If the value is not in range, increment n and m(without carry).If n overflows to 0, go to 4; otherwise go to 3
-                        The m increment is a hardware bug - if only n was incremented, the overflow flag would be set whenever more than 8 sprites were present on the same scanline, as expected.
-                4. Attempt(and fail) to copy OAM[n][0] into the next free slot in secondary OAM, and increment n(repeat until HBLANK is reached)*/
+                u8 h = GetBitFlag(ppu->control, SPRITE_SIZE_FLAG) ? 16 : 8;
 
-            if (ppu->cycle == 65)
-            {
-                ppu->spriteN = 0;
-                ppu->spriteM = 0;
-                ppu->spriteCount = 0;
-            }
-
-            // Este proceso deberia respetar los tiempos de los ciclos del PPU
-            if (ppu->spriteN < 64)
-            {
-                u8 h = GetBitFlag(ppu->control, 0x20) ? 16 : 8;
-                u8 spriteY = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 0);
-
-                if (ppu->spriteCount < 8)
+                s32 count = 0;
+                for (s32 i = 0; i < 64; ++i)
                 {
-                    WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 0, spriteY);
+                    u8 y = ReadU8(&nes->oamMemory, i * 4 + 0);
+                    u8 idx = ReadU8(&nes->oamMemory, i * 4 + 1);
+                    u8 a = ReadU8(&nes->oamMemory, i * 4 + 2);
+                    u8 x = ReadU8(&nes->oamMemory, i * 4 + 3);
 
-                    u8 row = (u8)ppu->scanline - spriteY;
+                    u8 row = (u8)ppu->scanline - y;
                     if (row >= 0 && row < h)
                     {
-                        u8 patternIndex = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 1);
-                        WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 1, patternIndex);
+                        if (count < 8)
+                        {
+                            WriteU8(&nes->oamMemory2, count * 4 + 0, y);
+                            WriteU8(&nes->oamMemory2, count * 4 + 1, idx);
+                            WriteU8(&nes->oamMemory2, count * 4 + 2, a);
+                            WriteU8(&nes->oamMemory2, count * 4 + 3, x);
+                        }
 
-                        u8 attr = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 2);
-                        WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 2, attr);
-
-                        u8 spriteX = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 3);
-                        WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 3, spriteX);
+                        ++count;
                     }
 
-                    ppu->spriteCount++;
-                }
-                
-                ppu->spriteN++;
-
-                if (ppu->spriteCount < 64)
-                {
-                    if (ppu->spriteCount = 8)
+                    if (count > 8)
                     {
-                        u8 spriteY = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + ppu->spriteM);
-                        u8 row = (u8)ppu->scanline - spriteY;
-                        if (row >= 0 && row < h)
-                        {
-                            SetBitFlag(&ppu->status, 0x20);
-                        }
-                        else
-                        {
-                            ppu->spriteN++;
-
-                            // The m increment is a hardware bug - if only n was incremented, 
-                            // the overflow flag would be set whenever more than 8 sprites were present on the same scanline, as expected.
-                            ppu->spriteM++;
-                        }
+                        count = 8;
+                        SetBitFlag(&ppu->status, SCANLINE_COUNT_FLAG);
                     }
+
+                    ppu->spriteCount = count;
                 }
             }
-        }
-        else if (ppu->cycle >= 257 && ppu->cycle <= 320)
-        {
-            if (ppu->cycle = 257)
+            else
             {
-                ppu->spriteN = 0;
-                ppu->spriteM = 0;
+                ppu->spriteCount = 0;
             }
-
-            /*Cycles 257 - 320: Sprite fetches(8 sprites total, 8 cycles per sprite)
-                1 - 4 : Read the Y - coordinate, tile number, attributes, and X - coordinate of the selected sprite from secondary OAM
-                5 - 8 : Read the X - coordinate of the selected sprite from secondary OAM 4 times(while the PPU fetches the sprite tile data)
-                For the first empty sprite slot, this will consist of sprite #63's Y-coordinate followed by 3 $FF bytes; for subsequent empty sprite slots, this will be four $FF bytes*/
-
-
         }
-        else if (ppu->cycle >= 257 && ppu->cycle <= 320)
-        {
-            /*Cycles 321 - 340 + 0: Background render pipeline initialization
-                Read the first byte in secondary OAM(while the PPU fetches the first two background tiles for the next scanline)*/
-        }
-        else
-        {
-            // no deberia llegar aqui
-            ASSERT(FALSE);
-        }
+
+        //if (ppu->cycle >= 1 && ppu->cycle <= 64)
+        //{
+        //    // Cycles 1 - 64: Secondary OAM(32 - byte buffer for current sprites on scanline) is initialized to $FF - 
+        //    // attempting to read $2004 will return $FF. Internally, the clear operation is implemented by reading from 
+        //    // the OAM and writing into the secondary OAM as usual, only a signal is active that makes the read always return $FF.
+        //    //
+        //    // I think is one cycle for the reading and other for the writing. 
+        //    // The read through $2004 should return 0xFF if the ppu is in this phase.
+        //    // For now, I'll skip the reading part and only write 0xFF to oamMemory2.
+
+        //    if (ppu->cycle & 0x01)
+        //    {
+        //        WriteU8(&nes->oamMemory2, ppu->cycle / 2, 0xFF);
+        //    }
+        //}
+        //else if (ppu->cycle >= 65 && ppu->cycle <= 256)
+        //{
+        //    /*Cycles 65 - 256: Sprite evaluation
+        //        On odd cycles, data is read from(primary) OAM
+        //        On even cycles, data is written to secondary OAM(unless secondary OAM is full, in which case it will read the value in secondary OAM instead)
+        //        1. Starting at n = 0, read a sprite's Y-coordinate (OAM[n][0], copying it to the next open slot in secondary OAM (unless 8 sprites have been found, in which case the write is ignored).
+        //            1a.If Y - coordinate is in range, copy remaining bytes of sprite data(OAM[n][1] thru OAM[n][3]) into secondary OAM.
+        //        2. Increment n
+        //            2a.If n has overflowed back to zero(all 64 sprites evaluated), go to 4
+        //            2b.If less than 8 sprites have been found, go to 1
+        //            2c.If exactly 8 sprites have been found, disable writes to secondary OAM because it is full.This causes sprites in back to drop out.
+        //        3. Starting at m = 0, evaluate OAM[n][m] as a Y - coordinate.
+        //            3a.If the value is in range, set the sprite overflow flag in $2002 and read the next 3 entries of OAM(incrementing 'm' after each byte and incrementing 'n' when 'm' overflows); if m = 3, increment n
+        //            3b.If the value is not in range, increment n and m(without carry).If n overflows to 0, go to 4; otherwise go to 3
+        //                The m increment is a hardware bug - if only n was incremented, the overflow flag would be set whenever more than 8 sprites were present on the same scanline, as expected.
+        //        4. Attempt(and fail) to copy OAM[n][0] into the next free slot in secondary OAM, and increment n(repeat until HBLANK is reached)*/
+
+        //    if (ppu->cycle == 65)
+        //    {
+        //        ppu->spriteN = 0;
+        //        ppu->spriteM = 0;
+        //        ppu->spriteCount = 0;
+        //    }
+
+        //    // Este proceso deberia respetar los tiempos de los ciclos del PPU
+        //    if (ppu->spriteN < 64)
+        //    {
+        //        u8 h = GetBitFlag(ppu->control, 0x20) ? 16 : 8;
+        //        u8 spriteY = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 0);
+
+        //        if (ppu->spriteCount < 8)
+        //        {
+        //            WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 0, spriteY);
+
+        //            u8 row = (u8)ppu->scanline - spriteY;
+        //            if (row >= 0 && row < h)
+        //            {
+        //                u8 patternIndex = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 1);
+        //                WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 1, patternIndex);
+
+        //                u8 attr = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 2);
+        //                WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 2, attr);
+
+        //                u8 spriteX = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + 3);
+        //                WriteU8(&nes->oamMemory2, ppu->spriteCount * 4 + 3, spriteX);
+        //            }
+
+        //            ppu->spriteCount++;
+        //        }
+        //        
+        //        ppu->spriteN++;
+
+        //        if (ppu->spriteCount < 64)
+        //        {
+        //            if (ppu->spriteCount = 8)
+        //            {
+        //                u8 spriteY = ReadU8(&nes->oamMemory, ppu->spriteN * 4 + ppu->spriteM);
+        //                u8 row = (u8)ppu->scanline - spriteY;
+        //                if (row >= 0 && row < h)
+        //                {
+        //                    SetBitFlag(&ppu->status, 0x20);
+        //                }
+        //                else
+        //                {
+        //                    ppu->spriteN++;
+
+        //                    // The m increment is a hardware bug - if only n was incremented, 
+        //                    // the overflow flag would be set whenever more than 8 sprites were present on the same scanline, as expected.
+        //                    ppu->spriteM++;
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
+        //else if (ppu->cycle >= 257 && ppu->cycle <= 320)
+        //{
+        //    if (ppu->cycle = 257)
+        //    {
+        //        ppu->spriteN = 0;
+        //        ppu->spriteM = 0;
+        //    }
+
+        //    /*Cycles 257 - 320: Sprite fetches(8 sprites total, 8 cycles per sprite)
+        //        1 - 4 : Read the Y - coordinate, tile number, attributes, and X - coordinate of the selected sprite from secondary OAM
+        //        5 - 8 : Read the X - coordinate of the selected sprite from secondary OAM 4 times(while the PPU fetches the sprite tile data)
+        //        For the first empty sprite slot, this will consist of sprite #63's Y-coordinate followed by 3 $FF bytes; for subsequent empty sprite slots, this will be four $FF bytes*/
+
+
+        //}
+        //else if (ppu->cycle >= 257 && ppu->cycle <= 320)
+        //{
+        //    /*Cycles 321 - 340 + 0: Background render pipeline initialization
+        //        Read the first byte in secondary OAM(while the PPU fetches the first two background tiles for the next scanline)*/
+        //}
+        //else
+        //{
+        //    // no deberia llegar aqui
+        //    ASSERT(FALSE);
+        //}
     }
 
     ppu->cycle++;

@@ -19,6 +19,7 @@ global s64 globalPerfCountFrequency;
 global b32 running;
 global b32 needs_refresh = TRUE;
 global char debugBuffer[256];
+global b32 hitRun;
 global b32 debugging = TRUE;
 global b32 stepping;
 global u16 breakpoint;
@@ -78,6 +79,7 @@ LRESULT CALLBACK Win32MainWindowCallback(
         }
     }
 
+    //if (!nk_gdip_handle_event(window, msg, wParam, lParam))
     if (!nk_gdi_handle_event(window, msg, wParam, lParam))
     {
         result = DefWindowProc(window, msg, wParam, lParam);
@@ -92,9 +94,6 @@ int CALLBACK WinMain(
     LPSTR     cmdLine,
     int       cmdShow)
 {
-    // Run until 81FB is about to execute, comparing with Nintendulator
-    // Render VRAM address to debug
-
     LARGE_INTEGER initialCounter = Win32GetWallClock();
 
     LARGE_INTEGER perfCountFrequencyResult;
@@ -157,6 +156,10 @@ int CALLBACK WinMain(
             GdiFont *font = nk_gdifont_create("Consolas", 14);
             nk_context *ctx = nk_gdi_init(font, dc, windowWidth, windowHeight);
 
+            /*nk_context *ctx = nk_gdip_init(window, windowWidth, windowHeight);
+            GdipFont *font = nk_gdipfont_create("Consolas", 14);
+            nk_gdip_set_font(font);*/
+
             LARGE_INTEGER startCounter = Win32GetWallClock();
 
             dt = Win32GetSecondsElapsed(initialCounter, startCounter);
@@ -185,10 +188,17 @@ int CALLBACK WinMain(
 
                 if (!debugging)
                 {
-                    if (nes->cpu.pc == breakpoint)
+                    if (!hitRun)
                     {
-                        debugging = TRUE;
-                        stepping = FALSE;
+                        if (nes->cpu.pc == breakpoint)
+                        {
+                            debugging = TRUE;
+                            stepping = FALSE;
+                        }
+                    }
+                    else
+                    {
+                        hitRun = FALSE;
                     }
                 }
 
@@ -231,6 +241,7 @@ int CALLBACK WinMain(
                     nk_layout_row_dynamic(ctx, 20, 3);
                     if (nk_button_label(ctx, "Run"))
                     {
+                        hitRun = TRUE;
                         debugging = FALSE;
                         stepping = FALSE;
                     }
@@ -249,16 +260,16 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "CPU INFO", nk_rect(320, 10, 350, 320), flags))
+                if (nk_begin(ctx, "CPU INFO", nk_rect(320, 10, 200, 320), flags))
                 {
-                    nk_layout_row_dynamic(ctx, 20, 3);
+                    nk_layout_row_dynamic(ctx, 20, 1);
 
                     nk_label(ctx, DebugText("%s:%02X", "A", cpu->a), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("%2s:%02X", "P", cpu->p), NK_TEXT_LEFT);
-                    nk_label(ctx, "N V   B D I Z C", NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("%s:%02X", "X", cpu->x), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("%2s:%02X", "SP", cpu->sp), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("%d %d %d %d %d %d %d %d",
+                    nk_label(ctx, DebugText("%s:%02X", "Y", cpu->y), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("%s:%02X", "P", cpu->p), NK_TEXT_LEFT);
+                    nk_label(ctx, "    N V   B D I Z C", NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("    %d %d %d %d %d %d %d %d",
                         GetBitFlag(cpu->p, NEGATIVE_FLAG) ? 1 : 0,
                         GetBitFlag(cpu->p, OVERFLOW_FLAG) ? 1 : 0,
                         GetBitFlag(cpu->p, EMPTY_FLAG) ? 1 : 0,
@@ -267,38 +278,35 @@ int CALLBACK WinMain(
                         GetBitFlag(cpu->p, INTERRUPT_FLAG) ? 1 : 0,
                         GetBitFlag(cpu->p, ZERO_FLAG) ? 1 : 0,
                         GetBitFlag(cpu->p, CARRY_FLAG) ? 1 : 0), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("%2s:%02X", "SP", cpu->sp), NK_TEXT_LEFT);
 
-                    nk_label(ctx, DebugText("%s:%02X", "Y", cpu->y), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("%2s:%02X", "PC", cpu->pc), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("%s:%d", "CYCLES", cpu->cycles), NK_TEXT_LEFT);
-
-                    nk_layout_row_dynamic(ctx, 20, 1);
-                    nk_label(ctx, DebugText("%s:%02X", "VRAM (v)", ppu->v), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("%s:%02X", "VRAM (t)", ppu->t), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("%s:%02X", "Fine X (x)", ppu->x), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("%s:%02X", "Write Toggle (w)", ppu->w), NK_TEXT_LEFT);
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "PPU INFO", nk_rect(680, 10, 200, 320), flags))
+                if (nk_begin(ctx, "PPU INFO", nk_rect(530, 10, 350, 320), flags))
                 {
-                    nk_layout_row_dynamic(ctx, 20, 1);
+                    nk_layout_row_dynamic(ctx, 20, 2);
 
                     nk_label(ctx, DebugText("CTRL (0x2000):%02X", ppu->control), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SCANLINE:%3d", ppu->scanline), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("MASK (0x2001):%02X", ppu->mask), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CYCLE:%3d", ppu->cycle), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("STAT (0x2002):%02X", ppu->status), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TOTAL_CYCLES:%d", ppu->totalCycles), NK_TEXT_LEFT);
 
+                    nk_layout_row_dynamic(ctx, 20, 1);
                     nk_label(ctx, DebugText("SPRA (0x2003):%02X", ppu->oamAddress), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("SPRD (0x2004):%02X", ppu->oamData), NK_TEXT_LEFT);
 
                     nk_label(ctx, DebugText("SCRR (0x2005):%02X", ppu->scroll), NK_TEXT_LEFT);
 
                     nk_label(ctx, DebugText("MEMA (0x2006):%02X", ppu->address), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("    %s:%02X    %s:%02X", "v", ppu->v, "t", ppu->t), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("    %s:%02X    %s:%02X", "x", ppu->x, "w", ppu->w), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("MEMD (0x2007):%02X", ppu->data), NK_TEXT_LEFT);
 
-                    nk_label(ctx, DebugText("SCANLINE:%3d", ppu->scanline), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CYCLE:%3d", ppu->cycle), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TOTAL_CYCLES:%d", ppu->totalCycles), NK_TEXT_LEFT);
                 }
                 nk_end(ctx);
 
@@ -309,7 +317,7 @@ int CALLBACK WinMain(
                     // LUEGO, REVISAR BIEN LA FUNCIONALIDAD DE SPRITES, OAMADDRESS, OAMDATA Y DEMAS.
                     // HASTA ESTE PUNTO TODO COINCIDE CON NINTENDULATOR, DESPUES DE ESCRIBIR EN '4014' la memoria de OAM no 
                     // es igual a la de Nintendulator, chequear esto. Tampoco es igual despues de unas cuantas instrucciones VRAM address.
-                    
+
                     // REVISAR TAMBIEN ESTA SECCION DEL CODIGO PARA CUANDO SE PONGA UNA DIRECCION EN LA SECCION DE INSTRUCCTIONS
                     // SE VAYA A LA INSTRUCCION MAS CERCANA, Y NO COJA LA DIRECCION LITERAL, YA QUE PUEDE QUE EN ESA DIRECCION NO
                     // HAYA NINGUNA INSTRUCCION O SEA UN PARAMETRO
@@ -477,72 +485,6 @@ int CALLBACK WinMain(
                         image.region[3] = space.h;
 
                         nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
-
-                        /*local u8 pixels[128 * 128 * 4];
-
-                        for (s32 index = 0; index < 256; ++index)
-                        {
-                            for (s32 y = 0; y < 8; ++y)
-                            {
-                                u8 row1 = ReadPPUU8(nes, index * 16 + y);
-                                u8 row2 = ReadPPUU8(nes, index * 16 + 8 + y);
-
-                                for (s32 x = 0; x < 8; ++x)
-                                {
-                                    Color c = {};
-                                    c.a = 0xFF;
-
-                                    u8 h = ((row2 >> (7 - x)) & 0x1);
-                                    u8 l = ((row1 >> (7 - x)) & 0x1);
-                                    u8 v = (h << 0x1) | l;
-                                    switch (v)
-                                    {
-                                        case 1:
-                                        {
-                                            c.r = 0xFF;
-                                            break;
-                                        }
-
-                                        case 2:
-                                        {
-                                            c.g = 0xFF;
-                                            break;
-                                        }
-
-                                        case 3:
-                                        {
-                                            c.b = 0xFF;
-                                            break;
-                                        }
-
-                                        default:
-                                        {
-                                            break;
-                                        }
-                                    }
-
-                                    s32 x1 = (index % 16) * 8 + x;
-                                    s32 y1 = (index / 16) * 8 + y;
-                                    s32 b = y1 * 128 + x1;
-
-                                    pixels[b * 4 + 0] = c.b;
-                                    pixels[b * 4 + 1] = c.g;
-                                    pixels[b * 4 + 2] = c.r;
-                                    pixels[b * 4 + 3] = c.a;
-                                }
-                            }
-                        }
-
-                        struct nk_image image;
-                        image.w = 128;
-                        image.h = 128;
-                        image.handle.ptr = pixels;
-                        image.region[0] = space.x;
-                        image.region[1] = space.y;
-                        image.region[2] = space.w;
-                        image.region[3] = space.h;
-
-                        nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));*/
                     }
                 }
                 nk_end(ctx);
@@ -589,6 +531,7 @@ int CALLBACK WinMain(
                 nk_end(ctx);
 
                 nk_gdi_render(nk_rgb(0, 0, 0));
+                //nk_gdip_render(nk_rgb(0, 0, 0));
 
                 LARGE_INTEGER endCounter = Win32GetWallClock();
                 dt = Win32GetSecondsElapsed(startCounter, endCounter);

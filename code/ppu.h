@@ -459,6 +459,7 @@ inline void WriteOamData(NES *nes, u8 value)
 {
     // TODO: write here to oamAddress: WriteU8(oamAddress, value); ??
     PPU *ppu = &nes->ppu;
+    ppu->oamData = value;
     WritePPUU8(nes, ppu->oamAddress, value);
     ppu->oamAddress++;
 
@@ -565,7 +566,7 @@ inline u8 ReadVramData(NES *nes)
 inline void WriteVramData(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
-
+    ppu->data = value;
     WritePPUU8(nes, ppu->v, value);
     // ppu->data = value;
 
@@ -584,7 +585,7 @@ inline void WriteVramData(NES *nes, u8 value)
 }
 
 // This is the fastest method and how is usually implemented in emulators
-// I'll try for now doing it using the cpu cycles
+// I'll try for now wihout using the cpu cycles and writing on the $2004 register
 inline void WriteDMA(NES *nes, u8 value)
 {
     CPU *cpu = &nes->cpu;
@@ -600,7 +601,6 @@ inline void WriteDMA(NES *nes, u8 value)
         ppu->oamAddress++;
     }
 
-    // set something to cpu to stall it for 513 or 514 (if is and odd cycle) cycles
     cpu->waitCycles = 513;
     if (cpu->cycles & 0x01)
         ++cpu->waitCycles;

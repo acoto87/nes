@@ -74,6 +74,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)..\build\</OutDir>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -104,6 +105,12 @@
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>user32.lib;gdi32.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DataExecutionPrevention>false</DataExecutionPrevention>
+      <ManifestFile />
+      <ProfileGuidedDatabase />
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -148,6 +155,7 @@
     <ClInclude Include="..\code\nes.h" />
     <ClInclude Include="..\code\nuklear.h" />
     <ClInclude Include="..\code\nuklear_gdi.h" />
+    <ClInclude Include="..\code\nuklear_gdip.h" />
     <ClInclude Include="..\code\oam.h" />
     <ClInclude Include="..\code\ppu.h" />
     <ClInclude Include="..\code\stb_image.h" />

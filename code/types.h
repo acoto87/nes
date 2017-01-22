@@ -289,7 +289,7 @@ struct PPU
     u8 highTileByte;
     u64 tileData;
 
-    u8 spriteN, spriteM;
+    // sprite temporary variables
     u8 spriteCount;
 };
 
