@@ -207,54 +207,6 @@ internal u8 GetSpritePatternColorIndex(NES *nes, u8 index, u8 x, u8 y)
     u8 v = (h << 0x1) | l;
 
     return v;
-    /*{
-        for (s32 y = 0; y < 8; ++y)
-        {
-            for (s32 x = 0; x < 8; ++x)
-            {
-                Color c = {};
-                c.a = 0xFF;
-
-                u8 h = ((row2 >> (7 - x)) & 0x1);
-                u8 l = ((row1 >> (7 - x)) & 0x1);
-                u8 v = (h << 0x1) | l;
-                switch (v)
-                {
-                    case 1:
-                    {
-                        c.r = 0xFF;
-                        break;
-                    }
-
-                    case 2:
-                    {
-                        c.g = 0xFF;
-                        break;
-                    }
-
-                    case 3:
-                    {
-                        c.b = 0xFF;
-                        break;
-                    }
-
-                    default:
-                    {
-                        break;
-                    }
-                }
-
-                s32 x1 = (index % 16) * 8 + x;
-                s32 y1 = (index / 16) * 8 + y;
-                s32 b = y1 * 128 + x1;
-
-                pixels[b * 4 + 0] = c.b;
-                pixels[b * 4 + 1] = c.g;
-                pixels[b * 4 + 2] = c.r;
-                pixels[b * 4 + 3] = c.a;
-            }
-        }
-    }*/
 }
 
 internal void RenderPixel(NES *nes)

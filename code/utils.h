@@ -77,7 +77,7 @@ typedef union Color
 
     struct
     {
-        s32 argb;
+        s32 bgra;
     };
 };
 
@@ -91,7 +91,7 @@ typedef union Color
 inline Color GetColor(u8 a, u8 r, u8 g, u8 b)
 {
     Color result = {};
-    result.argb = ARGB(a, r, g, b);
+    result.bgra = ARGB(a, r, g, b);
     return result;
 }
 

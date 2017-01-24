@@ -233,17 +233,21 @@ int CALLBACK WinMain(
 
                 nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
 
-                if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 300, 150), flags))
+                if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 250, 150), flags))
                 {
                     nk_layout_row_dynamic(ctx, 20, 1);
                     nk_label(ctx, DebugText("dt: %.4f", dt), NK_TEXT_LEFT);
 
-                    nk_layout_row_dynamic(ctx, 20, 3);
+                    nk_layout_row_dynamic(ctx, 20, 2);
                     if (nk_button_label(ctx, "Run"))
                     {
                         hitRun = TRUE;
                         debugging = FALSE;
                         stepping = FALSE;
+                    }
+
+                    if (nk_button_label(ctx, "Reset"))
+                    {
                     }
 
                     if (nk_button_label(ctx, "Pause"))
@@ -260,7 +264,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "CPU INFO", nk_rect(320, 10, 200, 320), flags))
+                if (nk_begin(ctx, "CPU INFO", nk_rect(270, 10, 250, 300), flags))
                 {
                     nk_layout_row_dynamic(ctx, 20, 1);
 
@@ -285,7 +289,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "PPU INFO", nk_rect(530, 10, 350, 320), flags))
+                if (nk_begin(ctx, "PPU INFO", nk_rect(530, 10, 350, 300), flags))
                 {
                     nk_layout_row_dynamic(ctx, 20, 2);
 
@@ -303,14 +307,48 @@ int CALLBACK WinMain(
                     nk_label(ctx, DebugText("SCRR (0x2005):%02X", ppu->scroll), NK_TEXT_LEFT);
 
                     nk_label(ctx, DebugText("MEMA (0x2006):%02X", ppu->address), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("    %s:%02X    %s:%02X", "v", ppu->v, "t", ppu->t), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("    %s:%02X    %s:%02X", "x", ppu->x, "w", ppu->w), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("    %s:%04X  %s:%04X", "v", ppu->v, "t", ppu->t), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("    %s:%04X  %s:%01X", "x", ppu->x, "w", ppu->w), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("MEMD (0x2007):%02X", ppu->data), NK_TEXT_LEFT);
 
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 170, 300, windowHeight - 180), flags))
+                if (nk_begin(ctx, "SCREEN", nk_rect(890, 10, 300, 300), flags))
+                {
+                    nk_layout_row_static(ctx, 256, 240, 1);
+
+                    struct nk_command_buffer *canvas;
+                    struct nk_input *input = &ctx->input;
+                    canvas = nk_window_get_canvas(ctx);
+
+                    struct nk_rect space;
+                    enum nk_widget_layout_states state;
+                    state = nk_widget(&space, ctx);
+                    if (state)
+                    {
+                        if (state != NK_WIDGET_ROM)
+                        {
+                            // update_your_widget_by_user_input(...);
+                        }
+
+                        GUI *gui = &nes->gui;
+
+                        struct nk_image image;
+                        image.w = gui->width;
+                        image.h = gui->height;
+                        image.handle.ptr = gui->pixels;
+                        image.region[0] = space.x;
+                        image.region[1] = space.y;
+                        image.region[2] = space.w;
+                        image.region[3] = space.h;
+
+                        nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
+                    }
+                }
+                nk_end(ctx);
+
+                if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 170, 250, 620), flags))
                 {
                     // POR AHORA PARECE QUE ESTA EJECUTANDOSE BIEN HASTA LA INSTRUCCION: '0x85DC'
                     // ESTA ES EL HANDLER DE 'VBLANK', EN LA QUE SE EJECUTAN LAS INSTRUCCIONES DE LOS SPRITES
@@ -406,24 +444,25 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "MEMORY", nk_rect(320, 340, windowWidth - 640, windowHeight - 350), flags))
+                if (nk_begin(ctx, "MEMORY", nk_rect(270, 320, 425, 470), flags))
                 {
-                    enum options { CPU_MEM, PPU_MEM };
-                    static s32 option;
+                    enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
+                    static s32 option = CPU_MEM;
 
-                    static const float ratio[] = { 80, 80, 100, 100 };
+                    static const float ratio[] = { 80, 80, 80, 80 };
                     static char text[12];
                     static s32 len;
 
                     nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
                     option = nk_option_label(ctx, "CPU", option == CPU_MEM) ? CPU_MEM : option;
                     option = nk_option_label(ctx, "PPU", option == PPU_MEM) ? PPU_MEM : option;
-                    nk_label(ctx, "  Address: ", NK_TEXT_LEFT);
-                    nk_edit_string(ctx, NK_EDIT_SIMPLE, text, &len, 12, nk_filter_hex);
-
-                    nk_layout_row_dynamic(ctx, 20, 1);
+                    option = nk_option_label(ctx, "OAM", option == OAM_MEM) ? OAM_MEM : option;
+                    option = nk_option_label(ctx, "OAM2", option == OAM2_MEM) ? OAM2_MEM : option;
 
                     u16 address = 0x0000;
+
+                    nk_label(ctx, "Address: ", NK_TEXT_LEFT);
+                    nk_edit_string(ctx, NK_EDIT_SIMPLE, text, &len, 12, nk_filter_hex);
 
                     if (len > 0)
                     {
@@ -435,97 +474,210 @@ int CALLBACK WinMain(
                         }
                     }
 
-                    for (s32 i = 0; i < 16; ++i)
+                    nk_layout_row_dynamic(ctx, 20, 1);
+
+                    if (option == OAM_MEM)
                     {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                        s32 col = sprintf(debugBuffer, "%04X: ", address + i * 16);
-
-                        for (s32 j = 0; j < 16; ++j)
+                        for (s32 i = 0; i < 16; ++i)
                         {
-                            u8 v = (option == CPU_MEM)
-                                ? ReadU8(&nes->cpuMemory, address + i * 16 + j)
-                                : ReadU8(&nes->ppuMemory, address + i * 16 + j);
+                            memset(debugBuffer, 0, sizeof(debugBuffer));
 
-                            col += sprintf(debugBuffer + col, " %02X", v);
+                            s32 col = sprintf(debugBuffer, "%04X: ", i * 16);
+
+                            for (s32 j = 0; j < 16; ++j)
+                            {
+                                u8 v = ReadU8(&nes->oamMemory, i * 16 + j);
+                                col += sprintf(debugBuffer + col, " %02X", v);
+                            }
+
+                            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
                         }
+                    }
+                    else if (option == OAM2_MEM)
+                    {
+                        for (s32 i = 0; i < 2; ++i)
+                        {
+                            memset(debugBuffer, 0, sizeof(debugBuffer));
 
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+                            s32 col = sprintf(debugBuffer, "%04X: ", i * 16);
+
+                            for (s32 j = 0; j < 16; ++j)
+                            {
+                                u8 v = ReadU8(&nes->oamMemory2, i * 16 + j);
+                                col += sprintf(debugBuffer + col, " %02X", v);
+                            }
+
+                            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+                        }
+                    }
+                    else
+                    {
+                        for (s32 i = 0; i < 16; ++i)
+                        {
+                            memset(debugBuffer, 0, sizeof(debugBuffer));
+
+                            s32 col = sprintf(debugBuffer, "%04X: ", address + i * 16);
+
+                            for (s32 j = 0; j < 16; ++j)
+                            {
+                                u8 v = (option == CPU_MEM)
+                                    ? ReadU8(&nes->cpuMemory, address + i * 16 + j)
+                                    : ReadU8(&nes->ppuMemory, address + i * 16 + j);
+
+                                col += sprintf(debugBuffer + col, " %02X", v);
+                            }
+
+                            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+                        }
                     }
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "SCREEN", nk_rect(windowWidth - 310, 10, 300, 320), flags))
+                if (nk_begin(ctx, "VIDEO", nk_rect(705, 320, 485, 470), flags))
                 {
-                    nk_layout_row_static(ctx, 256, 240, 1);
+                    enum options { PATTERNS, NAMETABLES, PALETTES, OAM };
+                    static s32 option = PATTERNS;
 
-                    struct nk_command_buffer *canvas;
-                    struct nk_input *input = &ctx->input;
-                    canvas = nk_window_get_canvas(ctx);
-
-                    struct nk_rect space;
-                    enum nk_widget_layout_states state;
-                    state = nk_widget(&space, ctx);
-                    if (state)
-                    {
-                        if (state != NK_WIDGET_ROM)
-                        {
-                            // update_your_widget_by_user_input(...);
-                        }
-
-                        GUI *gui = &nes->gui;
-
-                        struct nk_image image;
-                        image.w = gui->width;
-                        image.h = gui->height;
-                        image.handle.ptr = gui->pixels;
-                        image.region[0] = space.x;
-                        image.region[1] = space.y;
-                        image.region[2] = space.w;
-                        image.region[3] = space.h;
-
-                        nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
-                    }
-                }
-                nk_end(ctx);
-
-                if (nk_begin(ctx, "OAM", nk_rect(windowWidth - 310, 340, 300, windowHeight - 350), flags))
-                {
-                    static const float ratio[] = { 100, 100 };
+                    static const float ratio[] = { 100, 100, 100, 80 };
                     static char text[12];
                     static s32 len;
 
-                    nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
-                    nk_label(ctx, "  Address: ", NK_TEXT_LEFT);
-                    nk_edit_string(ctx, NK_EDIT_SIMPLE, text, &len, 12, nk_filter_hex);
+                    nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
+                    option = nk_option_label(ctx, "PATTERNS", option == PATTERNS) ? PATTERNS : option;
+                    option = nk_option_label(ctx, "NAMETABLES", option == NAMETABLES) ? NAMETABLES : option;
+                    option = nk_option_label(ctx, "PALETTES", option == PALETTES) ? PALETTES : option;
+                    option = nk_option_label(ctx, "OAM", option == OAM) ? OAM : option;
 
-                    nk_layout_row_dynamic(ctx, 20, 1);
-
-                    u16 address = 0x00;
-
-                    if (len > 0)
+                    if (option == PATTERNS)
                     {
-                        text[len] = 0;
-                        address = (u16)strtol(text, NULL, 16);
-                        if (address < 0x00 || address > 0x100)
+                        static u32 pattern1[128 * 128];
+                        static u32 pattern2[128 * 128];
+
+                        nk_layout_row_static(ctx, 128, 128, 2);
+
+                        struct nk_command_buffer *canvas;
+                        struct nk_input *input = &ctx->input;
+                        canvas = nk_window_get_canvas(ctx);
+
+                        struct nk_rect space;
+                        enum nk_widget_layout_states state;
+
+                        for (s32 patternIndex = 0; patternIndex < 2; ++patternIndex)
                         {
-                            address = 0x00;
+                            for (s32 y = 0; y < 128; ++y)
+                            {
+                                s32 tileY = y / 8;
+                                s32 offsetY = (y % 8);
+
+                                for (s32 x = 0; x < 128; ++x)
+                                {
+                                    s32 pixelIndex = y * 128 + x;
+
+                                    s32 tileX = x / 8;
+                                    s32 offsetX = (x % 8);
+
+                                    s32 index = tileY * 16 + tileX;
+
+                                    u8 row1 = ReadPPUU8(nes, (patternIndex * 0x1000) + index * 16 + offsetY);
+                                    u8 row2 = ReadPPUU8(nes, (patternIndex * 0x1000) + index * 16 + 8 + offsetY);
+
+                                    u8 h = ((row2 >> (7 - offsetX)) & 0x1);
+                                    u8 l = ((row1 >> (7 - offsetX)) & 0x1);
+                                    u8 v = (h << 0x1) | l;
+
+                                    // this is in the format bbggrraa
+                                    u32 c = 0xFF000000;
+                                    if (v == 1)
+                                        c |= 0xFF0000;
+                                    else if (v == 2)
+                                        c |= 0x666666;
+                                    else if (v == 3)
+                                        c |= 0xFFFFFF;
+
+                                    if (patternIndex == 0)
+                                        *(pattern1 + pixelIndex) = c;
+                                    else
+                                        *(pattern2 + pixelIndex) = c;
+                                }
+                            }
+
+                            state = nk_widget(&space, ctx);
+                            if (state)
+                            {
+                                if (state != NK_WIDGET_ROM)
+                                {
+                                    // update_your_widget_by_user_input(...);
+                                }
+
+                                struct nk_image image;
+                                image.w = 128;
+                                image.h = 128;
+                                image.handle.ptr = patternIndex == 0 ? pattern1 : pattern2;
+                                image.region[0] = space.x;
+                                image.region[1] = space.y;
+                                image.region[2] = space.w;
+                                image.region[3] = space.h;
+
+                                nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
+                            }
                         }
                     }
-
-                    for (s32 i = 0; i < 32; ++i)
+                    else if (option == OAM)
                     {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
+                        struct nk_command_buffer *canvas;
+                        struct nk_input *input = &ctx->input;
+                        canvas = nk_window_get_canvas(ctx);
 
-                        s32 col = sprintf(debugBuffer, "%04X: ", address + i * 8);
+                        struct nk_rect space;
+                        enum nk_widget_layout_states state;
 
-                        for (s32 j = 0; j < 8; ++j)
+                        static u32 sprites[64][128 * 128];
+
+                        for (s32 y = 0; y < 4; ++y)
                         {
-                            u8 v = ReadU8(&nes->oamMemory, address + i * 8 + j);
-                            col += sprintf(debugBuffer + col, " %02X", v);
-                        }
+                            for (s32 x = 0; x < 16; ++x)
+                            {
+                                s32 index = y * 4 + x;
 
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+                                u8 spriteY = ReadU8(&nes->oamMemory, index * 4 + 0);
+                                u8 spriteI = ReadU8(&nes->oamMemory, index * 4 + 2);
+                                u8 spriteA = ReadU8(&nes->oamMemory, index * 4 + 2);
+                                u8 spriteX = ReadU8(&nes->oamMemory, index * 4 + 3);
+
+                                // FINISH DRAW OAM SPRITES HERE
+                            }
+                        }
+                    }
+                    else if (option == PALETTES)
+                    {
+                        struct nk_command_buffer *canvas;
+                        struct nk_input *input = &ctx->input;
+                        canvas = nk_window_get_canvas(ctx);
+
+                        struct nk_rect space;
+                        enum nk_widget_layout_states state;
+
+                        for (s32 paletteIndex = 0; paletteIndex < 2; ++paletteIndex)
+                        {
+                            nk_layout_row_static(ctx, 20, 20, 16);
+
+                            for (s32 i = 0; i < 16; ++i)
+                            {
+                                u8 colorIndex = ReadPPUU8(nes, 0x3F00 + (paletteIndex * 0x10) + i);
+                                Color color = systemPalette[colorIndex % 64];
+
+                                state = nk_widget(&space, ctx);
+                                if (state)
+                                {
+                                    if (state != NK_WIDGET_ROM)
+                                    {
+                                        // update_your_widget_by_user_input(...);
+                                    }
+
+                                    nk_fill_rect(canvas, nk_rect(space.x, space.y, space.w, space.h), 0, nk_rgb(color.r, color.g, color.b));
+                                }
+                            }
+                        }
                     }
                 }
                 nk_end(ctx);
