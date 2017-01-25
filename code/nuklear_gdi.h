@@ -336,6 +336,13 @@ nk_gdi_draw_text(HDC dc, short x, short y, unsigned short w, unsigned short h,
 static void 
 nk_gdi_draw_image(HDC destDC, short x, short y, unsigned short w, unsigned short h, void *pixels)
 {
+    // try use CreateCompatibleBitmap() instead CreateBitmap
+    //
+    // The CreateBitmap function can be used to create color bitmaps. 
+    // However, for performance reasons applications should use CreateBitmap to create monochrome bitmaps and CreateCompatibleBitmap to create color bitmaps. 
+    // Whenever a color bitmap returned from CreateBitmap is selected into a device context, the system checks that the bitmap matches the format of the device context it is being selected into. 
+    // Because CreateCompatibleBitmap takes a device context, it returns a bitmap that has the same format as the specified device context. 
+    // Thus, subsequent calls to SelectObject are faster with a color bitmap from CreateCompatibleBitmap than with a color bitmap returned from CreateBitmap.
     HBITMAP bitmap = CreateBitmap(w, h, 1, 32, pixels);
     HDC srcDC = CreateCompatibleDC(destDC);
     SelectObject(srcDC, bitmap);

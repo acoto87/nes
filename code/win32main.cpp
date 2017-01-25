@@ -360,9 +360,9 @@ int CALLBACK WinMain(
                     // SE VAYA A LA INSTRUCCION MAS CERCANA, Y NO COJA LA DIRECCION LITERAL, YA QUE PUEDE QUE EN ESA DIRECCION NO
                     // HAYA NINGUNA INSTRUCCION O SEA UN PARAMETRO
 
-                    static const float ratio[] = { 100, 100 };
-                    static char text[12], text2[5];
-                    static s32 len, len2;
+                    local const float ratio[] = { 100, 100 };
+                    local char text[12], text2[5];
+                    local s32 len, len2;
 
                     nk_layout_row(ctx, NK_STATIC, 25, 3, ratio);
                     nk_label(ctx, "  Address: ", NK_TEXT_LEFT);
@@ -447,11 +447,11 @@ int CALLBACK WinMain(
                 if (nk_begin(ctx, "MEMORY", nk_rect(270, 320, 425, 470), flags))
                 {
                     enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
-                    static s32 option = CPU_MEM;
+                    local s32 option = CPU_MEM;
 
-                    static const float ratio[] = { 80, 80, 80, 80 };
-                    static char text[12];
-                    static s32 len;
+                    local const float ratio[] = { 80, 80, 80, 80 };
+                    local char text[12];
+                    local s32 len;
 
                     nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
                     option = nk_option_label(ctx, "CPU", option == CPU_MEM) ? CPU_MEM : option;
@@ -538,9 +538,7 @@ int CALLBACK WinMain(
                     enum options { PATTERNS, NAMETABLES, PALETTES, OAM };
                     static s32 option = PATTERNS;
 
-                    static const float ratio[] = { 100, 100, 100, 80 };
-                    static char text[12];
-                    static s32 len;
+                    local const float ratio[] = { 100, 100, 100, 80 };
 
                     nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
                     option = nk_option_label(ctx, "PATTERNS", option == PATTERNS) ? PATTERNS : option;
@@ -550,8 +548,7 @@ int CALLBACK WinMain(
 
                     if (option == PATTERNS)
                     {
-                        static u32 pattern1[128 * 128];
-                        static u32 pattern2[128 * 128];
+                        local u32 patterns[2][128 * 128];
 
                         nk_layout_row_static(ctx, 128, 128, 2);
 
@@ -585,7 +582,6 @@ int CALLBACK WinMain(
                                     u8 l = ((row1 >> (7 - offsetX)) & 0x1);
                                     u8 v = (h << 0x1) | l;
 
-                                    // this is in the format bbggrraa
                                     u32 c = 0xFF000000;
                                     if (v == 1)
                                         c |= 0xFF0000;
@@ -594,10 +590,7 @@ int CALLBACK WinMain(
                                     else if (v == 3)
                                         c |= 0xFFFFFF;
 
-                                    if (patternIndex == 0)
-                                        *(pattern1 + pixelIndex) = c;
-                                    else
-                                        *(pattern2 + pixelIndex) = c;
+                                    patterns[patternIndex][pixelIndex] = c;
                                 }
                             }
 
@@ -612,7 +605,7 @@ int CALLBACK WinMain(
                                 struct nk_image image;
                                 image.w = 128;
                                 image.h = 128;
-                                image.handle.ptr = patternIndex == 0 ? pattern1 : pattern2;
+                                image.handle.ptr = patterns[patternIndex];
                                 image.region[0] = space.x;
                                 image.region[1] = space.y;
                                 image.region[2] = space.w;
@@ -622,8 +615,23 @@ int CALLBACK WinMain(
                             }
                         }
                     }
-                    else if (option == OAM)
+                    else if (option == NAMETABLES)
                     {
+                        enum options { H2000, H2400, H2800, H2C00 };
+                        local s32 option = H2000;
+
+                        local const float ratio[] = { 100, 100, 100, 100 };
+
+                        nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
+                        option = nk_option_label(ctx, "$2000", option == H2000) ? H2000 : option;
+                        option = nk_option_label(ctx, "$2400", option == H2400) ? H2400 : option;
+                        option = nk_option_label(ctx, "$2800", option == H2800) ? H2800 : option;
+                        option = nk_option_label(ctx, "$2C00", option == H2C00) ? H2C00 : option;
+
+                        local u32 nametable[256 * 240];
+
+                        nk_layout_row_static(ctx, 256, 240, 2);
+
                         struct nk_command_buffer *canvas;
                         struct nk_input *input = &ctx->input;
                         canvas = nk_window_get_canvas(ctx);
@@ -631,21 +639,156 @@ int CALLBACK WinMain(
                         struct nk_rect space;
                         enum nk_widget_layout_states state;
 
-                        static u32 sprites[64][128 * 128];
-
-                        for (s32 y = 0; y < 4; ++y)
+                        /*for (s32 y = 0; y < 240; ++y)
                         {
-                            for (s32 x = 0; x < 16; ++x)
+                            for (s32 x = 0; x < 256; ++x)
                             {
-                                s32 index = y * 4 + x;
+                                u32 c = 0xFF000000;
+                                if (x & 0x01)
+                                {
+                                    if (y & 0x01)
+                                    {
+                                        c |= 0x666666;
+                                    }
+                                    else
+                                    {
+                                        c |= 0xFF0000;
+                                    }
+                                }
+                                else
+                                {
+                                    if (y & 0x01)
+                                    {
+                                        c |= 0xFF0000;
+                                    }
+                                    else
+                                    {
+                                        c |= 0x666666;
+                                    }
+                                }
 
-                                u8 spriteY = ReadU8(&nes->oamMemory, index * 4 + 0);
-                                u8 spriteI = ReadU8(&nes->oamMemory, index * 4 + 2);
-                                u8 spriteA = ReadU8(&nes->oamMemory, index * 4 + 2);
-                                u8 spriteX = ReadU8(&nes->oamMemory, index * 4 + 3);
-
-                                // FINISH DRAW OAM SPRITES HERE
+                                nametable[y * 256 + x] = c;
                             }
+                        }*/
+
+                        u16 address = 0x2000 + option * 0x400;
+
+                        // EL CODIGO DE ABAJO ES MAS EFICIENTE PORQUE HACE LA LECTURA DEL PATTERN UNA SOLA VEZ
+                        // POR FILA, CAMBIAR A ESA VARIANTE TAMBIEN EN LA VISUALIZACION DE LOS PATTERNS
+                        for (s32 y = 0; y < 240; ++y)
+                        {
+                            s32 tileY = y / 8;
+                            s32 offsetY = (y % 8);
+
+                            for (s32 x = 0; x < 256; ++x)
+                            {
+                                s32 pixelIndex = y * 256 + x;
+
+                                s32 tileX = x / 8;
+                                s32 offsetX = (x % 8);
+
+                                u16 tileIndex = tileY * 32 + tileX;
+                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
+
+                                u8 row1 = ReadPPUU8(nes, patternIndex * 16 + offsetY);
+                                u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + offsetY);
+
+                                u8 h = ((row2 >> (7 - offsetX)) & 0x1);
+                                u8 l = ((row1 >> (7 - offsetX)) & 0x1);
+                                u8 v = (h << 0x1) | l;
+
+                                u32 c = 0xFF000000;
+                                if (v == 1)
+                                    c |= 0xFF0000;
+                                else if (v == 2)
+                                    c |= 0x666666;
+                                else if (v == 3)
+                                    c |= 0xFFFFFF;
+
+                                nametable[pixelIndex] = c;
+                            }
+                        }
+
+                        /*for (s32 tileY = 0; tileY < 30; ++tileY)
+                        {
+                            for (s32 tileX = 0; tileX < 32; ++tileX)
+                            {
+                                u16 tileIndex = tileY * 32 + tileX;
+                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
+
+                                for (s32 y = 0; y < 8; ++y)
+                                {
+                                    u8 row1 = ReadPPUU8(nes, patternIndex * 16 + y);
+                                    u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + y);
+
+                                    for (s32 x = 0; x < 8; ++x)
+                                    {
+                                        u8 h = ((row2 >> (7 - x)) & 0x1);
+                                        u8 l = ((row1 >> (7 - x)) & 0x1);
+                                        u8 v = (h << 0x1) | l;
+
+                                        s32 pixelX = (tileX * 8 + x);
+                                        s32 pixelY = (tileY * 8 + y);
+                                        s32 pixel = pixelY * 256 + pixelX;
+
+                                        u32 c = 0xFF000000;
+                                        if (v == 1)
+                                            c |= 0xFF0000;
+                                        else if (v == 2)
+                                            c |= 0x666666;
+                                        else if (v == 3)
+                                            c |= 0xFFFFFF;
+                                        else
+                                        {
+                                            if (pixelX & 0x01)
+                                            {
+                                                if (pixelY & 0x01)
+                                                {
+                                                    c |= 0x666666;
+                                                }
+                                                else
+                                                {
+                                                    c |= 0xFF0000;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (pixelY & 0x01)
+                                                {
+                                                    c |= 0xFF0000;
+                                                }
+                                                else
+                                                {
+                                                    c |= 0x666666;
+                                                }
+                                            }
+                                        }
+
+                                        
+                                        nametable[pixel] = c;
+                                    }
+                                }
+                            }
+                        }*/
+
+                        state = nk_widget(&space, ctx);
+                        if (state)
+                        {
+                            if (state != NK_WIDGET_ROM)
+                            {
+                                // update_your_widget_by_user_input(...);
+                            }
+
+                            struct nk_image image;
+                            image.w = 256;
+                            image.h = 240;
+                            image.handle.ptr = nametable;
+                            image.region[0] = space.x;
+                            image.region[1] = space.y;
+                            image.region[2] = space.w;
+                            image.region[3] = space.h;
+
+                            nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
                         }
                     }
                     else if (option == PALETTES)
@@ -676,6 +819,72 @@ int CALLBACK WinMain(
 
                                     nk_fill_rect(canvas, nk_rect(space.x, space.y, space.w, space.h), 0, nk_rgb(color.r, color.g, color.b));
                                 }
+                            }
+                        }
+                    }
+                    else if (option == OAM)
+                    {
+                        local u32 sprites[64][8 * 8];
+
+                        nk_layout_row_static(ctx, 8, 8, 16);
+
+                        struct nk_command_buffer *canvas;
+                        struct nk_input *input = &ctx->input;
+                        canvas = nk_window_get_canvas(ctx);
+
+                        struct nk_rect space;
+                        enum nk_widget_layout_states state;
+
+                        for (s32 index = 0; index < 64; ++index)
+                        {
+                            u8 spriteY = ReadU8(&nes->oamMemory, index * 4 + 0);
+                            u8 spriteI = ReadU8(&nes->oamMemory, index * 4 + 1);
+                            u8 spriteA = ReadU8(&nes->oamMemory, index * 4 + 2);
+                            u8 spriteX = ReadU8(&nes->oamMemory, index * 4 + 3);
+
+                            for (s32 y = 0; y < 8; ++y)
+                            {
+                                u8 row1 = ReadPPUU8(nes, spriteI * 16 + y);
+                                u8 row2 = ReadPPUU8(nes, spriteI * 16 + 8 + y);
+
+                                for (s32 x = 0; x < 8; ++x)
+                                {
+                                    s32 pixelIndex = y * 8 + x;
+
+                                    u8 h = ((row2 >> (7 - x)) & 0x1);
+                                    u8 l = ((row1 >> (7 - x)) & 0x1);
+                                    u8 v = (h << 0x1) | l;
+
+                                    u32 c = 0xFF000000;
+                                    if (v == 1)
+                                        c |= 0xFF0000;
+                                    else if (v == 2)
+                                        c |= 0x666666;
+                                    else if (v == 3)
+                                        c |= 0xFFFFFF;
+
+                                    sprites[index][pixelIndex] = c;
+                                }
+                            }
+
+                            state = nk_widget(&space, ctx);
+                            if (state)
+                            {
+                                if (state != NK_WIDGET_ROM)
+                                {
+                                    // update_your_widget_by_user_input(...);
+                                }
+
+                                struct nk_image image;
+                                image.w = 8;
+                                image.h = 8;
+                                image.handle.ptr = sprites[index];
+                                image.region[0] = space.x;
+                                image.region[1] = space.y;
+                                image.region[2] = space.w;
+                                image.region[3] = space.h;
+
+                                nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
                             }
                         }
                     }
