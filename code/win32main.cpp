@@ -298,10 +298,11 @@ int CALLBACK WinMain(
                     nk_label(ctx, DebugText("MASK (0x2001):%02X", ppu->mask), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("CYCLE:%3d", ppu->cycle), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("STAT (0x2002):%02X", ppu->status), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TOTAL_CYCLES:%d", ppu->totalCycles), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CYCLES:%d", ppu->totalCycles), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SPRA (0x2003):%02X", ppu->oamAddress), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("FRAMES:%d", ppu->frameCount), NK_TEXT_LEFT);
 
                     nk_layout_row_dynamic(ctx, 20, 1);
-                    nk_label(ctx, DebugText("SPRA (0x2003):%02X", ppu->oamAddress), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("SPRD (0x2004):%02X", ppu->oamData), NK_TEXT_LEFT);
 
                     nk_label(ctx, DebugText("SCRR (0x2005):%02X", ppu->scroll), NK_TEXT_LEFT);
@@ -310,13 +311,12 @@ int CALLBACK WinMain(
                     nk_label(ctx, DebugText("    %s:%04X  %s:%04X", "v", ppu->v, "t", ppu->t), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("    %s:%04X  %s:%01X", "x", ppu->x, "w", ppu->w), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("MEMD (0x2007):%02X", ppu->data), NK_TEXT_LEFT);
-
                 }
                 nk_end(ctx);
 
                 if (nk_begin(ctx, "SCREEN", nk_rect(890, 10, 300, 300), flags))
                 {
-                    nk_layout_row_static(ctx, 256, 240, 1);
+                    nk_layout_row_static(ctx, 240, 256, 1);
 
                     struct nk_command_buffer *canvas;
                     struct nk_input *input = &ctx->input;
@@ -535,19 +535,20 @@ int CALLBACK WinMain(
 
                 if (nk_begin(ctx, "VIDEO", nk_rect(705, 320, 485, 470), flags))
                 {
-                    enum options { PATTERNS, NAMETABLES, PALETTES, OAM };
-                    static s32 option = PATTERNS;
+                    enum options { PATTERNS_PALETTES_OAM, NAMETABLES };
+                    static s32 option = PATTERNS_PALETTES_OAM;
 
-                    local const float ratio[] = { 100, 100, 100, 80 };
+                    local const float ratio[] = { 200, 200 };
 
-                    nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
-                    option = nk_option_label(ctx, "PATTERNS", option == PATTERNS) ? PATTERNS : option;
+                    nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
+                    option = nk_option_label(ctx, "PATTERNS, PALETTES, OAM", option == PATTERNS_PALETTES_OAM) ? PATTERNS_PALETTES_OAM : option;
                     option = nk_option_label(ctx, "NAMETABLES", option == NAMETABLES) ? NAMETABLES : option;
-                    option = nk_option_label(ctx, "PALETTES", option == PALETTES) ? PALETTES : option;
-                    option = nk_option_label(ctx, "OAM", option == OAM) ? OAM : option;
 
-                    if (option == PATTERNS)
+                    if (option == PATTERNS_PALETTES_OAM)
                     {
+                        nk_layout_row_dynamic(ctx, 25, 1);
+                        nk_label(ctx, "PATTERNS", NK_TEXT_LEFT);
+
                         local u32 patterns[2][128 * 128];
 
                         nk_layout_row_static(ctx, 128, 128, 2);
@@ -559,38 +560,42 @@ int CALLBACK WinMain(
                         struct nk_rect space;
                         enum nk_widget_layout_states state;
 
-                        for (s32 patternIndex = 0; patternIndex < 2; ++patternIndex)
+                        for (s32 patternTable = 0; patternTable < 2; ++patternTable)
                         {
-                            for (s32 y = 0; y < 128; ++y)
+                            u16 patternTableAddress = patternTable * 0x1000;
+
+                            for (s32 tileY = 0; tileY < 16; ++tileY)
                             {
-                                s32 tileY = y / 8;
-                                s32 offsetY = (y % 8);
-
-                                for (s32 x = 0; x < 128; ++x)
+                                for (s32 tileX = 0; tileX < 16; ++tileX)
                                 {
-                                    s32 pixelIndex = y * 128 + x;
+                                    u16 patternIndex = tileY * 16 + tileX;
 
-                                    s32 tileX = x / 8;
-                                    s32 offsetX = (x % 8);
+                                    for (s32 y = 0; y < 8; ++y)
+                                    {
+                                        u8 row1 = ReadPPUU8(nes, patternTableAddress + patternIndex * 16 + y);
+                                        u8 row2 = ReadPPUU8(nes, patternTableAddress + patternIndex * 16 + 8 + y);
 
-                                    s32 index = tileY * 16 + tileX;
+                                        for (s32 x = 0; x < 8; ++x)
+                                        {
+                                            u8 h = ((row2 >> (7 - x)) & 0x1);
+                                            u8 l = ((row1 >> (7 - x)) & 0x1);
+                                            u8 v = (h << 0x1) | l;
 
-                                    u8 row1 = ReadPPUU8(nes, (patternIndex * 0x1000) + index * 16 + offsetY);
-                                    u8 row2 = ReadPPUU8(nes, (patternIndex * 0x1000) + index * 16 + 8 + offsetY);
+                                            s32 pixelX = (tileX * 8 + x);
+                                            s32 pixelY = (tileY * 8 + y);
+                                            s32 pixel = pixelY * 128 + pixelX;
 
-                                    u8 h = ((row2 >> (7 - offsetX)) & 0x1);
-                                    u8 l = ((row1 >> (7 - offsetX)) & 0x1);
-                                    u8 v = (h << 0x1) | l;
+                                            u32 c = 0xFF000000;
+                                            if (v == 1)
+                                                c |= 0xFF0000;
+                                            else if (v == 2)
+                                                c |= 0x666666;
+                                            else if (v == 3)
+                                                c |= 0xFFFFFF;
 
-                                    u32 c = 0xFF000000;
-                                    if (v == 1)
-                                        c |= 0xFF0000;
-                                    else if (v == 2)
-                                        c |= 0x666666;
-                                    else if (v == 3)
-                                        c |= 0xFFFFFF;
-
-                                    patterns[patternIndex][pixelIndex] = c;
+                                            patterns[patternTable][pixel] = c;
+                                        }
+                                    }
                                 }
                             }
 
@@ -605,7 +610,7 @@ int CALLBACK WinMain(
                                 struct nk_image image;
                                 image.w = 128;
                                 image.h = 128;
-                                image.handle.ptr = patterns[patternIndex];
+                                image.handle.ptr = patterns[patternTable];
                                 image.region[0] = space.x;
                                 image.region[1] = space.y;
                                 image.region[2] = space.w;
@@ -614,196 +619,14 @@ int CALLBACK WinMain(
                                 nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
                             }
                         }
-                    }
-                    else if (option == NAMETABLES)
-                    {
-                        enum options { H2000, H2400, H2800, H2C00 };
-                        local s32 option = H2000;
 
-                        local const float ratio[] = { 100, 100, 100, 100 };
+                        nk_layout_row_dynamic(ctx, 25, 1);
+                        nk_label(ctx, "PALETTES", NK_TEXT_LEFT);
 
-                        nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
-                        option = nk_option_label(ctx, "$2000", option == H2000) ? H2000 : option;
-                        option = nk_option_label(ctx, "$2400", option == H2400) ? H2400 : option;
-                        option = nk_option_label(ctx, "$2800", option == H2800) ? H2800 : option;
-                        option = nk_option_label(ctx, "$2C00", option == H2C00) ? H2C00 : option;
-
-                        local u32 nametable[256 * 240];
-
-                        nk_layout_row_static(ctx, 256, 240, 2);
-
-                        struct nk_command_buffer *canvas;
-                        struct nk_input *input = &ctx->input;
-                        canvas = nk_window_get_canvas(ctx);
-
-                        struct nk_rect space;
-                        enum nk_widget_layout_states state;
-
-                        /*for (s32 y = 0; y < 240; ++y)
-                        {
-                            for (s32 x = 0; x < 256; ++x)
-                            {
-                                u32 c = 0xFF000000;
-                                if (x & 0x01)
-                                {
-                                    if (y & 0x01)
-                                    {
-                                        c |= 0x666666;
-                                    }
-                                    else
-                                    {
-                                        c |= 0xFF0000;
-                                    }
-                                }
-                                else
-                                {
-                                    if (y & 0x01)
-                                    {
-                                        c |= 0xFF0000;
-                                    }
-                                    else
-                                    {
-                                        c |= 0x666666;
-                                    }
-                                }
-
-                                nametable[y * 256 + x] = c;
-                            }
-                        }*/
-
-                        u16 address = 0x2000 + option * 0x400;
-
-                        // EL CODIGO DE ABAJO ES MAS EFICIENTE PORQUE HACE LA LECTURA DEL PATTERN UNA SOLA VEZ
-                        // POR FILA, CAMBIAR A ESA VARIANTE TAMBIEN EN LA VISUALIZACION DE LOS PATTERNS
-                        for (s32 y = 0; y < 240; ++y)
-                        {
-                            s32 tileY = y / 8;
-                            s32 offsetY = (y % 8);
-
-                            for (s32 x = 0; x < 256; ++x)
-                            {
-                                s32 pixelIndex = y * 256 + x;
-
-                                s32 tileX = x / 8;
-                                s32 offsetX = (x % 8);
-
-                                u16 tileIndex = tileY * 32 + tileX;
-                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
-
-                                u8 row1 = ReadPPUU8(nes, patternIndex * 16 + offsetY);
-                                u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + offsetY);
-
-                                u8 h = ((row2 >> (7 - offsetX)) & 0x1);
-                                u8 l = ((row1 >> (7 - offsetX)) & 0x1);
-                                u8 v = (h << 0x1) | l;
-
-                                u32 c = 0xFF000000;
-                                if (v == 1)
-                                    c |= 0xFF0000;
-                                else if (v == 2)
-                                    c |= 0x666666;
-                                else if (v == 3)
-                                    c |= 0xFFFFFF;
-
-                                nametable[pixelIndex] = c;
-                            }
-                        }
-
-                        /*for (s32 tileY = 0; tileY < 30; ++tileY)
-                        {
-                            for (s32 tileX = 0; tileX < 32; ++tileX)
-                            {
-                                u16 tileIndex = tileY * 32 + tileX;
-                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
-
-                                for (s32 y = 0; y < 8; ++y)
-                                {
-                                    u8 row1 = ReadPPUU8(nes, patternIndex * 16 + y);
-                                    u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + y);
-
-                                    for (s32 x = 0; x < 8; ++x)
-                                    {
-                                        u8 h = ((row2 >> (7 - x)) & 0x1);
-                                        u8 l = ((row1 >> (7 - x)) & 0x1);
-                                        u8 v = (h << 0x1) | l;
-
-                                        s32 pixelX = (tileX * 8 + x);
-                                        s32 pixelY = (tileY * 8 + y);
-                                        s32 pixel = pixelY * 256 + pixelX;
-
-                                        u32 c = 0xFF000000;
-                                        if (v == 1)
-                                            c |= 0xFF0000;
-                                        else if (v == 2)
-                                            c |= 0x666666;
-                                        else if (v == 3)
-                                            c |= 0xFFFFFF;
-                                        else
-                                        {
-                                            if (pixelX & 0x01)
-                                            {
-                                                if (pixelY & 0x01)
-                                                {
-                                                    c |= 0x666666;
-                                                }
-                                                else
-                                                {
-                                                    c |= 0xFF0000;
-                                                }
-                                            }
-                                            else
-                                            {
-                                                if (pixelY & 0x01)
-                                                {
-                                                    c |= 0xFF0000;
-                                                }
-                                                else
-                                                {
-                                                    c |= 0x666666;
-                                                }
-                                            }
-                                        }
-
-                                        
-                                        nametable[pixel] = c;
-                                    }
-                                }
-                            }
-                        }*/
-
-                        state = nk_widget(&space, ctx);
-                        if (state)
-                        {
-                            if (state != NK_WIDGET_ROM)
-                            {
-                                // update_your_widget_by_user_input(...);
-                            }
-
-                            struct nk_image image;
-                            image.w = 256;
-                            image.h = 240;
-                            image.handle.ptr = nametable;
-                            image.region[0] = space.x;
-                            image.region[1] = space.y;
-                            image.region[2] = space.w;
-                            image.region[3] = space.h;
-
-                            nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
-                        }
-                    }
-                    else if (option == PALETTES)
-                    {
-                        struct nk_command_buffer *canvas;
-                        struct nk_input *input = &ctx->input;
-                        canvas = nk_window_get_canvas(ctx);
-
-                        struct nk_rect space;
-                        enum nk_widget_layout_states state;
+                        nk_layout_row_static(ctx, 20, 20, 16);
 
                         for (s32 paletteIndex = 0; paletteIndex < 2; ++paletteIndex)
                         {
-                            nk_layout_row_static(ctx, 20, 20, 16);
-
                             for (s32 i = 0; i < 16; ++i)
                             {
                                 u8 colorIndex = ReadPPUU8(nes, 0x3F00 + (paletteIndex * 0x10) + i);
@@ -821,19 +644,13 @@ int CALLBACK WinMain(
                                 }
                             }
                         }
-                    }
-                    else if (option == OAM)
-                    {
+
+                        nk_layout_row_dynamic(ctx, 25, 1);
+                        nk_label(ctx, "OAM", NK_TEXT_LEFT);
+
                         local u32 sprites[64][8 * 8];
 
                         nk_layout_row_static(ctx, 8, 8, 16);
-
-                        struct nk_command_buffer *canvas;
-                        struct nk_input *input = &ctx->input;
-                        canvas = nk_window_get_canvas(ctx);
-
-                        struct nk_rect space;
-                        enum nk_widget_layout_states state;
 
                         for (s32 index = 0; index < 64; ++index)
                         {
@@ -841,6 +658,8 @@ int CALLBACK WinMain(
                             u8 spriteI = ReadU8(&nes->oamMemory, index * 4 + 1);
                             u8 spriteA = ReadU8(&nes->oamMemory, index * 4 + 2);
                             u8 spriteX = ReadU8(&nes->oamMemory, index * 4 + 3);
+
+                            u8 highColorBits = spriteI & 0x03;
 
                             for (s32 y = 0; y < 8; ++y)
                             {
@@ -855,15 +674,11 @@ int CALLBACK WinMain(
                                     u8 l = ((row1 >> (7 - x)) & 0x1);
                                     u8 v = (h << 0x1) | l;
 
-                                    u32 c = 0xFF000000;
-                                    if (v == 1)
-                                        c |= 0xFF0000;
-                                    else if (v == 2)
-                                        c |= 0x666666;
-                                    else if (v == 3)
-                                        c |= 0xFFFFFF;
+                                    u32 paletteIndex = (highColorBits << 2) | v;
+                                    u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                    Color color = systemPalette[colorIndex % 64];
 
-                                    sprites[index][pixelIndex] = c;
+                                    sprites[index][pixelIndex] = color.bgra;
                                 }
                             }
 
@@ -879,6 +694,299 @@ int CALLBACK WinMain(
                                 image.w = 8;
                                 image.h = 8;
                                 image.handle.ptr = sprites[index];
+                                image.region[0] = space.x;
+                                image.region[1] = space.y;
+                                image.region[2] = space.w;
+                                image.region[3] = space.h;
+
+                                nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
+                            }
+                        }
+
+                        local u32 sprites2[8][8 * 8];
+
+                        nk_layout_row_static(ctx, 8, 8, 8);
+
+                        for (s32 index = 0; index < 8; ++index)
+                        {
+                            u8 spriteY = ReadU8(&nes->oamMemory2, index * 4 + 0);
+                            u8 spriteI = ReadU8(&nes->oamMemory2, index * 4 + 1);
+                            u8 spriteA = ReadU8(&nes->oamMemory2, index * 4 + 2);
+                            u8 spriteX = ReadU8(&nes->oamMemory2, index * 4 + 3);
+
+                            u8 highColorBits = spriteI & 0x03;
+
+                            for (s32 y = 0; y < 8; ++y)
+                            {
+                                u8 row1 = ReadPPUU8(nes, spriteI * 16 + y);
+                                u8 row2 = ReadPPUU8(nes, spriteI * 16 + 8 + y);
+
+                                for (s32 x = 0; x < 8; ++x)
+                                {
+                                    s32 pixelIndex = y * 8 + x;
+
+                                    u8 h = ((row2 >> (7 - x)) & 0x1);
+                                    u8 l = ((row1 >> (7 - x)) & 0x1);
+                                    u8 v = (h << 0x1) | l;
+
+                                    u32 paletteIndex = (highColorBits << 2) | v;
+                                    u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                    Color color = systemPalette[colorIndex % 64];
+
+                                    sprites2[index][pixelIndex] = color.bgra;
+                                }
+                            }
+
+                            state = nk_widget(&space, ctx);
+                            if (state)
+                            {
+                                if (state != NK_WIDGET_ROM)
+                                {
+                                    // update_your_widget_by_user_input(...);
+                                }
+
+                                struct nk_image image;
+                                image.w = 8;
+                                image.h = 8;
+                                image.handle.ptr = sprites2[index];
+                                image.region[0] = space.x;
+                                image.region[1] = space.y;
+                                image.region[2] = space.w;
+                                image.region[3] = space.h;
+
+                                nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
+                            }
+                        }
+                    }
+                    else if (option == NAMETABLES)
+                    {
+                        enum options { H2000, H2400, H2800, H2C00 };
+                        local s32 option = H2000;
+
+                        local const float ratio[] = { 80, 80, 80, 80, 80 };
+
+                        nk_layout_row(ctx, NK_STATIC, 25, 5, ratio);
+                        option = nk_option_label(ctx, "$2000", option == H2000) ? H2000 : option;
+                        option = nk_option_label(ctx, "$2400", option == H2400) ? H2400 : option;
+                        option = nk_option_label(ctx, "$2800", option == H2800) ? H2800 : option;
+                        option = nk_option_label(ctx, "$2C00", option == H2C00) ? H2C00 : option;
+
+                        local s32 showSepPixels;
+                        nk_checkbox_label(ctx, "PIX", &showSepPixels);
+
+                        struct nk_command_buffer *canvas;
+                        struct nk_input *input = &ctx->input;
+                        canvas = nk_window_get_canvas(ctx);
+
+                        struct nk_rect space;
+                        enum nk_widget_layout_states state;
+
+                        u16 address = 0x2000 + option * 0x400;
+
+                        if (showSepPixels)
+                        {
+                            local u32 nametable[32][30][64];
+
+                            nk_layout_row_static(ctx, 8, 8, 32);
+
+                            for (s32 tileY = 0; tileY < 30; ++tileY)
+                            {
+                                for (s32 tileX = 0; tileX < 32; ++tileX)
+                                {
+                                    u16 tileIndex = tileY * 32 + tileX;
+                                    u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
+
+                                    u16 attributeX = tileX / 4;
+                                    u16 attributeOffsetX = tileX % 4;
+                                    
+                                    u16 attributeY = tileY / 4;
+                                    u16 attributeOffsetY = tileY % 4;
+
+                                    u16 attributeIndex = attributeY * 8 + attributeX;
+                                    u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
+
+                                    u8 highColorBits;
+
+                                    switch (attributeTableLookup[attributeOffsetX][attributeOffsetY])
+                                    {
+                                        case 0x00:
+                                        case 0x01:
+                                        case 0x02:
+                                        case 0x03:
+                                        {
+                                            highColorBits = (attributeByte & 0x03);
+                                            break;
+                                        }
+
+                                        case 0x04:
+                                        case 0x05:
+                                        case 0x06:
+                                        case 0x07:
+                                        {
+                                            highColorBits = ((attributeByte >> 2) & 0x03);
+                                            break;
+                                        }
+
+                                        case 0x08:
+                                        case 0x09:
+                                        case 0x0A:
+                                        case 0x0B:
+                                        {
+                                            highColorBits = ((attributeByte >> 4) & 0x03);
+                                            break;
+                                        }
+
+                                        case 0x0C:
+                                        case 0x0D:
+                                        case 0x0E:
+                                        case 0x0F:
+                                        {
+                                            highColorBits = ((attributeByte >> 6) & 0x03);
+                                            break;
+                                        }
+                                    }
+
+                                    for (s32 y = 0; y < 8; ++y)
+                                    {
+                                        u8 row1 = ReadPPUU8(nes, patternIndex * 16 + y);
+                                        u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + y);
+
+                                        for (s32 x = 0; x < 8; ++x)
+                                        {
+                                            u8 h = ((row2 >> (7 - x)) & 0x1);
+                                            u8 l = ((row1 >> (7 - x)) & 0x1);
+                                            u8 v = (h << 0x1) | l;
+
+                                            u32 paletteIndex = (highColorBits << 2) | v;
+                                            u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                            Color color = systemPalette[colorIndex % 64];
+                                            
+                                            s32 pixel = y * 8 + x;
+                                            nametable[tileX][tileY][pixel] = color.bgra;
+                                        }
+                                    }
+
+                                    state = nk_widget(&space, ctx);
+                                    if (state)
+                                    {
+                                        if (state != NK_WIDGET_ROM)
+                                        {
+                                            // update_your_widget_by_user_input(...);
+                                        }
+
+                                        struct nk_image image;
+                                        image.w = 8;
+                                        image.h = 8;
+                                        image.handle.ptr = nametable[tileX][tileY];
+                                        image.region[0] = space.x;
+                                        image.region[1] = space.y;
+                                        image.region[2] = space.w;
+                                        image.region[3] = space.h;
+
+                                        nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            local u32 nametable[256 * 240];
+
+                            nk_layout_row_static(ctx, 240, 256, 1);
+
+                            for (s32 tileY = 0; tileY < 30; ++tileY)
+                            {
+                                for (s32 tileX = 0; tileX < 32; ++tileX)
+                                {
+                                    u16 tileIndex = tileY * 32 + tileX;
+                                    u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
+
+                                    u16 attributeX = tileX / 4;
+                                    u16 attributeOffsetX = tileX % 4;
+
+                                    u16 attributeY = tileY / 4;
+                                    u16 attributeOffsetY = tileY % 4;
+
+                                    u16 attributeIndex = attributeY * 8 + attributeX;
+                                    u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
+
+                                    u8 highColorBits;
+
+                                    switch (attributeTableLookup[attributeOffsetX][attributeOffsetY])
+                                    {
+                                        case 0x00:
+                                        case 0x01:
+                                        case 0x02:
+                                        case 0x03:
+                                        {
+                                            highColorBits = (attributeByte & 0x03);
+                                            break;
+                                        }
+
+                                        case 0x04:
+                                        case 0x05:
+                                        case 0x06:
+                                        case 0x07:
+                                        {
+                                            highColorBits = ((attributeByte >> 2) & 0x03);
+                                            break;
+                                        }
+
+                                        case 0x08:
+                                        case 0x09:
+                                        case 0x0A:
+                                        case 0x0B:
+                                        {
+                                            highColorBits = ((attributeByte >> 4) & 0x03);
+                                            break;
+                                        }
+
+                                        case 0x0C:
+                                        case 0x0D:
+                                        case 0x0E:
+                                        case 0x0F:
+                                        {
+                                            highColorBits = ((attributeByte >> 6) & 0x03);
+                                            break;
+                                        }
+                                    }
+
+                                    for (s32 y = 0; y < 8; ++y)
+                                    {
+                                        u8 row1 = ReadPPUU8(nes, patternIndex * 16 + y);
+                                        u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + y);
+
+                                        for (s32 x = 0; x < 8; ++x)
+                                        {
+                                            u8 h = ((row2 >> (7 - x)) & 0x1);
+                                            u8 l = ((row1 >> (7 - x)) & 0x1);
+                                            u8 v = (h << 0x1) | l;
+
+                                            u32 paletteIndex = (highColorBits << 2) | v;
+                                            u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                            Color color = systemPalette[colorIndex % 64];
+
+                                            s32 pixelX = (tileX * 8 + x);
+                                            s32 pixelY = (tileY * 8 + y);
+                                            s32 pixel = pixelY * 256 + pixelX;
+                                            nametable[pixel] = color.bgra;
+                                        }
+                                    }
+                                }
+                            }
+
+                            state = nk_widget(&space, ctx);
+                            if (state)
+                            {
+                                if (state != NK_WIDGET_ROM)
+                                {
+                                    // update_your_widget_by_user_input(...);
+                                }
+
+                                struct nk_image image;
+                                image.w = 256;
+                                image.h = 240;
+                                image.handle.ptr = nametable;
                                 image.region[0] = space.x;
                                 image.region[1] = space.y;
                                 image.region[2] = space.w;
