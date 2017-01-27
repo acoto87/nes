@@ -103,7 +103,7 @@ int CALLBACK WinMain(
     f32 dt = 0;
 
     Cartridge cartridge = {};
-    if (!LoadNesRom("palette.nes", &cartridge))
+    if (!LoadNesRom("nestest.nes", &cartridge))
     {
         return 0;
     }

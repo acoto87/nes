@@ -217,15 +217,90 @@ internal void RenderPixel(NES *nes)
     b32 renderBackground = GetBitFlag(ppu->mask, BACKGROUND_ENABLED_FLAG);
     b32 renderSprites = GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG);
 
-    u8 backgroundColorIndex = 0;
-    u8 spriteColorIndex = 0;
+    u8 background = 0;
+    u8 sprite = 0;
 
     u8 x = GetCurrentX(ppu);
     u8 y = GetCurrentY(ppu);
 
     if (renderBackground)
     {
-        backgroundColorIndex = ((ppu->tileData >> 32) >> ((7 - ppu->x) * 4)) & 0xF;
+        /*u16 address = 0x2000 + (ppu->control & 0x03) * 0x400;
+
+        u16 tileX = x / 8;
+        u16 tileY = y / 8;
+        u16 tileIndex = tileY * 32 + tileX;
+        u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
+
+        u16 attributeX = tileX / 4;
+        u16 attributeOffsetX = tileX % 4;
+
+        u16 attributeY = tileY / 4;
+        u16 attributeOffsetY = tileY % 4;
+
+        u16 attributeIndex = attributeY * 8 + attributeX;
+        u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
+
+        u8 highColorBits;
+
+        switch (attributeTableLookup[attributeOffsetX][attributeOffsetY])
+        {
+            case 0x00:
+            case 0x01:
+            case 0x02:
+            case 0x03:
+            {
+                highColorBits = (attributeByte & 0x03);
+                break;
+            }
+
+            case 0x04:
+            case 0x05:
+            case 0x06:
+            case 0x07:
+            {
+                highColorBits = ((attributeByte >> 2) & 0x03);
+                break;
+            }
+
+            case 0x08:
+            case 0x09:
+            case 0x0A:
+            case 0x0B:
+            {
+                highColorBits = ((attributeByte >> 4) & 0x03);
+                break;
+            }
+
+            case 0x0C:
+            case 0x0D:
+            case 0x0E:
+            case 0x0F:
+            {
+                highColorBits = ((attributeByte >> 6) & 0x03);
+                break;
+            }
+        }
+
+        u8 row1 = ReadPPUU8(nes, patternIndex * 16 + y);
+        u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + y);
+
+        u8 h = ((row2 >> (7 - x)) & 0x1);
+        u8 l = ((row1 >> (7 - x)) & 0x1);
+        u8 v = (h << 0x1) | l;
+
+        u32 paletteIndex = (highColorBits << 2) | v;
+        u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+        Color color = systemPalette[colorIndex % 64];
+
+        s32 pixel = y * 8 + x;*/
+
+        background = (u8)(((u32)(ppu->tileData >> 32)) >> ((7 - ppu->x) * 4)) & 0xF;
+
+        /*if (x < 8 && !GetBitFlag(ppu->mask, BACKGROUND_CLIP_MASK_FLAG))
+        {
+            background = 0;
+        }*/
     }
 
     if (renderSprites)
@@ -242,37 +317,44 @@ internal void RenderPixel(NES *nes)
 
             if (colOffset >= 0 && colOffset < 8)
             {
-                spriteColorIndex = GetSpritePatternColorIndex(nes, spriteIdx, rowOffset, colOffset);
-                if (spriteColorIndex % 4 != 0)
+                sprite = GetSpritePatternColorIndex(nes, spriteIdx, rowOffset, colOffset);
+                if (sprite % 4 != 0)
                 {
                     break;
                 }
             }
         }
+
+        if (x < 8 && !GetBitFlag(ppu->mask, SPRITE_CLIP_MASK_FLAG))
+        {
+            sprite = 0;
+        }
     }
 
-    // get color from palettes
+    u8 b = background % 4 != 0;
+    u8 s = sprite % 4 != 0;
+
     u8 colorIndex;
 
-    if (spriteColorIndex != 0 && backgroundColorIndex != 0)
-    {
-        colorIndex = spriteColorIndex;
-    }
-    else if (spriteColorIndex != 0)
-    {
-        colorIndex = spriteColorIndex;
-    }
-    else if (backgroundColorIndex != 0)
-    {
-        colorIndex = backgroundColorIndex;
-    }
-    else
+    if (!b && !s)
     {
         colorIndex = 0;
     }
+    else if (!b && s)
+    {
+        colorIndex = sprite | 0x10;
+    }
+    else if (b && !s)
+    {
+        colorIndex = background;
+    }
+    else
+    {
+        // priority stuff
+    }
 
-    colorIndex = ReadPPUU8(nes, colorIndex % 64);
-    Color color = systemPalette[colorIndex];
+    colorIndex = ReadPPUU8(nes, 0x3F00 + colorIndex);
+    Color color = systemPalette[colorIndex % 64];
 
     // draw pixel at 'x', 'y' with color 'color'
     SetPixel(gui, x, y, color);
