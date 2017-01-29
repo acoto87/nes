@@ -225,76 +225,6 @@ internal void RenderPixel(NES *nes)
 
     if (renderBackground)
     {
-        /*u16 address = 0x2000 + (ppu->control & 0x03) * 0x400;
-
-        u16 tileX = x / 8;
-        u16 tileY = y / 8;
-        u16 tileIndex = tileY * 32 + tileX;
-        u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
-
-        u16 attributeX = tileX / 4;
-        u16 attributeOffsetX = tileX % 4;
-
-        u16 attributeY = tileY / 4;
-        u16 attributeOffsetY = tileY % 4;
-
-        u16 attributeIndex = attributeY * 8 + attributeX;
-        u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
-
-        u8 highColorBits;
-
-        switch (attributeTableLookup[attributeOffsetX][attributeOffsetY])
-        {
-            case 0x00:
-            case 0x01:
-            case 0x02:
-            case 0x03:
-            {
-                highColorBits = (attributeByte & 0x03);
-                break;
-            }
-
-            case 0x04:
-            case 0x05:
-            case 0x06:
-            case 0x07:
-            {
-                highColorBits = ((attributeByte >> 2) & 0x03);
-                break;
-            }
-
-            case 0x08:
-            case 0x09:
-            case 0x0A:
-            case 0x0B:
-            {
-                highColorBits = ((attributeByte >> 4) & 0x03);
-                break;
-            }
-
-            case 0x0C:
-            case 0x0D:
-            case 0x0E:
-            case 0x0F:
-            {
-                highColorBits = ((attributeByte >> 6) & 0x03);
-                break;
-            }
-        }
-
-        u8 row1 = ReadPPUU8(nes, patternIndex * 16 + y);
-        u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + y);
-
-        u8 h = ((row2 >> (7 - x)) & 0x1);
-        u8 l = ((row1 >> (7 - x)) & 0x1);
-        u8 v = (h << 0x1) | l;
-
-        u32 paletteIndex = (highColorBits << 2) | v;
-        u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-        Color color = systemPalette[colorIndex % 64];
-
-        s32 pixel = y * 8 + x;*/
-
         background = (u8)(((u32)(ppu->tileData >> 32)) >> ((7 - ppu->x) * 4)) & 0xF;
 
         /*if (x < 8 && !GetBitFlag(ppu->mask, BACKGROUND_CLIP_MASK_FLAG))
@@ -303,7 +233,7 @@ internal void RenderPixel(NES *nes)
         }*/
     }
 
-    if (renderSprites)
+    /*if (renderSprites)
     {
         for (s32 i = 0; i < ppu->spriteCount; ++i)
         {
@@ -329,22 +259,19 @@ internal void RenderPixel(NES *nes)
         {
             sprite = 0;
         }
-    }
-
-    u8 b = background % 4 != 0;
-    u8 s = sprite % 4 != 0;
+    }*/
 
     u8 colorIndex;
 
-    if (!b && !s)
+    if (!background && !sprite)
     {
         colorIndex = 0;
     }
-    else if (!b && s)
+    else if (!background && sprite)
     {
         colorIndex = sprite | 0x10;
     }
-    else if (b && !s)
+    else if (background && !sprite)
     {
         colorIndex = background;
     }
@@ -360,41 +287,47 @@ internal void RenderPixel(NES *nes)
     SetPixel(gui, x, y, color);
 }
 
+// from: https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
 void FetchNameTableByte(NES *nes)
 {
     PPU *ppu = &nes->ppu;
-    u16 address = ppu->v;
-    address = 0x2000 | (address & 0x0FFF);
+    u16 v = ppu->v;
+    u16 address = 0x2000 | (v & 0x0FFF);
     ppu->nameTableByte = ReadPPUU8(nes, address);
 }
 
+// from: https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
 void FetchAttrTableByte(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     u16 v = ppu->v;
     u16 address = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
     u16 shift = ((v >> 4) & 4) | (v & 2);
-    ppu->attrTableByte = ((ReadPPUU8(nes, address) >> shift) & 3) << 2;
+
+    u8 a = ReadPPUU8(nes, address);
+    ppu->attrTableByte = ((a >> shift) & 3) << 2;
 }
 
+// from: https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
 void FetchLowTileByte(NES *nes)
 {
     PPU *ppu = &nes->ppu;
-    u16 fineY = (ppu->v >> 12) & 7;
-    u8 table = GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
     u8 tile = ppu->nameTableByte;
+    u8 table = GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
+    u16 fineY = (ppu->v >> 12) & 7;
     u16 address = 0x1000 * (u16)table + (u16)tile * 16 + fineY;
     ppu->lowTileByte = ReadPPUU8(nes, address);
 }
 
+// from: https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
 void FetchHighTileByte(NES *nes)
 {
     PPU *ppu = &nes->ppu;
-    u16 fineY = (ppu->v >> 12) & 7;
-    u8 table = GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
     u8 tile = ppu->nameTableByte;
+    u8 table = GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
+    u16 fineY = (ppu->v >> 12) & 7;
     u16 address = 0x1000 * (u16)table + (u16)tile * 16 + fineY;
-    ppu->lowTileByte = ReadPPUU8(nes, address + 8);
+    ppu->highTileByte = ReadPPUU8(nes, address + 8);
 }
 
 void StoreTileData(NES *nes)

@@ -559,6 +559,14 @@ nk_gdi_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
             nk_input_key(&gdi.ctx, NK_KEY_TAB, down);
             return 1;
 
+        case VK_UP:
+            nk_input_key(&gdi.ctx, NK_KEY_UP, down);
+            return 1;
+
+        case VK_DOWN:
+            nk_input_key(&gdi.ctx, NK_KEY_DOWN, down);
+            return 1;
+
         case VK_LEFT:
             if (ctrl)
                 nk_input_key(&gdi.ctx, NK_KEY_TEXT_WORD_LEFT, down);

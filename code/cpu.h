@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "oam.h"
 #include "ppu.h"
+#include "controller.h"
 
 #define CPU_RAM_TOTAL_SIZE KILOBYTES(64)
 
@@ -513,12 +514,12 @@ inline u8 ReadCPUU8(NES *nes, u16 address)
 
             case 0x4016:
             {
-                return 0;
+                return ReadControllerU8(nes, 0);
             }
 
             case 0x4017:
             {
-                return 0;
+                return ReadControllerU8(nes, 1);
             }
         }
     }
@@ -629,6 +630,8 @@ inline void WriteCPUU8(NES *nes, u16 address, u8 value)
 
             case 0x4016:
             {
+                WriteControllerU8(nes, 0, value);
+                WriteControllerU8(nes, 1, value);
                 break;
             }
 

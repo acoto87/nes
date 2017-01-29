@@ -88,6 +88,9 @@ LRESULT CALLBACK Win32MainWindowCallback(
     return result;
 }
 
+// PRIORITY, MAKE THIS DAMN THING FAST, TO PROPERLY TEST WITH NESTEST.NES
+// THERE ARE ALREADY SOME ERRORS WITH INSTRUCTIONS AND IT HAS TO BE FAST TO TEST
+
 int CALLBACK WinMain(
     HINSTANCE instance,
     HINSTANCE prevInstance,
@@ -183,6 +186,37 @@ int CALLBACK WinMain(
                 }
 
                 nk_input_end(ctx);
+
+                u8 state = nes->controllers[0].state;
+
+                if (ctx->input.keyboard.keys[NK_KEY_UP].down)
+                {
+                    state |= 0x10;
+                }
+                else
+                {
+                    state &= ~0x10;
+                }
+
+                if (ctx->input.keyboard.keys[NK_KEY_DOWN].down)
+                {
+                    state |= 0x20;
+                }
+                else
+                {
+                    state &= ~0x20;
+                }
+
+                if (ctx->input.keyboard.keys[NK_KEY_ENTER].down)
+                {
+                    state |= 0x08;
+                }
+                else
+                {
+                    state &= ~0x08;
+                }
+
+                nes->controllers[0].state = state;
 
                 // Frame
 

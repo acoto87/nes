@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\code\cartridge.cpp" />
+    <ClCompile Include="..\code\controller.cpp" />
     <ClCompile Include="..\code\cpu.cpp" />
     <ClCompile Include="..\code\gui.cpp" />
     <ClCompile Include="..\code\nes.cpp" />
@@ -149,6 +150,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\code\cartridge.h" />
+    <ClInclude Include="..\code\controller.h" />
     <ClInclude Include="..\code\cpu.h" />
     <ClInclude Include="..\code\gui.h" />
     <ClInclude Include="..\code\memory.h" />

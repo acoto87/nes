@@ -5,6 +5,7 @@
 #include "nes.h"
 #include "cpu.h"
 #include "ppu.h"
+#include "controller.h"
 #include "gui.h"
 
 /*
@@ -48,8 +49,8 @@ NES* CreateNES(Cartridge cartridge)
         InitPPU(nes);
         //InitAPU(nes)
         InitGUI(nes);
-
-        // init controllers
+        InitController(nes, 0);
+        InitController(nes, 1);
 
         if (cartridge.hasBatteryPack)
         {

@@ -484,7 +484,7 @@ inline void WriteScroll(NES *nes, u8 value)
         // x:               CBA = d: .....CBA
         // w:                   = 1
         ppu->t = (ppu->t & 0xFFE0) | (((u16)value & 0xF8) >> 3);
-        ppu->x = (ppu->t & 0xF8) | (value & 0x07);
+        ppu->x = (value & 0x07);
         ppu->w = 1;
     }
     else

@@ -293,6 +293,13 @@ struct PPU
     u8 spriteCount;
 };
 
+struct Controller
+{
+    u8 state;
+    u8 index;
+    u8 strobe;
+};
+
 struct Win32BackBuffer
 {
     BITMAPINFO bitmapInfo;
@@ -323,6 +330,7 @@ struct NES
     //APU apu;
 
     Cartridge cartridge;
+    Controller controllers[2];
 
     GUI gui;
 };
