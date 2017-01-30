@@ -35,7 +35,7 @@ internal inline void ADC(NES* nes, u16 address)
     
     SetCarry(cpu, acc > 0xFF);
     SetNegative(cpu, ISNEG(acc));
-    SetZero(cpu, !acc);
+    SetZero(cpu, !(acc & 0xFF));
     SetOverflow(cpu, !((cpu->a ^ data) & 0x80) && ((cpu->a ^ acc) & 0x80));
 
     cpu->a = (u8)acc;
@@ -46,12 +46,12 @@ internal inline void AND(NES *nes, u16 address)
     CPU *cpu = &nes->cpu;
 
     u8 data = ReadCPUU8(nes, address);
-    u8 acc = cpu->a & data;
+    data = cpu->a & data;
 
     SetNegative(cpu, ISNEG(data));
-    SetZero(cpu, !acc);
+    SetZero(cpu, !data);
 
-    cpu->a = acc;
+    cpu->a = data;
 }
 
 internal inline void ASL(NES *nes, u16 address)
@@ -296,36 +296,36 @@ internal inline void CMP(NES *nes, u16 address)
 {
     CPU *cpu = &nes->cpu;
 
-    s8 data = (s8)ReadCPUU8(nes, address);
-    data = cpu->a - data;
+    u8 data = ReadCPUU8(nes, address);
+    u16 sub = cpu->a - data;
 
-    SetNegative(cpu, ISNEG(data));
-    SetZero(cpu, !data);
-    SetCarry(cpu, data >= 0);
+    SetNegative(cpu, ISNEG(sub));
+    SetZero(cpu, !sub);
+    SetCarry(cpu, sub < 0x100);
 }
 
 internal inline void CPX(NES *nes, u16 address)
 {
     CPU *cpu = &nes->cpu;
 
-    s8 data = (s8)ReadCPUU8(nes, address);
-    data = cpu->x - data;
+    u8 data = ReadCPUU8(nes, address);
+    u16 sub = cpu->x - data;
 
-    SetNegative(cpu, ISNEG(data));
-    SetZero(cpu, !data);
-    SetCarry(cpu, data >= 0);
+    SetNegative(cpu, ISNEG(sub));
+    SetZero(cpu, !sub);
+    SetCarry(cpu, sub < 0x100);
 }
 
 internal inline void CPY(NES *nes, u16 address)
 {
     CPU *cpu = &nes->cpu;
 
-    s8 data = (s8)ReadCPUU8(nes, address);
-    data = cpu->y - data;
+    u8 data = ReadCPUU8(nes, address);
+    u16 sub = cpu->y - data;
 
-    SetNegative(cpu, ISNEG(data));
-    SetZero(cpu, !data);
-    SetCarry(cpu, data >= 0);
+    SetNegative(cpu, ISNEG(sub));
+    SetZero(cpu, !sub);
+    SetCarry(cpu, sub < 0x100);
 }
 
 internal inline void DEC(NES *nes, u16 address)
@@ -543,6 +543,9 @@ internal inline void PLA(NES *nes)
     CPU *cpu = &nes->cpu;
 
     cpu->a = PopStackU8(nes);
+
+    SetNegative(cpu, ISNEG(cpu->a));
+    SetZero(cpu, !cpu->a);
 }
 
 internal inline void PLP(NES *nes)
@@ -764,8 +767,9 @@ internal inline void TXA(NES *nes)
 internal inline void TXS(NES *nes)
 {
     CPU *cpu = &nes->cpu;
+    u8 data = cpu->x;
 
-    PushStackU8(nes, cpu->x);
+    cpu->sp = data;
 }
 
 internal inline void TYA(NES *nes)
@@ -1003,8 +1007,18 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
         // Indirect ($0000)
         case AM_IND:
         {
-            address = ReadCPUU16(nes, cpu->pc + 1);
-            address = ReadCPUU16(nes, address);
+            u16 operand = ReadCPUU16(nes, cpu->pc + 1);
+
+            // emulates a 6502 bug that caused the low byte to wrap without incrementing the high byte
+            u16 operand2 = (u16)(operand & 0xFF00) | (u8)(operand + 1);
+
+            u8 lo = ReadCPUU8(nes, operand);
+            u8 hi = ReadCPUU8(nes, operand2);
+
+            address = (hi << 8) | lo;
+
+            /*address = ReadCPUU16(nes, cpu->pc + 1);
+            address = ReadCPUU16(nes, address);*/
             break;
         }
 
@@ -1014,7 +1028,16 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
             u8 operand = ReadCPUU8(nes, cpu->pc + 1);
             // it needs an u8 here for wrapping
             operand += cpu->x;
-            address = ReadCPUU16(nes, operand);
+
+            // emulates a 6502 bug that caused the low byte to wrap without incrementing the high byte
+            u16 operand2 = (u16)(operand & 0xFF00) | (u8)(operand + 1);
+
+            u8 lo = ReadCPUU8(nes, operand);
+            u8 hi = ReadCPUU8(nes, operand2);
+
+            address = (hi << 8) | lo;
+
+            /*address = ReadCPUU16(nes, operand);*/
             break;
         }
 
@@ -1022,7 +1045,15 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
         case AM_IZY:
         {
             u8 operand = ReadCPUU8(nes, cpu->pc + 1);
-            address = ReadCPUU16(nes, operand);
+
+            // emulates a 6502 bug that caused the low byte to wrap without incrementing the high byte
+            u16 operand2 = (u16)(operand & 0xFF00) | (u8)(operand + 1);
+
+            u8 lo = ReadCPUU8(nes, operand);
+            u8 hi = ReadCPUU8(nes, operand2);
+
+            address = (hi << 8) | lo;
+
             pageCrossed = PAGE_CROSS(address, address + cpu->y);
             address += cpu->y;
             break;

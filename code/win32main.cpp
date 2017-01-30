@@ -88,9 +88,6 @@ LRESULT CALLBACK Win32MainWindowCallback(
     return result;
 }
 
-// PRIORITY, MAKE THIS DAMN THING FAST, TO PROPERLY TEST WITH NESTEST.NES
-// THERE ARE ALREADY SOME ERRORS WITH INSTRUCTIONS AND IT HAS TO BE FAST TO TEST
-
 int CALLBACK WinMain(
     HINSTANCE instance,
     HINSTANCE prevInstance,
@@ -167,6 +164,17 @@ int CALLBACK WinMain(
 
             dt = Win32GetSecondsElapsed(initialCounter, startCounter);
             running = true;
+
+            /* 
+             * Emulator authors :
+             *
+             * This test program, when run on "automation", (i.e.set your program counter
+             * to 0c000h) will perform all tests in sequence and shove the results of
+             * the tests into locations 00h.
+             *
+             * NOTE(acoto87): All oficial opcodes from nestest passed!
+             */
+            // nes->cpu.pc = 0xC000;
 
             while (running)
             {
