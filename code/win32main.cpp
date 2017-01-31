@@ -102,8 +102,15 @@ int CALLBACK WinMain(
 
     f32 dt = 0;
 
+    //char *rom = "nestest.nes";
+    //char *rom = "palette.nes";
+    //char *rom = "BOMBMAN.nes";
+    //char *rom = "Donkey Kong.nes";
+    //char *rom = "Mario Bros.nes";
+    char *rom = "Super Mario Bros.nes";
+
     Cartridge cartridge = {};
-    if (!LoadNesRom("nestest.nes", &cartridge))
+    if (!LoadNesRom(rom, &cartridge))
     {
         return 0;
     }
@@ -161,20 +168,22 @@ int CALLBACK WinMain(
             nk_gdip_set_font(font);*/
 
             LARGE_INTEGER startCounter = Win32GetWallClock();
-
             dt = Win32GetSecondsElapsed(initialCounter, startCounter);
             running = true;
 
-            /* 
+            /*
              * Emulator authors :
              *
              * This test program, when run on "automation", (i.e.set your program counter
              * to 0c000h) will perform all tests in sequence and shove the results of
              * the tests into locations 00h.
              *
-             * NOTE(acoto87): All oficial opcodes from nestest passed!
+             * @Note: All oficial opcodes from nestest passed!
+             *                                                  -acoto87 January 30, 2017
              */
-            // nes->cpu.pc = 0xC000;
+             // nes->cpu.pc = 0xC000;
+
+            u32 c = 0;
 
             while (running)
             {
@@ -246,7 +255,20 @@ int CALLBACK WinMain(
 
                 if (!debugging || stepping)
                 {
-                    //while (cycles > 0)
+                    // I'm targeting 60fps, so run the amount of cpu cycles for 0.0167 seconds
+                    //
+                    // This could be calculated with the frequency of the PPU, and run based on 
+                    // the amount of cycles that we want the PPU to run in 0.0167 seconds. For now
+                    // i'm using the CPU frequency.
+                    s32 cycles = 0.0167 * CPU_FREQ;
+
+                    // If we are stepping in the debugger, run only 1 cycle
+                    if (stepping)
+                    {
+                        cycles = 1;
+                    }
+
+                    while (cycles > 0)
                     {
                         CPUStep step = StepCPU(nes);
 
@@ -260,7 +282,7 @@ int CALLBACK WinMain(
                             // StepAPU(nes);
                         }
 
-                        //cycles -= step.cycles;
+                        cycles -= step.cycles;
                     }
 
                     if (debugging)
@@ -277,8 +299,23 @@ int CALLBACK WinMain(
 
                 if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 250, 150), flags))
                 {
+                    local s32 fps = 0;
+                    local s32 fpsCount = 0;
+
                     nk_layout_row_dynamic(ctx, 20, 1);
                     nk_label(ctx, DebugText("dt: %.4f", dt), NK_TEXT_LEFT);
+
+                    LARGE_INTEGER fpsCounter = Win32GetWallClock();
+                    f32 fpsdt = Win32GetSecondsElapsed(initialCounter, fpsCounter);
+                    if (fpsdt > 1)
+                    {
+                        initialCounter = fpsCounter;
+                        fps = fpsCount;
+                        fpsCount = 0;
+                    }
+                    
+                    nk_label(ctx, DebugText("fps: %d", fps), NK_TEXT_LEFT);
+                    ++fpsCount;
 
                     nk_layout_row_dynamic(ctx, 20, 2);
                     if (nk_button_label(ctx, "Run"))
@@ -290,6 +327,9 @@ int CALLBACK WinMain(
 
                     if (nk_button_label(ctx, "Reset"))
                     {
+                        ResetNES(nes);
+
+                        debugging = TRUE;
                     }
 
                     if (nk_button_label(ctx, "Pause"))
@@ -1047,6 +1087,18 @@ int CALLBACK WinMain(
                 LARGE_INTEGER endCounter = Win32GetWallClock();
                 dt = Win32GetSecondsElapsed(startCounter, endCounter);
                 startCounter = endCounter;
+
+                /*endCounter = Win32GetWallClock();
+                f32 totalDt = Win32GetSecondsElapsed(initialCounter, endCounter);
+                if (totalDt > 1)
+                {
+                    sprintf(debugBuffer, "main cycle counter: %d, ppu total cycles: %d, ppu frame count: %d\n", c, ppu->totalCycles, ppu->frameCount);
+                    OutputDebugString(debugBuffer);
+
+                    initialCounter = endCounter;
+                }*/
+
+                ++c;
             }
         }
     }

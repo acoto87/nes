@@ -15,6 +15,11 @@ inline Memory* CreateMemory(u32 length)
     return memory;
 }
 
+inline void ZeroMemoryBytes(Memory *memory)
+{
+    memset(memory->bytes, 0, sizeof(memory->length));
+}
+
 inline void CopyMemoryBytes(Memory *memory, u32 offset, u8 *bytes, size size)
 {
     if (memory->created)

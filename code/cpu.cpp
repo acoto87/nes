@@ -1096,466 +1096,83 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
 
     switch (instruction->instruction)
     {
-        case CPU_ADC:
-        {
-            ADC(nes, address);
-            break;
-        }
-
-        case CPU_AND:
-        {
-            AND(nes, address);
-            break;
-        }
-
-        case CPU_ASL:
-        {
-            ASL(nes, address);
-            break;
-        }
-
-        case CPU_BCC:
-        {
-            BCC(nes, address);
-            break;
-        }
-
-        case CPU_BCS:
-        {
-            BCS(nes, address);
-            break;
-        }
-
-        case CPU_BEQ:
-        {
-            BEQ(nes, address);
-            break;
-        }
-
-        case CPU_BIT:
-        {
-            BIT(nes, address);
-            break;
-        }
-
-        case CPU_BMI:
-        {
-            BMI(nes, address);
-            break;
-        }
-
-        case CPU_BNE:
-        {
-            BNE(nes, address);
-            break;
-        }
-
-        case CPU_BPL:
-        {
-            BPL(nes, address);
-            break;
-        }
-
-        case CPU_BRK:
-        {
-            BRK(nes);
-            break;
-        }
-
-        case CPU_BVC:
-        {
-            BVC(nes, address);
-            break;
-        }
-
-        case CPU_BVS:
-        {
-            BVS(nes, address);
-            break;
-        }
-
-        case CPU_CLC:
-        {
-            CLC(nes);
-            break;
-        }
-
-        case CPU_CLD:
-        {
-            CLD(nes);
-            break;
-        }
-
-        case CPU_CLI:
-        {
-            CLI(nes);
-            break;
-        }
-
-        case CPU_CLV:
-        {
-            CLV(nes);
-            break;
-        }
-
-        case CPU_CMP:
-        {
-            CMP(nes, address);
-            break;
-        }
-
-        case CPU_CPX:
-        {
-            CPX(nes, address);
-            break;
-        }
-
-        case CPU_CPY:
-        {
-            CPY(nes, address);
-            break;
-        }
-
-        case CPU_DEC:
-        {
-            DEC(nes, address);
-            break;
-        }
-
-        case CPU_DEX:
-        {
-            DEX(nes, address);
-            break;
-        }
-
-        case CPU_DEY:
-        {
-            DEY(nes, address);
-            break;
-        }
-
-        case CPU_EOR:
-        {
-            EOR(nes, address);
-            break;
-        }
-
-        case CPU_INC:
-        {
-            INC(nes, address);
-            break;
-        }
-
-        case CPU_INX:
-        {
-            INX(nes, address);
-            break;
-        }
-
-        case CPU_INY:
-        {
-            INY(nes, address);
-            break;
-        }
-
-        case CPU_JMP:
-        {
-            JMP(nes, address);
-            break;
-        }
-
-        case CPU_JSR:
-        {
-            JSR(nes, address);
-            break;
-        }
-
-        case CPU_LDA:
-        {
-            LDA(nes, address);
-            break;
-        }
-
-        case CPU_LDX:
-        {
-            LDX(nes, address);
-            break;
-        }
-
-        case CPU_LDY:
-        {
-            LDY(nes, address);
-            break;
-        }
-
-        case CPU_LSR:
-        {
-            LSR(nes, address);
-            break;
-        }
-
-        case CPU_NOP:
-        {
-            NOP(nes);
-            break;
-        }
-
-        case CPU_ORA:
-        {
-            ORA(nes, address);
-            break;
-        }
-
-        case CPU_PHA:
-        {
-            PHA(nes);
-            break;
-        }
-
-        case CPU_PHP:
-        {
-            PHP(nes);
-            break;
-        }
-
-        case CPU_PLA:
-        {
-            PLA(nes);
-            break;
-        }
-
-        case CPU_PLP:
-        {
-            PLP(nes);
-            break;
-        }
-
-        case CPU_ROL:
-        {
-            ROL(nes, address);
-            break;
-        }
-
-        case CPU_ROR:
-        {
-            ROR(nes, address);
-            break;
-        }
-
-        case CPU_RTI:
-        {
-            RTI(nes);
-            break;
-        }
-
-        case CPU_RTS:
-        {
-            RTS(nes);
-            break;
-        }
-
-        case CPU_SBC:
-        {
-            SBC(nes, address);
-            break;
-        }
-
-        case CPU_SEC:
-        {
-            SEC(nes, address);
-            break;
-        }
-
-        case CPU_SED:
-        {
-            SED(nes, address);
-            break;
-        }
-
-        case CPU_SEI:
-        {
-            SEI(nes);
-            break;
-        }
-
-        case CPU_STA:
-        {
-            STA(nes, address);
-            break;
-        }
-
-        case CPU_STX:
-        {
-            STX(nes, address);
-            break;
-        }
-
-        case CPU_STY:
-        {
-            STY(nes, address);
-            break;
-        }
-
-        case CPU_TAX:
-        {
-            TAX(nes);
-            break;
-        }
-
-        case CPU_TAY:
-        {
-            TAY(nes);
-            break;
-        }
-
-        case CPU_TSX:
-        {
-            TSX(nes);
-            break;
-        }
-
-        case CPU_TXA:
-        {
-            TXA(nes);
-            break;
-        }
-
-        case CPU_TXS:
-        {
-            TXS(nes);
-            break;
-        }
-
-        case CPU_TYA:
-        {
-            TYA(nes);
-            break;
-        }
-
-        case CPU_SLO:
-        {
-            SLO(nes);
-            break;
-        }
-
-        case CPU_ANC:
-        {
-            ANC(nes);
-            break;
-        }
-
-        case CPU_RLA:
-        {
-            RLA(nes);
-            break;
-        }
-
-        case CPU_SRE:
-        {
-            SRE(nes);
-            break;
-        }
-
-        case CPU_ALR:
-        {
-            ALR(nes);
-            break;
-        }
-
-        case CPU_RRA:
-        {
-            RRA(nes);
-            break;
-        }
-
-        case CPU_ARR:
-        {
-            ARR(nes);
-            break;
-        }
-
-        case CPU_SAX:
-        {
-            SAX(nes);
-            break;
-        }
-
-        case CPU_XAA:
-        {
-            XAA(nes);
-            break;
-        }
-
-        case CPU_AHX:
-        {
-            AHX(nes);
-            break;
-        }
-
-        case CPU_TAS:
-        {
-            TAS(nes);
-            break;
-        }
-
-        case CPU_SHY:
-        {
-            SHY(nes);
-            break;
-        }
-
-        case CPU_SHX:
-        {
-            SHX(nes);
-            break;
-        }
-
-        case CPU_LAX:
-        {
-            LAX(nes);
-            break;
-        }
-
-        case CPU_LAS:
-        {
-            LAS(nes);
-            break;
-        }
-
-        case CPU_DCP:
-        {
-            DCP(nes);
-            break;
-        }
-
-        case CPU_AXS:
-        {
-            AXS(nes);
-            break;
-        }
-
-        case CPU_ISC:
-        {
-            ISC(nes);
-            break;
-        }
-
-        case CPU_KIL:
-        {
-            KIL(nes);
-            break;
-        }
-
-        case CPU_FEX:
-        {
-            FEX(nes);
-            break;
-        }
-
-        default:
-        {
-            break;
-        }
+        case CPU_ADC: { ADC(nes, address); break; }
+        case CPU_AND: { AND(nes, address); break; }
+        case CPU_ASL: { ASL(nes, address); break; }
+        case CPU_BCC: { BCC(nes, address); break; }
+        case CPU_BCS: { BCS(nes, address); break; }
+        case CPU_BEQ: { BEQ(nes, address); break; }
+        case CPU_BIT: { BIT(nes, address); break; }
+        case CPU_BMI: { BMI(nes, address); break; }
+        case CPU_BNE: { BNE(nes, address); break; }
+        case CPU_BPL: { BPL(nes, address); break; }
+        case CPU_BRK: { BRK(nes); break; }
+        case CPU_BVC: { BVC(nes, address); break; }
+        case CPU_BVS: { BVS(nes, address); break; }
+        case CPU_CLC: { CLC(nes); break; }
+        case CPU_CLD: { CLD(nes); break; }
+        case CPU_CLI: { CLI(nes); break; }
+        case CPU_CLV: { CLV(nes); break; }
+        case CPU_CMP: { CMP(nes, address); break; }
+        case CPU_CPX: { CPX(nes, address); break; }
+        case CPU_CPY: { CPY(nes, address); break; }
+        case CPU_DEC: { DEC(nes, address); break; }
+        case CPU_DEX: { DEX(nes, address); break; }
+        case CPU_DEY: { DEY(nes, address); break; }
+        case CPU_EOR: { EOR(nes, address); break; }
+        case CPU_INC: { INC(nes, address); break; }
+        case CPU_INX: { INX(nes, address); break; }
+        case CPU_INY: { INY(nes, address); break; }
+        case CPU_JMP: { JMP(nes, address); break; }
+        case CPU_JSR: { JSR(nes, address); break; }
+        case CPU_LDA: { LDA(nes, address); break; }
+        case CPU_LDX: { LDX(nes, address); break; }
+        case CPU_LDY: { LDY(nes, address); break; }
+        case CPU_LSR: { LSR(nes, address); break; }
+        case CPU_NOP: { NOP(nes); break; }
+        case CPU_ORA: { ORA(nes, address); break; }
+        case CPU_PHA: { PHA(nes); break; }
+        case CPU_PHP: { PHP(nes); break; }
+        case CPU_PLA: { PLA(nes); break; }
+        case CPU_PLP: { PLP(nes); break; }
+        case CPU_ROL: { ROL(nes, address); break; }
+        case CPU_ROR: { ROR(nes, address); break; }
+        case CPU_RTI: { RTI(nes); break; }
+        case CPU_RTS: { RTS(nes); break; }
+        case CPU_SBC: { SBC(nes, address); break; }
+        case CPU_SEC: { SEC(nes, address); break; }
+        case CPU_SED: { SED(nes, address); break; }
+        case CPU_SEI: { SEI(nes); break; }
+        case CPU_STA: { STA(nes, address); break; }
+        case CPU_STX: { STX(nes, address); break; }
+        case CPU_STY: { STY(nes, address); break; }
+        case CPU_TAX: { TAX(nes); break; }
+        case CPU_TAY: { TAY(nes); break; }
+        case CPU_TSX: { TSX(nes); break; }
+        case CPU_TXA: { TXA(nes); break; }
+        case CPU_TXS: { TXS(nes); break; }
+        case CPU_TYA: { TYA(nes); break; }
+        case CPU_SLO: { SLO(nes); break; }
+        case CPU_ANC: { ANC(nes); break; }
+        case CPU_RLA: { RLA(nes); break; }
+        case CPU_SRE: { SRE(nes); break; }
+        case CPU_ALR: { ALR(nes); break; }
+        case CPU_RRA: { RRA(nes); break; }
+        case CPU_ARR: { ARR(nes); break; }
+        case CPU_SAX: { SAX(nes); break; }
+        case CPU_XAA: { XAA(nes); break; }
+        case CPU_AHX: { AHX(nes); break; }
+        case CPU_TAS: { TAS(nes); break; }
+        case CPU_SHY: { SHY(nes); break; }
+        case CPU_SHX: { SHX(nes); break; }
+        case CPU_LAX: { LAX(nes); break; }
+        case CPU_LAS: { LAS(nes); break; }
+        case CPU_DCP: { DCP(nes); break; }
+        case CPU_AXS: { AXS(nes); break; }
+        case CPU_ISC: { ISC(nes); break; }
+        case CPU_KIL: { KIL(nes); break; }
+        case CPU_FEX: { FEX(nes); break; }
+        default: { break; } 
     }
 }
 

@@ -61,3 +61,18 @@ NES* CreateNES(Cartridge cartridge)
     return nes;
 }
 
+void ResetNES(NES *nes)
+{
+    ResetCPU(nes);
+    ResetPPU(nes);
+    // ResetAPU(nes);
+    ResetGUI(nes);
+    ResetController(nes, 0);
+    ResetController(nes, 1);
+
+    ZeroMemoryBytes(&nes->cpuMemory);
+    ZeroMemoryBytes(&nes->ppuMemory);
+    ZeroMemoryBytes(&nes->oamMemory);
+    ZeroMemoryBytes(&nes->oamMemory2);
+}
+

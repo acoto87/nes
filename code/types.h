@@ -315,7 +315,6 @@ struct GUI
     u32 width = PPU_SCREEN_WIDTH;
     u32 height = PPU_SCREEN_HEIGHT;
     Color pixels[PPU_SCREEN_WIDTH * PPU_SCREEN_HEIGHT];
-    Color screenBuffer[PPU_SCREEN_WIDTH * PPU_SCREEN_HEIGHT];
 };
 
 struct NES

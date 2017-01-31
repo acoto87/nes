@@ -804,6 +804,7 @@ void ResetPPU(NES *nes)
 
     ppu->cycle = 0;
     ppu->scanline = 241;
+    ppu->totalCycles = 0;
     ppu->frameCount = 0;
 
     ppu->control = 0;

@@ -5,5 +5,6 @@
 #include "types.h"
 
 NES* CreateNES(Cartridge cartridge);
+void ResetNES(NES *nes);
 
 #endif
