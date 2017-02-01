@@ -603,6 +603,18 @@ nk_gdi_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
             nk_input_key(&gdi.ctx, NK_KEY_SCROLL_UP, down);
             return 1;
 
+        case VK_SPACE:
+            nk_input_key(&gdi.ctx, NK_KEY_SPACE, down);
+            return 1;
+
+        case 'A':
+            nk_input_key(&gdi.ctx, NK_KEY_A, down);
+            return 1;
+
+        case 'S':
+            nk_input_key(&gdi.ctx, NK_KEY_S, down);
+            return 1;
+
         case 'C':
             if (ctrl) {
                 nk_input_key(&gdi.ctx, NK_KEY_COPY, down);

@@ -218,7 +218,7 @@ internal void RenderPixel(NES *nes)
     b32 renderSprites = GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG);
 
     u8 background = 0;
-    u8 sprite = 0;
+    u8 sprite = 0, a = 0, idx = -1;
 
     u8 x = GetCurrentX(ppu);
     u8 y = GetCurrentY(ppu);
@@ -227,13 +227,13 @@ internal void RenderPixel(NES *nes)
     {
         background = (u8)(((u32)(ppu->tileData >> 32)) >> ((7 - ppu->x) * 4)) & 0xF;
 
-        /*if (x < 8 && !GetBitFlag(ppu->mask, BACKGROUND_CLIP_MASK_FLAG))
+        if (x < 8 && !GetBitFlag(ppu->mask, BACKGROUND_CLIP_MASK_FLAG))
         {
             background = 0;
-        }*/
+        }
     }
 
-    /*if (renderSprites)
+    if (renderSprites)
     {
         for (s32 i = 0; i < ppu->spriteCount; ++i)
         {
@@ -247,9 +247,12 @@ internal void RenderPixel(NES *nes)
 
             if (colOffset >= 0 && colOffset < 8)
             {
-                sprite = GetSpritePatternColorIndex(nes, spriteIdx, rowOffset, colOffset);
+                sprite = GetSpritePatternColorIndex(nes, spriteIdx, colOffset, rowOffset);
+                sprite |= (spriteAttr & 0x03) << 2;
                 if (sprite % 4 != 0)
                 {
+                    idx = i;
+                    a = spriteAttr;
                     break;
                 }
             }
@@ -259,7 +262,7 @@ internal void RenderPixel(NES *nes)
         {
             sprite = 0;
         }
-    }*/
+    }
 
     u8 colorIndex;
 
@@ -278,6 +281,19 @@ internal void RenderPixel(NES *nes)
     else
     {
         // priority stuff
+        if (idx == 0 && x < 255)
+        {
+            SetBitFlag(&ppu->status, HIT_FLAG);
+        }
+
+        if (((a >> 5) & 1)) 
+        {
+            colorIndex = sprite | 0x10;
+        }
+        else 
+        {
+            colorIndex = background;
+        }
     }
 
     colorIndex = ReadPPUU8(nes, 0x3F00 + colorIndex);
@@ -580,7 +596,7 @@ void StepPPU(NES *nes)
         else
         {
             // It's suppose to never reach here
-            ASSERT(false);
+            ASSERT(FALSE);
         }
     }
 
@@ -619,14 +635,19 @@ void StepPPU(NES *nes)
                         count = 8;
                         SetBitFlag(&ppu->status, SCANLINE_COUNT_FLAG);
                     }
-
-                    ppu->spriteCount = count;
                 }
+
+                ppu->spriteCount = count;
             }
-            else
+        }
+        else
+        {
+            for (s32 i = 0; i < 8 * 4; ++i)
             {
-                ppu->spriteCount = 0;
+                WriteU8(&nes->oamMemory2, i, 0);
             }
+
+            ppu->spriteCount = 0;
         }
 
         //if (ppu->cycle >= 1 && ppu->cycle <= 64)

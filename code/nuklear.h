@@ -543,6 +543,9 @@ enum nk_keys {
     NK_KEY_DOWN,
     NK_KEY_LEFT,
     NK_KEY_RIGHT,
+    NK_KEY_SPACE,
+    NK_KEY_A,
+    NK_KEY_S,
 
     /* Shortcuts: text field */
     NK_KEY_TEXT_INSERT_MODE,

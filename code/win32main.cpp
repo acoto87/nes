@@ -103,11 +103,11 @@ int CALLBACK WinMain(
     f32 dt = 0;
 
     //char *rom = "nestest.nes";
-    //char *rom = "palette.nes";
+    char *rom = "palette.nes";
     //char *rom = "BOMBMAN.nes";
     //char *rom = "Donkey Kong.nes";
     //char *rom = "Mario Bros.nes";
-    char *rom = "Super Mario Bros.nes";
+    //char *rom = "Super Mario Bros.nes";
 
     Cartridge cartridge = {};
     if (!LoadNesRom(rom, &cartridge))
@@ -204,36 +204,14 @@ int CALLBACK WinMain(
 
                 nk_input_end(ctx);
 
-                u8 state = nes->controllers[0].state;
-
-                if (ctx->input.keyboard.keys[NK_KEY_UP].down)
-                {
-                    state |= 0x10;
-                }
-                else
-                {
-                    state &= ~0x10;
-                }
-
-                if (ctx->input.keyboard.keys[NK_KEY_DOWN].down)
-                {
-                    state |= 0x20;
-                }
-                else
-                {
-                    state &= ~0x20;
-                }
-
-                if (ctx->input.keyboard.keys[NK_KEY_ENTER].down)
-                {
-                    state |= 0x08;
-                }
-                else
-                {
-                    state &= ~0x08;
-                }
-
-                nes->controllers[0].state = state;
+                SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down);
+                SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down);
+                SetButton(nes, 0, BUTTON_LEFT, ctx->input.keyboard.keys[NK_KEY_LEFT].down);
+                SetButton(nes, 0, BUTTON_RIGHT, ctx->input.keyboard.keys[NK_KEY_RIGHT].down);
+                SetButton(nes, 0, BUTTON_SELECT, ctx->input.keyboard.keys[NK_KEY_SPACE].down);
+                SetButton(nes, 0, BUTTON_START, ctx->input.keyboard.keys[NK_KEY_ENTER].down);
+                SetButton(nes, 0, BUTTON_A, ctx->input.keyboard.keys[NK_KEY_A].down);
+                SetButton(nes, 0, BUTTON_B, ctx->input.keyboard.keys[NK_KEY_S].down);
 
                 // Frame
 
@@ -380,9 +358,9 @@ int CALLBACK WinMain(
                     nk_label(ctx, DebugText("MASK (0x2001):%02X", ppu->mask), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("CYCLE:%3d", ppu->cycle), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("STAT (0x2002):%02X", ppu->status), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CYCLES:%d", ppu->totalCycles), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CYCLES:%lld", ppu->totalCycles), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("SPRA (0x2003):%02X", ppu->oamAddress), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("FRAMES:%d", ppu->frameCount), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("FRAMES:%lld", ppu->frameCount), NK_TEXT_LEFT);
 
                     nk_layout_row_dynamic(ctx, 20, 1);
                     nk_label(ctx, DebugText("SPRD (0x2004):%02X", ppu->oamData), NK_TEXT_LEFT);
@@ -812,7 +790,7 @@ int CALLBACK WinMain(
                                     u8 v = (h << 0x1) | l;
 
                                     u32 paletteIndex = (highColorBits << 2) | v;
-                                    u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                    u32 colorIndex = ReadPPUU8(nes, 0x3F10 + paletteIndex);
                                     Color color = systemPalette[colorIndex % 64];
 
                                     sprites2[index][pixelIndex] = color.bgra;
