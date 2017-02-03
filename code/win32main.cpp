@@ -23,6 +23,8 @@ global b32 hitRun;
 global b32 debugging = TRUE;
 global b32 stepping;
 global u16 breakpoint;
+global b32 coarseButtons[8];
+global b32 oneCycleAtTime;
 
 global NES *nes;
 
@@ -204,14 +206,14 @@ int CALLBACK WinMain(
 
                 nk_input_end(ctx);
 
-                SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down);
-                SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down);
-                SetButton(nes, 0, BUTTON_LEFT, ctx->input.keyboard.keys[NK_KEY_LEFT].down);
-                SetButton(nes, 0, BUTTON_RIGHT, ctx->input.keyboard.keys[NK_KEY_RIGHT].down);
-                SetButton(nes, 0, BUTTON_SELECT, ctx->input.keyboard.keys[NK_KEY_SPACE].down);
-                SetButton(nes, 0, BUTTON_START, ctx->input.keyboard.keys[NK_KEY_ENTER].down);
-                SetButton(nes, 0, BUTTON_A, ctx->input.keyboard.keys[NK_KEY_A].down);
-                SetButton(nes, 0, BUTTON_B, ctx->input.keyboard.keys[NK_KEY_S].down);
+                SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down || coarseButtons[1]);
+                SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down || coarseButtons[3]);
+                SetButton(nes, 0, BUTTON_LEFT, ctx->input.keyboard.keys[NK_KEY_LEFT].down || coarseButtons[0]);
+                SetButton(nes, 0, BUTTON_RIGHT, ctx->input.keyboard.keys[NK_KEY_RIGHT].down || coarseButtons[2]);
+                SetButton(nes, 0, BUTTON_SELECT, ctx->input.keyboard.keys[NK_KEY_SPACE].down || coarseButtons[4]);
+                SetButton(nes, 0, BUTTON_START, ctx->input.keyboard.keys[NK_KEY_ENTER].down || coarseButtons[5]);
+                SetButton(nes, 0, BUTTON_B, ctx->input.keyboard.keys[NK_KEY_S].down || coarseButtons[6]);
+                SetButton(nes, 0, BUTTON_A, ctx->input.keyboard.keys[NK_KEY_A].down || coarseButtons[7]);
 
                 // Frame
 
@@ -241,7 +243,7 @@ int CALLBACK WinMain(
                     s32 cycles = 0.0167 * CPU_FREQ;
 
                     // If we are stepping in the debugger, run only 1 cycle
-                    if (stepping)
+                    if (stepping || oneCycleAtTime)
                     {
                         cycles = 1;
                     }
@@ -275,13 +277,17 @@ int CALLBACK WinMain(
 
                 nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
 
-                if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 250, 150), flags))
+                if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 250, 170), flags))
                 {
                     local s32 fps = 0;
                     local s32 fpsCount = 0;
+                    local s32 oneCycle = 0;
 
-                    nk_layout_row_dynamic(ctx, 20, 1);
+                    nk_layout_row_dynamic(ctx, 20, 2);
                     nk_label(ctx, DebugText("dt: %.4f", dt), NK_TEXT_LEFT);
+
+                    nk_checkbox_label(ctx, "1 cycle", &oneCycle);
+                    oneCycleAtTime = oneCycle;
 
                     LARGE_INTEGER fpsCounter = Win32GetWallClock();
                     f32 fpsdt = Win32GetSecondsElapsed(initialCounter, fpsCounter);
@@ -324,16 +330,16 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "CPU INFO", nk_rect(270, 10, 250, 300), flags))
+                if (nk_begin(ctx, "CPU INFO", nk_rect(270, 10, 250, 170), flags))
                 {
-                    nk_layout_row_dynamic(ctx, 20, 1);
+                    nk_layout_row_dynamic(ctx, 20, 2);
 
                     nk_label(ctx, DebugText("%s:%02X", "A", cpu->a), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("%s:%02X", "X", cpu->x), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("%s:%02X", "Y", cpu->y), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("%s:%02X", "P", cpu->p), NK_TEXT_LEFT);
-                    nk_label(ctx, "    N V   B D I Z C", NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("    %d %d %d %d %d %d %d %d",
+                    nk_label(ctx, DebugText("%s:%02X", "X", cpu->x), NK_TEXT_LEFT);
+                    nk_label(ctx, "N V   B D I Z C", NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("%s:%02X", "Y", cpu->y), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("%d %d %d %d %d %d %d %d",
                         GetBitFlag(cpu->p, NEGATIVE_FLAG) ? 1 : 0,
                         GetBitFlag(cpu->p, OVERFLOW_FLAG) ? 1 : 0,
                         GetBitFlag(cpu->p, EMPTY_FLAG) ? 1 : 0,
@@ -346,6 +352,35 @@ int CALLBACK WinMain(
 
                     nk_label(ctx, DebugText("%2s:%02X", "PC", cpu->pc), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("%s:%d", "CYCLES", cpu->cycles), NK_TEXT_LEFT);
+                }
+                nk_end(ctx);
+
+                if (nk_begin(ctx, "CONTROLLER 0", nk_rect(270, 190, 250, 120), flags))
+                {
+                    local s32 buttons[8];
+
+                    nk_layout_row_static(ctx, 20, 20, 2);
+                    nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);    // Up
+                    nk_checkbox_label(ctx, "", &buttons[1]);
+                    
+                    nk_layout_row_static(ctx, 20, 20, 9);
+                    nk_checkbox_label(ctx, "", &buttons[0]);    // Left
+                    nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+                    nk_checkbox_label(ctx, "", &buttons[2]);    // Right
+                    nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+                    nk_checkbox_label(ctx, "", &buttons[4]);    // Select
+                    nk_checkbox_label(ctx, "", &buttons[5]);    // Start
+                    nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+                    nk_checkbox_label(ctx, "", &buttons[6]);    // B
+                    nk_checkbox_label(ctx, "", &buttons[7]);    // A
+
+                    nk_layout_row_static(ctx, 20, 20, 2);
+                    nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+                    nk_checkbox_label(ctx, "", &buttons[3]);
+
+                    for (s32 i = 0; i < 8; ++i) {
+                        coarseButtons[i] = buttons[i];
+                    }
                 }
                 nk_end(ctx);
 
@@ -408,7 +443,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 170, 250, 620), flags))
+                if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 190, 250, 600), flags))
                 {
                     // POR AHORA PARECE QUE ESTA EJECUTANDOSE BIEN HASTA LA INSTRUCCION: '0x85DC'
                     // ESTA ES EL HANDLER DE 'VBLANK', EN LA QUE SE EJECUTAN LAS INSTRUCCIONES DE LOS SPRITES
