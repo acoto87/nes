@@ -105,8 +105,14 @@ int CALLBACK WinMain(
     f32 dt = 0;
 
     //char *rom = "nestest.nes";
-    char *rom = "palette.nes";
-    //char *rom = "BOMBMAN.nes";
+    //char *rom = "palette.nes";
+
+    // See why BOMBAN.nes has 2 pattern tables but only 1 specified in the header.
+    // Maybe fixit with the ines header editor of Nintendulator.
+    //
+    // Also, rendering of background must have in account this flag BACKGROUND_ADDR_FLAG in ppu ctrl.
+
+    char *rom = "BOMBMAN.nes";
     //char *rom = "Donkey Kong.nes";
     //char *rom = "Mario Bros.nes";
     //char *rom = "Super Mario Bros.nes";
@@ -297,7 +303,7 @@ int CALLBACK WinMain(
                         fps = fpsCount;
                         fpsCount = 0;
                     }
-                    
+
                     nk_label(ctx, DebugText("fps: %d", fps), NK_TEXT_LEFT);
                     ++fpsCount;
 
@@ -362,7 +368,7 @@ int CALLBACK WinMain(
                     nk_layout_row_static(ctx, 20, 20, 2);
                     nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);    // Up
                     nk_checkbox_label(ctx, "", &buttons[1]);
-                    
+
                     nk_layout_row_static(ctx, 20, 20, 9);
                     nk_checkbox_label(ctx, "", &buttons[0]);    // Left
                     nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
@@ -680,15 +686,11 @@ int CALLBACK WinMain(
                                             s32 pixelY = (tileY * 8 + y);
                                             s32 pixel = pixelY * 128 + pixelX;
 
-                                            u32 c = 0xFF000000;
-                                            if (v == 1)
-                                                c |= 0xFF0000;
-                                            else if (v == 2)
-                                                c |= 0x666666;
-                                            else if (v == 3)
-                                                c |= 0xFFFFFF;
+                                            u32 paletteIndex = v;
+                                            u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                            Color color = systemPalette[colorIndex % 64];
 
-                                            patterns[patternTable][pixel] = c;
+                                            patterns[patternTable][pixel] = color.bgra;
                                         }
                                     }
                                 }
@@ -884,6 +886,10 @@ int CALLBACK WinMain(
 
                             nk_layout_row_static(ctx, 8, 8, 32);
 
+                            u16 backgroundBaseAddress = 0;
+                            if (GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG))
+                                backgroundBaseAddress = 0x1000;
+
                             for (s32 tileY = 0; tileY < 30; ++tileY)
                             {
                                 for (s32 tileX = 0; tileX < 32; ++tileX)
@@ -893,7 +899,7 @@ int CALLBACK WinMain(
 
                                     u16 attributeX = tileX / 4;
                                     u16 attributeOffsetX = tileX % 4;
-                                    
+
                                     u16 attributeY = tileY / 4;
                                     u16 attributeOffsetY = tileY % 4;
 
@@ -943,8 +949,8 @@ int CALLBACK WinMain(
 
                                     for (s32 y = 0; y < 8; ++y)
                                     {
-                                        u8 row1 = ReadPPUU8(nes, patternIndex * 16 + y);
-                                        u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + y);
+                                        u8 row1 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + y);
+                                        u8 row2 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + 8 + y);
 
                                         for (s32 x = 0; x < 8; ++x)
                                         {
@@ -955,7 +961,7 @@ int CALLBACK WinMain(
                                             u32 paletteIndex = (highColorBits << 2) | v;
                                             u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
                                             Color color = systemPalette[colorIndex % 64];
-                                            
+
                                             s32 pixel = y * 8 + x;
                                             nametable[tileX][tileY][pixel] = color.bgra;
                                         }
@@ -989,6 +995,10 @@ int CALLBACK WinMain(
 
                             nk_layout_row_static(ctx, 240, 256, 1);
 
+                            u16 backgroundBaseAddress = 0;
+                            if (GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG))
+                                backgroundBaseAddress = 0x1000;
+
                             for (s32 tileY = 0; tileY < 30; ++tileY)
                             {
                                 for (s32 tileX = 0; tileX < 32; ++tileX)
@@ -1048,8 +1058,8 @@ int CALLBACK WinMain(
 
                                     for (s32 y = 0; y < 8; ++y)
                                     {
-                                        u8 row1 = ReadPPUU8(nes, patternIndex * 16 + y);
-                                        u8 row2 = ReadPPUU8(nes, patternIndex * 16 + 8 + y);
+                                        u8 row1 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + y);
+                                        u8 row2 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + 8 + y);
 
                                         for (s32 x = 0; x < 8; ++x)
                                         {

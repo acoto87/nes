@@ -771,7 +771,7 @@ void StepPPU(NES *nes)
 
     if (ppu->scanline == 241)
     {
-        if (ppu->cycle == 1)
+        if (ppu->cycle == 1 && ppu->frameCount > 0)
         {
             SetBitFlag(&ppu->status, VBLANK_FLAG);
 
