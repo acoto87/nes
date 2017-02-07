@@ -97,7 +97,7 @@ inline Color GetColor(u8 a, u8 r, u8 g, u8 b)
 
 inline u8 GetBitFlag(u8 v, u8 flag)
 {
-    return v & (1 << flag);
+    return v & (1 << flag) ? 1 : 0;
 }
 
 inline void SetBitFlag(u8 *v, u8 flag)

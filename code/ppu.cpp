@@ -199,8 +199,10 @@ internal u8 GetSpritePatternColorIndex(NES *nes, u8 index, u8 x, u8 y)
 {
     PPU *ppu = &nes->ppu;
 
-    u8 row1 = ReadPPUU8(nes, index * 16 + y);
-    u8 row2 = ReadPPUU8(nes, index * 16 + 8 + y);
+    u16 spriteBaseAddress = 0x1000 * GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
+
+    u8 row1 = ReadPPUU8(nes, spriteBaseAddress + index * 16 + y);
+    u8 row2 = ReadPPUU8(nes, spriteBaseAddress + index * 16 + 8 + y);
 
     u8 h = ((row2 >> (7 - x)) & 0x1);
     u8 l = ((row1 >> (7 - x)) & 0x1);

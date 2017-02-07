@@ -112,10 +112,10 @@ int CALLBACK WinMain(
     //
     // Also, rendering of background must have in account this flag BACKGROUND_ADDR_FLAG in ppu ctrl.
 
-    char *rom = "BOMBMAN.nes";
+    //char *rom = "BOMBMAN.nes";
     //char *rom = "Donkey Kong.nes";
     //char *rom = "Mario Bros.nes";
-    //char *rom = "Super Mario Bros.nes";
+    char *rom = "Super Mario Bros.nes";
 
     Cartridge cartridge = {};
     if (!LoadNesRom(rom, &cartridge))
@@ -749,6 +749,8 @@ int CALLBACK WinMain(
 
                         nk_layout_row_static(ctx, 8, 8, 16);
 
+                        u16 spriteBaseAddress = 0x1000 * GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
+
                         for (s32 index = 0; index < 64; ++index)
                         {
                             u8 spriteY = ReadU8(&nes->oamMemory, index * 4 + 0);
@@ -760,8 +762,8 @@ int CALLBACK WinMain(
 
                             for (s32 y = 0; y < 8; ++y)
                             {
-                                u8 row1 = ReadPPUU8(nes, spriteI * 16 + y);
-                                u8 row2 = ReadPPUU8(nes, spriteI * 16 + 8 + y);
+                                u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteI * 16 + y);
+                                u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteI * 16 + 8 + y);
 
                                 for (s32 x = 0; x < 8; ++x)
                                 {
@@ -815,8 +817,8 @@ int CALLBACK WinMain(
 
                             for (s32 y = 0; y < 8; ++y)
                             {
-                                u8 row1 = ReadPPUU8(nes, spriteI * 16 + y);
-                                u8 row2 = ReadPPUU8(nes, spriteI * 16 + 8 + y);
+                                u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteI * 16 + y);
+                                u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteI * 16 + 8 + y);
 
                                 for (s32 x = 0; x < 8; ++x)
                                 {
@@ -886,9 +888,7 @@ int CALLBACK WinMain(
 
                             nk_layout_row_static(ctx, 8, 8, 32);
 
-                            u16 backgroundBaseAddress = 0;
-                            if (GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG))
-                                backgroundBaseAddress = 0x1000;
+                            u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
 
                             for (s32 tileY = 0; tileY < 30; ++tileY)
                             {
