@@ -195,22 +195,6 @@ internal u8 GetBackgroundColor(NES *nes)
     return backgroundColorIndex;
 }
 
-internal u8 GetSpritePatternColorIndex(NES *nes, u8 index, u8 x, u8 y)
-{
-    PPU *ppu = &nes->ppu;
-
-    u16 spriteBaseAddress = 0x1000 * GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
-
-    u8 row1 = ReadPPUU8(nes, spriteBaseAddress + index * 16 + y);
-    u8 row2 = ReadPPUU8(nes, spriteBaseAddress + index * 16 + 8 + y);
-
-    u8 h = ((row2 >> (7 - x)) & 0x1);
-    u8 l = ((row1 >> (7 - x)) & 0x1);
-    u8 v = (h << 0x1) | l;
-
-    return v;
-}
-
 internal void RenderPixel(NES *nes)
 {
     PPU *ppu = &nes->ppu;
@@ -237,6 +221,8 @@ internal void RenderPixel(NES *nes)
 
     if (renderSprites)
     {
+        u16 spriteBaseAddress = 0x1000 * GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
+
         for (s32 i = 0; i < ppu->spriteCount; ++i)
         {
             u8 spriteY = ReadU8(&nes->oamMemory2, i * 4 + 0);
@@ -247,9 +233,29 @@ internal void RenderPixel(NES *nes)
             u8 rowOffset = y - spriteY;
             u8 colOffset = x - spriteX;
 
+            // the bit 6 indicate that the sprite should flip horizontally
+            if (spriteAttr & 0x40)
+            {
+                // @TODO: this doesn't care about 8x16 sprites
+                colOffset = 7 - colOffset;
+            }
+
+            // the bit 7 indicate that the sprite should flip horizontally
+            if (spriteAttr & 0x80)
+            {
+                // @TODO: this doesn't care about 8x16 sprites
+                rowOffset = 7 - rowOffset;
+            }
+
             if (colOffset >= 0 && colOffset < 8)
             {
-                sprite = GetSpritePatternColorIndex(nes, spriteIdx, colOffset, rowOffset);
+                u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + rowOffset);
+                u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + 8 + rowOffset);
+
+                u8 h = ((row2 >> (7 - colOffset)) & 0x1);
+                u8 l = ((row1 >> (7 - colOffset)) & 0x1);
+                sprite = (h << 0x1) | l;
+
                 sprite |= (spriteAttr & 0x03) << 2;
                 if (sprite % 4 != 0)
                 {
@@ -282,14 +288,16 @@ internal void RenderPixel(NES *nes)
     }
     else
     {
-        // priority stuff
+        // if the sprite is with index 0, the set the sprite 0 hit flag
         if (idx == 0 && x < 255)
         {
             SetBitFlag(&ppu->status, HIT_FLAG);
         }
 
-        if (((a >> 5) & 1)) 
+        // the bit 5 indicate that the sprite has priority over the background
+        if (a & 0x20)
         {
+            // AND (&) with 0x10 to make sure that the color is picked from palette 2 (0x3F10)
             colorIndex = sprite | 0x10;
         }
         else 
@@ -299,7 +307,53 @@ internal void RenderPixel(NES *nes)
     }
 
     colorIndex = ReadPPUU8(nes, 0x3F00 + colorIndex);
+
+    // if the grayscale bit is set, the AND (&) with 0x30 to set
+    // any color in the palette to the grey ones
+    if (GetBitFlag(ppu->mask, COLOR_FLAG))
+    {
+        colorIndex &= 0x30;
+    }
+
     Color color = systemPalette[colorIndex % 64];
+
+    // check the bits 5, 6, 7 to color emphasis
+    u8 colorMask = (ppu->mask & 0xE0) >> 5;
+    switch (colorMask)
+    {
+        case 0x1:
+            color.g = (u8)(color.g * 0.85);
+            color.b = (u8)(color.b * 0.85);
+            break;
+        case 0x2:
+            color.r = (u8)(color.r * 0.85);
+            color.b = (u8)(color.b * 0.85);
+            break;
+        case 0x3:
+            color.r = (u8)(color.r * 0.85);
+            color.g = (u8)(color.g * 0.85);
+            color.b = (u8)(color.b * 0.70);
+            break;
+        case 0x4:
+            color.r = (u8)(color.r * 0.85);
+            color.g = (u8)(color.g * 0.85);
+            break;
+        case 0x5:
+            color.r = (u8)(color.r * 0.85);
+            color.g = (u8)(color.g * 0.70);
+            color.b = (u8)(color.b * 0.85);
+            break;
+        case 0x6:
+            color.r = (u8)(color.r * 0.70);
+            color.g = (u8)(color.g * 0.85);
+            color.b = (u8)(color.b * 0.85);
+            break;
+        case 0x7:
+            color.r = (u8)(color.r * 0.70);
+            color.g = (u8)(color.g * 0.70);
+            color.b = (u8)(color.b * 0.70);
+            break;
+    }
 
     // draw pixel at 'x', 'y' with color 'color'
     SetPixel(gui, x, y, color);
@@ -851,12 +905,7 @@ void InitPPU(NES *nes)
         u32 chrSizeInBytes = nes->cartridge.chrSizeInBytes;
         u8 *chr = nes->cartridge.chr;
 
-        CopyMemoryBytes(&nes->ppuMemory, PPU_PATTERN_TABLE_0_OFFSET, chr, chrSizeInBytes);
-
-        if (chrBanks < 2)
-        {
-            CopyMemoryBytes(&nes->ppuMemory, PPU_PATTERN_TABLE_1_OFFSET, chr, chrSizeInBytes);
-        }
+        CopyMemoryBytes(&nes->ppuMemory, 0x0000, chr, MAX(chrSizeInBytes, 0x2000));
 
         nes->oamMemory = *CreateMemory(256);
         nes->oamMemory2 = *CreateMemory(32);

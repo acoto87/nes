@@ -38,7 +38,7 @@
 
 // PPU Mask Register
 #define COLOR_FLAG 0                    // Indicates whether the system is in colour.
-                                        // 0 = normal color, 1 = monochrome mode (all palette entries with 0x30, 
+                                        // 0 = normal color, 1 = monochrome mode (all palette entries AND with 0x30, 
                                         // effectively producing a monochrome display; note that colour emphasis STILL works when this is on)
 
 #define BACKGROUND_CLIP_MASK_FLAG 1     // Background Mask

@@ -107,15 +107,13 @@ int CALLBACK WinMain(
     //char *rom = "nestest.nes";
     //char *rom = "palette.nes";
 
-    // See why BOMBAN.nes has 2 pattern tables but only 1 specified in the header.
-    // Maybe fixit with the ines header editor of Nintendulator.
+    // Check why the arrow doesn't get draw in the start screen
+    // Check the code that fills the nametables in position 0x22AA.
     //
-    // Also, rendering of background must have in account this flag BACKGROUND_ADDR_FLAG in ppu ctrl.
-
-    //char *rom = "BOMBMAN.nes";
+    char *rom = "BOMBMAN.nes";
     //char *rom = "Donkey Kong.nes";
     //char *rom = "Mario Bros.nes";
-    char *rom = "Super Mario Bros.nes";
+    //char *rom = "Super Mario Bros.nes";
 
     Cartridge cartridge = {};
     if (!LoadNesRom(rom, &cartridge))

@@ -18,6 +18,9 @@
 #define MEGABYTES(x) ((x) * 1024 * 1024)
 #define GIGABYTES(x) ((x) * 1024 * 1024 * 1024)
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 #define BIT0_MASK 0x01
 #define BIT1_MASK 0x02
 #define BIT2_MASK 0x04
