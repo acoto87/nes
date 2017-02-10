@@ -19,9 +19,9 @@ struct Memory
 
 enum MirrorType
 {
-    MIRROR_HORIZONTAL = 0,
-    MIRROR_VERTICAL = 1,
-    MIRROR_BOTH = 2
+    MIRROR_HORIZONTAL,
+    MIRROR_VERTICAL,
+    MIRROR_FOUR,
 };
 
 struct CartridgeHeader

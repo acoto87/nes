@@ -110,6 +110,11 @@ int CALLBACK WinMain(
     // Check why the arrow doesn't get draw in the start screen
     // Check the code that fills the nametables in position 0x22AA.
     //
+    // Debug until the instruction at: 0xC0B1 is where the jump is made wrong.
+    // The reading from $0072 is loading 00, and it should load 01.
+    // Check the instruction at 0xC39D, it seems is where $0072 is set to 1. 
+    // For some reason is not getting there.
+    // 
     char *rom = "BOMBMAN.nes";
     //char *rom = "Donkey Kong.nes";
     //char *rom = "Mario Bros.nes";
@@ -189,7 +194,8 @@ int CALLBACK WinMain(
              */
              // nes->cpu.pc = 0xC000;
 
-            u32 c = 0;
+            CPU *cpu = &nes->cpu;
+            PPU *ppu = &nes->ppu;
 
             while (running)
             {
@@ -220,54 +226,55 @@ int CALLBACK WinMain(
                 SetButton(nes, 0, BUTTON_A, ctx->input.keyboard.keys[NK_KEY_A].down || coarseButtons[7]);
 
                 // Frame
+                // I'm targeting 60fps, so run the amount of cpu cycles for 0.0167 seconds
+                //
+                // This could be calculated with the frequency of the PPU, and run based on 
+                // the amount of cycles that we want the PPU to run in 0.0167 seconds. For now
+                // i'm using the CPU frequency.
+                s32 cycles = 0.0167 * CPU_FREQ;
 
-                if (!debugging)
+                // If we are stepping in the debugger, run only 1 cycle
+                if (stepping || oneCycleAtTime)
                 {
-                    if (!hitRun)
-                    {
-                        if (nes->cpu.pc == breakpoint)
-                        {
-                            debugging = TRUE;
-                            stepping = FALSE;
-                        }
-                    }
-                    else
-                    {
-                        hitRun = FALSE;
-                    }
+                    cycles = 1;
                 }
 
-                if (!debugging || stepping)
+                while (cycles > 0)
                 {
-                    // I'm targeting 60fps, so run the amount of cpu cycles for 0.0167 seconds
-                    //
-                    // This could be calculated with the frequency of the PPU, and run based on 
-                    // the amount of cycles that we want the PPU to run in 0.0167 seconds. For now
-                    // i'm using the CPU frequency.
-                    s32 cycles = 0.0167 * CPU_FREQ;
-
-                    // If we are stepping in the debugger, run only 1 cycle
-                    if (stepping || oneCycleAtTime)
+                    if (!debugging)
                     {
-                        cycles = 1;
+                        if (!hitRun)
+                        {
+                            if (cpu->pc == breakpoint)
+                            {
+                                debugging = TRUE;
+                                stepping = FALSE;
+                            }
+                        }
+                        else
+                        {
+                            hitRun = FALSE;
+                        }
                     }
 
-                    while (cycles > 0)
+                    if (debugging && !stepping)
                     {
-                        CPUStep step = StepCPU(nes);
-
-                        for (u32 i = 0; i < 3 * step.cycles; i++)
-                        {
-                            StepPPU(nes);
-                        }
-
-                        for (u32 i = 0; i < step.cycles; i++)
-                        {
-                            // StepAPU(nes);
-                        }
-
-                        cycles -= step.cycles;
+                        break;
                     }
+
+                    CPUStep step = StepCPU(nes);
+
+                    for (u32 i = 0; i < 3 * step.cycles; i++)
+                    {
+                        StepPPU(nes);
+                    }
+
+                    for (u32 i = 0; i < step.cycles; i++)
+                    {
+                        // StepAPU(nes);
+                    }
+
+                    cycles -= step.cycles;
 
                     if (debugging)
                     {
@@ -276,9 +283,6 @@ int CALLBACK WinMain(
                 }
 
                 // GUI
-                CPU *cpu = &nes->cpu;
-                PPU *ppu = &nes->ppu;
-
                 nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
 
                 if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 250, 170), flags))
@@ -1108,18 +1112,6 @@ int CALLBACK WinMain(
                 LARGE_INTEGER endCounter = Win32GetWallClock();
                 dt = Win32GetSecondsElapsed(startCounter, endCounter);
                 startCounter = endCounter;
-
-                /*endCounter = Win32GetWallClock();
-                f32 totalDt = Win32GetSecondsElapsed(initialCounter, endCounter);
-                if (totalDt > 1)
-                {
-                    sprintf(debugBuffer, "main cycle counter: %d, ppu total cycles: %d, ppu frame count: %d\n", c, ppu->totalCycles, ppu->frameCount);
-                    OutputDebugString(debugBuffer);
-
-                    initialCounter = endCounter;
-                }*/
-
-                ++c;
             }
         }
     }

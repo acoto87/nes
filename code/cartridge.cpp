@@ -33,7 +33,7 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
 
     if (HAS_FLAG(header.flags6, VRAMLAYOUT_MASK))
     {
-        cartridge->mirrorType = MIRROR_BOTH;
+        cartridge->mirrorType = MIRROR_FOUR;
     }
     else if (HAS_FLAG(header.flags6, VMIRROR_MASK))
     {

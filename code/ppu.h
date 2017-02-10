@@ -335,7 +335,58 @@ inline void WritePPUU8(NES *nes, u16 address, u8 value)
     if (ISBETWEEN(address, 0x2000, 0x3F00))
     {
         address = 0x2000 + ((address - 0x2000) % 0x1000);
-        WriteU8(&nes->ppuMemory, address, value);
+
+        if (nes->cartridge.mirrorType == MIRROR_HORIZONTAL)
+        {
+            if (address < 0x2400)
+            {
+                WriteU8(&nes->ppuMemory, address, value);
+                WriteU8(&nes->ppuMemory, address + 0x400, value);
+            }
+            else if (address < 0x2800)
+            {
+                WriteU8(&nes->ppuMemory, address - 0x400, value);
+                WriteU8(&nes->ppuMemory, address, value);
+            }
+            else if (address < 0x2C00)
+            {
+                WriteU8(&nes->ppuMemory, address, value);
+                WriteU8(&nes->ppuMemory, address + 0x400, value);
+            }
+            else if (address < 0x3000)
+            {
+                WriteU8(&nes->ppuMemory, address - 0x400, value);
+                WriteU8(&nes->ppuMemory, address, value);
+            }
+        }
+        else if (nes->cartridge.mirrorType == MIRROR_VERTICAL)
+        {
+            if (address < 0x2400)
+            {
+                WriteU8(&nes->ppuMemory, address, value);
+                WriteU8(&nes->ppuMemory, address + 0x800, value);
+            }
+            else if (address < 0x2800)
+            {
+                WriteU8(&nes->ppuMemory, address, value);
+                WriteU8(&nes->ppuMemory, address + 0x400, value);
+            }
+            else if (address < 0x2C00)
+            {
+                WriteU8(&nes->ppuMemory, address - 0x400, value);
+                WriteU8(&nes->ppuMemory, address, value);
+            }
+            else if (address < 0x3000)
+            {
+                WriteU8(&nes->ppuMemory, address - 0x400, value);
+                WriteU8(&nes->ppuMemory, address, value);
+            }
+        }
+        else
+        {
+            WriteU8(&nes->ppuMemory, address, value);
+        }
+
         return;
     }
 
