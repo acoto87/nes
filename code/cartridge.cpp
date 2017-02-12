@@ -2,7 +2,7 @@
 
 b32 LoadNesRom(char *filePath, Cartridge *cartridge)
 {
-    FILE *file = fopen( filePath, "rb");
+    FILE *file = fopen(filePath, "rb");
     if (!file)
     {
         return false;
@@ -47,7 +47,7 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
     cartridge->hasBatteryPack = HAS_FLAG(header.flags6, BATTERYPACKED_MASK);
     cartridge->prgRAMSize = header.prgRAMSize;
     cartridge->memoryMapper = (header.flags6 & U8HIGH_MASK) | (header.flags7 & U8LOW_MASK);
-    
+
     cartridge->pgrBanks = header.prgROMSize;
     cartridge->pgrSizeInBytes = cartridge->pgrBanks * CPU_PGR_BANK_SIZE;
     cartridge->pgr = (u8*)Allocate(cartridge->pgrSizeInBytes);

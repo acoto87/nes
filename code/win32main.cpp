@@ -104,6 +104,44 @@ int CALLBACK WinMain(
 
     f32 dt = 0;
 
+    char appRootPath[256];
+    GetCurrentDirectory(256, appRootPath);
+
+    // CPU TESTS
+    //
+    //char *rom = "1.Branch_Basics.nes";
+    //char *rom = "2.Backward_Branch.nes";
+    //char *rom = "3.Forward_Branch.nes";
+    //char *rom = "cpu_dummy_reads.nes";
+    //char *rom = "cpu_dummy_writes_oam.nes";
+    //char *rom = "cpu_dummy_writes_ppumem.nes";
+    //char *rom = "test_cpu_exec_space_apu.nes";
+    //char *rom = "test_cpu_exec_space_ppuio.nes";
+    //char *rom = "coredump-v1.0.nes";
+    //char *rom = "ram_after_reset.nes";
+    //char *rom = "ram_retain.nes";
+    //char *rom = "registers.nes";
+    //char *rom = "test_cpu_flag_concurrency.nes";
+    //char *rom = "official.nes";
+    //char *rom = "cpu.nes";
+
+    // PPU TESTS
+    //
+    //char *rom = "palette_ram.nes";
+    //char *rom = "power_up_palette.nes";
+    //char *rom = "sprite_ram.nes";
+    char *rom = "vbl_clear_time.nes";
+    //char *rom = "vram_access.nes";
+
+    // these use mapper 0x10
+    //char *rom = "cpu_interrupts.nes"; 
+    //char *rom = "all_instrs.nes";
+    //char *rom = "instr_misc.nes";
+    //char *rom = "instr_timing.nes";
+    //char *rom = "official_only.nes";
+
+    // GAMES
+    // 
     //char *rom = "nestest.nes";
     //char *rom = "palette.nes";
 
@@ -115,10 +153,21 @@ int CALLBACK WinMain(
     // Check the instruction at 0xC39D, it seems is where $0072 is set to 1. 
     // For some reason is not getting there.
     // 
-    char *rom = "BOMBMAN.nes";
+    // go from here: 0xC359 then 0xC18D RTI
+    // 
+    // Update:
+    // the problem is that when the code is looping waiting for VBLANK
+    // it should go to the NMI handler with the $2002 value = 90 in the register A
+    // but due timing, this not happen, and the CPU go to the NMI handler without value from $2002.
+    // This occurs when the code reach $C359, it execute a loop to wait for VBLANK. 
+    // The NMI handler is at $C012, and it asume that the value of $2002 is already in register A.
+    //
+    //char *rom = "BOMBMAN.nes";
     //char *rom = "Donkey Kong.nes";
     //char *rom = "Mario Bros.nes";
     //char *rom = "Super Mario Bros.nes";
+
+    //rom = strcat(appRootPath, rom);
 
     Cartridge cartridge = {};
     if (!LoadNesRom(rom, &cartridge))
@@ -189,7 +238,7 @@ int CALLBACK WinMain(
              * to 0c000h) will perform all tests in sequence and shove the results of
              * the tests into locations 00h.
              *
-             * @Note: All oficial opcodes from nestest passed!
+             * @Note: All oficial opcodes from nestest.nes passed!
              *                                                  -acoto87 January 30, 2017
              */
              // nes->cpu.pc = 0xC000;
@@ -269,10 +318,10 @@ int CALLBACK WinMain(
                         StepPPU(nes);
                     }
 
-                    for (u32 i = 0; i < step.cycles; i++)
+                    /*for (u32 i = 0; i < step.cycles; i++)
                     {
-                        // StepAPU(nes);
-                    }
+                        StepAPU(nes);
+                    }*/
 
                     cycles -= step.cycles;
 

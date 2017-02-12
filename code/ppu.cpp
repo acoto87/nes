@@ -901,11 +901,12 @@ void InitPPU(NES *nes)
     {
         nes->ppuMemory = *CreateMemory(PPU_RAM_SIZE);
 
-        u32 chrBanks = nes->cartridge.chrBanks;
         u32 chrSizeInBytes = nes->cartridge.chrSizeInBytes;
-        u8 *chr = nes->cartridge.chr;
-
-        CopyMemoryBytes(&nes->ppuMemory, 0x0000, chr, MAX(chrSizeInBytes, 0x2000));
+        if (chrSizeInBytes > 0)
+        {
+            u8 *chr = nes->cartridge.chr;
+            CopyMemoryBytes(&nes->ppuMemory, 0x0000, chr, MAX(chrSizeInBytes, 0x2000));
+        }
 
         nes->oamMemory = *CreateMemory(256);
         nes->oamMemory2 = *CreateMemory(32);

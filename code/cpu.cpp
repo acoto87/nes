@@ -1193,7 +1193,7 @@ CPUStep StepCPU(NES *nes)
         return step;
     }
 
-    // if there is an interrup, the cpu must handle it first before any instructions
+    // if there is an interrupt, the cpu must handle it first before any instructions
     if (cpu->interrupt)
     {
         switch (cpu->interrupt)
