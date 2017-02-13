@@ -837,7 +837,7 @@ void StepPPU(NES *nes)
             }
         }
     }
-    else if (ppu->scanline == 260)
+    else if (ppu->scanline == 261)
     {
         if (ppu->cycle == 1)
         {

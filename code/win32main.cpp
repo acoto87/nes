@@ -109,7 +109,7 @@ int CALLBACK WinMain(
 
     // CPU TESTS
     //
-    //char *rom = "1.Branch_Basics.nes";
+    char *rom = "1.Branch_Basics.nes";
     //char *rom = "2.Backward_Branch.nes";
     //char *rom = "3.Forward_Branch.nes";
     //char *rom = "cpu_dummy_reads.nes";
@@ -130,7 +130,7 @@ int CALLBACK WinMain(
     //char *rom = "palette_ram.nes";
     //char *rom = "power_up_palette.nes";
     //char *rom = "sprite_ram.nes";
-    char *rom = "vbl_clear_time.nes";
+    //char *rom = "vbl_clear_time.nes";
     //char *rom = "vram_access.nes";
 
     // these use mapper 0x10
@@ -313,12 +313,12 @@ int CALLBACK WinMain(
 
                     CPUStep step = StepCPU(nes);
 
-                    for (u32 i = 0; i < 3 * step.cycles; i++)
+                    for (s32 i = 0; i < 3 * step.cycles; i++)
                     {
                         StepPPU(nes);
                     }
 
-                    /*for (u32 i = 0; i < step.cycles; i++)
+                    /*for (s32 i = 0; i < step.cycles; i++)
                     {
                         StepAPU(nes);
                     }*/
@@ -334,7 +334,7 @@ int CALLBACK WinMain(
                 // GUI
                 nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
 
-                if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 250, 170), flags))
+                if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 290, 170), flags))
                 {
                     local s32 fps = 0;
                     local s32 fpsCount = 0;
@@ -387,7 +387,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "CPU INFO", nk_rect(270, 10, 250, 170), flags))
+                if (nk_begin(ctx, "CPU INFO", nk_rect(310, 10, 250, 170), flags))
                 {
                     nk_layout_row_dynamic(ctx, 20, 2);
 
@@ -412,7 +412,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "CONTROLLER 0", nk_rect(270, 190, 250, 120), flags))
+                if (nk_begin(ctx, "CONTROLLER 0", nk_rect(310, 190, 250, 120), flags))
                 {
                     local s32 buttons[8];
 
@@ -441,7 +441,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "PPU INFO", nk_rect(530, 10, 350, 300), flags))
+                if (nk_begin(ctx, "PPU INFO", nk_rect(570, 10, 310, 300), flags))
                 {
                     nk_layout_row_dynamic(ctx, 20, 2);
 
@@ -500,14 +500,8 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 190, 250, 600), flags))
+                if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 190, 290, 600), flags))
                 {
-                    // POR AHORA PARECE QUE ESTA EJECUTANDOSE BIEN HASTA LA INSTRUCCION: '0x85DC'
-                    // ESTA ES EL HANDLER DE 'VBLANK', EN LA QUE SE EJECUTAN LAS INSTRUCCIONES DE LOS SPRITES
-                    // LUEGO, REVISAR BIEN LA FUNCIONALIDAD DE SPRITES, OAMADDRESS, OAMDATA Y DEMAS.
-                    // HASTA ESTE PUNTO TODO COINCIDE CON NINTENDULATOR, DESPUES DE ESCRIBIR EN '4014' la memoria de OAM no 
-                    // es igual a la de Nintendulator, chequear esto. Tampoco es igual despues de unas cuantas instrucciones VRAM address.
-
                     // REVISAR TAMBIEN ESTA SECCION DEL CODIGO PARA CUANDO SE PONGA UNA DIRECCION EN LA SECCION DE INSTRUCCTIONS
                     // SE VAYA A LA INSTRUCCION MAS CERCANA, Y NO COJA LA DIRECCION LITERAL, YA QUE PUEDE QUE EN ESA DIRECCION NO
                     // HAYA NINGUNA INSTRUCCION O SEA UN PARAMETRO
@@ -581,13 +575,131 @@ int CALLBACK WinMain(
                             }
                         }
 
-                        if (col < 15)
+                        memset(debugBuffer + col, ' ', 18 - col);
+                        col = 18;
+
+                        col += sprintf(debugBuffer + col, "%s", GetInstructionStr(instruction->instruction));
+
+
+                        switch (instruction->addressingMode)
                         {
-                            memset(debugBuffer + col, ' ', 15 - col);
-                            col = 15;
+                            // Immediate #$00
+                            case AM_IMM:
+                            {
+                                u8 data = ReadU8(&nes->cpuMemory, pc + 1);
+                                col += sprintf(debugBuffer + col, " #$%02X", data);
+                                break;
+                            }
+
+                            // Absolute $0000
+                            case AM_ABS:
+                            {
+                                u8 lo = ReadU8(&nes->cpuMemory, pc + 1);
+                                u8 hi = ReadU8(&nes->cpuMemory, pc + 2);
+                                u16 address = (hi << 8) | lo;
+
+                                col += sprintf(debugBuffer + col, " $%04X", address);
+                                break;
+                            }
+
+                            // Absolute Indexed $0000, X
+                            case AM_ABX:
+                            {
+                                u8 lo = ReadU8(&nes->cpuMemory, pc + 1);
+                                u8 hi = ReadU8(&nes->cpuMemory, pc + 2);
+                                u16 address = (hi << 8) | lo;
+
+                                col += sprintf(debugBuffer + col, " $%04X, X", address);
+                                break;
+                            }
+
+                            // Absolute Indexed $0000, Y
+                            case AM_ABY:
+                            {
+                                u8 lo = ReadU8(&nes->cpuMemory, pc + 1);
+                                u8 hi = ReadU8(&nes->cpuMemory, pc + 2);
+                                u16 address = (hi << 8) | lo;
+
+                                col += sprintf(debugBuffer + col, " $%04X, Y", address);
+                                break;
+                            }
+
+                            // Zero-Page-Absolute $00
+                            case AM_ZPA:
+                            {
+                                u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                                col += sprintf(debugBuffer + col, " $%02X", address);
+                                break;
+                            }
+
+                            // Zero-Page-Indexed $00, X
+                            case AM_ZPX:
+                            {
+                                u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                                col += sprintf(debugBuffer + col, " $%02X, X", address);
+                                break;
+                            }
+
+                            // Zero-Page-Indexed $00, Y
+                            case AM_ZPY:
+                            {
+                                u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                                col += sprintf(debugBuffer + col, " $%02X, Y", address);
+                                break;
+                            }
+
+                            // Indirect ($0000)
+                            case AM_IND:
+                            {
+                                u8 lo = ReadU8(&nes->cpuMemory, pc + 1);
+                                u8 hi = ReadU8(&nes->cpuMemory, pc + 2);
+                                u16 address = (hi << 8) | lo;
+
+                                col += sprintf(debugBuffer + col, " ($%04X)", address);
+                                break;
+                            }
+                            
+                            // Pre-Indexed-Indirect ($00, X)
+                            case AM_IZX:
+                            {
+                                u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                                col += sprintf(debugBuffer + col, " ($%02X, X)", address);
+                                break;
+                            }
+                            
+                            // Post-Indexed-Indirect ($00), Y
+                            case AM_IZY:
+                            {
+                                u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                                col += sprintf(debugBuffer + col, " ($%02X), Y", address);
+                                break;
+                            }
+
+                            // Implied
+                            case AM_IMP:
+                                break;
+                            
+                            // Accumulator
+                            case AM_ACC:
+                                break;
+
+                            // Relative $0000
+                            case AM_REL:
+                            {
+                                s8 address = (s8)ReadU8(&nes->cpuMemory, pc + 1);
+                                u16 jumpAddress = pc + instruction->bytesCount + address;
+                                col += sprintf(debugBuffer + col, " $%04X", jumpAddress);
+                                break;
+                            }
+
+                            default:
+                                break;
                         }
 
-                        col += sprintf(debugBuffer + col, "%10s", GetInstructionStr(instruction->instruction));
+                        if (instruction->instruction == CPU_RTS)
+                        {
+                            col += sprintf(debugBuffer + col, " -------------");
+                        }
 
                         nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
 
@@ -596,7 +708,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "MEMORY", nk_rect(270, 320, 425, 470), flags))
+                if (nk_begin(ctx, "MEMORY", nk_rect(310, 320, 425, 470), flags))
                 {
                     enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
                     local s32 option = CPU_MEM;
@@ -685,7 +797,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "VIDEO", nk_rect(705, 320, 485, 470), flags))
+                if (nk_begin(ctx, "VIDEO", nk_rect(745, 320, 445, 470), flags))
                 {
                     enum options { PATTERNS_PALETTES_OAM, NAMETABLES };
                     static s32 option = PATTERNS_PALETTES_OAM;
