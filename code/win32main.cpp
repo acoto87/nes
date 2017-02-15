@@ -104,83 +104,6 @@ int CALLBACK WinMain(
 
     f32 dt = 0;
 
-    char appRootPath[256];
-    GetCurrentDirectory(256, appRootPath);
-
-    // CPU TESTS
-    //
-    char *rom = "1.Branch_Basics.nes";
-    //char *rom = "2.Backward_Branch.nes";
-    //char *rom = "3.Forward_Branch.nes";
-    //char *rom = "cpu_dummy_reads.nes";
-    //char *rom = "cpu_dummy_writes_oam.nes";
-    //char *rom = "cpu_dummy_writes_ppumem.nes";
-    //char *rom = "test_cpu_exec_space_apu.nes";
-    //char *rom = "test_cpu_exec_space_ppuio.nes";
-    //char *rom = "coredump-v1.0.nes";
-    //char *rom = "ram_after_reset.nes";
-    //char *rom = "ram_retain.nes";
-    //char *rom = "registers.nes";
-    //char *rom = "test_cpu_flag_concurrency.nes";
-    //char *rom = "official.nes";
-    //char *rom = "cpu.nes";
-
-    // PPU TESTS
-    //
-    //char *rom = "palette_ram.nes";
-    //char *rom = "power_up_palette.nes";
-    //char *rom = "sprite_ram.nes";
-    //char *rom = "vbl_clear_time.nes";
-    //char *rom = "vram_access.nes";
-
-    // these use mapper 0x10
-    //char *rom = "cpu_interrupts.nes"; 
-    //char *rom = "all_instrs.nes";
-    //char *rom = "instr_misc.nes";
-    //char *rom = "instr_timing.nes";
-    //char *rom = "official_only.nes";
-
-    // GAMES
-    // 
-    //char *rom = "nestest.nes";
-    //char *rom = "palette.nes";
-
-    // Check why the arrow doesn't get draw in the start screen
-    // Check the code that fills the nametables in position 0x22AA.
-    //
-    // Debug until the instruction at: 0xC0B1 is where the jump is made wrong.
-    // The reading from $0072 is loading 00, and it should load 01.
-    // Check the instruction at 0xC39D, it seems is where $0072 is set to 1. 
-    // For some reason is not getting there.
-    // 
-    // go from here: 0xC359 then 0xC18D RTI
-    // 
-    // Update:
-    // the problem is that when the code is looping waiting for VBLANK
-    // it should go to the NMI handler with the $2002 value = 90 in the register A
-    // but due timing, this not happen, and the CPU go to the NMI handler without value from $2002.
-    // This occurs when the code reach $C359, it execute a loop to wait for VBLANK. 
-    // The NMI handler is at $C012, and it asume that the value of $2002 is already in register A.
-    //
-    //char *rom = "BOMBMAN.nes";
-    //char *rom = "Donkey Kong.nes";
-    //char *rom = "Mario Bros.nes";
-    //char *rom = "Super Mario Bros.nes";
-
-    //rom = strcat(appRootPath, rom);
-
-    Cartridge cartridge = {};
-    if (!LoadNesRom(rom, &cartridge))
-    {
-        return 0;
-    }
-
-    nes = CreateNES(cartridge);
-    if (!nes)
-    {
-        return 0;
-    }
-
     WNDCLASS windowClass = {};
     windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     windowClass.lpfnWndProc = Win32MainWindowCallback;
@@ -189,6 +112,8 @@ int CALLBACK WinMain(
     windowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     windowClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     windowClass.lpszClassName = "NESWindowClass";
+
+    char windowTitle[256] = "Nes emulator";
 
     if (RegisterClassA(&windowClass))
     {
@@ -205,7 +130,7 @@ int CALLBACK WinMain(
         HWND window = CreateWindowEx(
             NULL,
             windowClass.lpszClassName,
-            "Nes emulator",
+            windowTitle,
             windowStyle,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
@@ -243,9 +168,6 @@ int CALLBACK WinMain(
              */
              // nes->cpu.pc = 0xC000;
 
-            CPU *cpu = &nes->cpu;
-            PPU *ppu = &nes->ppu;
-
             while (running)
             {
                 MSG msg;
@@ -265,69 +187,75 @@ int CALLBACK WinMain(
 
                 nk_input_end(ctx);
 
-                SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down || coarseButtons[1]);
-                SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down || coarseButtons[3]);
-                SetButton(nes, 0, BUTTON_LEFT, ctx->input.keyboard.keys[NK_KEY_LEFT].down || coarseButtons[0]);
-                SetButton(nes, 0, BUTTON_RIGHT, ctx->input.keyboard.keys[NK_KEY_RIGHT].down || coarseButtons[2]);
-                SetButton(nes, 0, BUTTON_SELECT, ctx->input.keyboard.keys[NK_KEY_SPACE].down || coarseButtons[4]);
-                SetButton(nes, 0, BUTTON_START, ctx->input.keyboard.keys[NK_KEY_ENTER].down || coarseButtons[5]);
-                SetButton(nes, 0, BUTTON_B, ctx->input.keyboard.keys[NK_KEY_S].down || coarseButtons[6]);
-                SetButton(nes, 0, BUTTON_A, ctx->input.keyboard.keys[NK_KEY_A].down || coarseButtons[7]);
-
-                // Frame
-                // I'm targeting 60fps, so run the amount of cpu cycles for 0.0167 seconds
-                //
-                // This could be calculated with the frequency of the PPU, and run based on 
-                // the amount of cycles that we want the PPU to run in 0.0167 seconds. For now
-                // i'm using the CPU frequency.
-                s32 cycles = 0.0167 * CPU_FREQ;
-
-                // If we are stepping in the debugger, run only 1 cycle
-                if (stepping || oneCycleAtTime)
+                if (nes)
                 {
-                    cycles = 1;
-                }
+                    CPU *cpu = &nes->cpu;
+                    PPU *ppu = &nes->ppu;
 
-                while (cycles > 0)
-                {
-                    if (!debugging)
+                    SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down || coarseButtons[1]);
+                    SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down || coarseButtons[3]);
+                    SetButton(nes, 0, BUTTON_LEFT, ctx->input.keyboard.keys[NK_KEY_LEFT].down || coarseButtons[0]);
+                    SetButton(nes, 0, BUTTON_RIGHT, ctx->input.keyboard.keys[NK_KEY_RIGHT].down || coarseButtons[2]);
+                    SetButton(nes, 0, BUTTON_SELECT, ctx->input.keyboard.keys[NK_KEY_SPACE].down || coarseButtons[4]);
+                    SetButton(nes, 0, BUTTON_START, ctx->input.keyboard.keys[NK_KEY_ENTER].down || coarseButtons[5]);
+                    SetButton(nes, 0, BUTTON_B, ctx->input.keyboard.keys[NK_KEY_S].down || coarseButtons[6]);
+                    SetButton(nes, 0, BUTTON_A, ctx->input.keyboard.keys[NK_KEY_A].down || coarseButtons[7]);
+
+                    // Frame
+                    // I'm targeting 60fps, so run the amount of cpu cycles for 0.0167 seconds
+                    //
+                    // This could be calculated with the frequency of the PPU, and run based on 
+                    // the amount of cycles that we want the PPU to run in 0.0167 seconds. For now
+                    // i'm using the CPU frequency.
+                    s32 cycles = 0.0167 * CPU_FREQ;
+
+                    // If we are stepping in the debugger, run only 1 cycle
+                    if (stepping || oneCycleAtTime)
                     {
-                        if (!hitRun)
+                        cycles = 1;
+                    }
+
+                    while (cycles > 0)
+                    {
+                        if (!debugging)
                         {
-                            if (cpu->pc == breakpoint)
+                            if (!hitRun)
                             {
-                                debugging = TRUE;
-                                stepping = FALSE;
+                                if (cpu->pc == breakpoint)
+                                {
+                                    debugging = TRUE;
+                                    stepping = FALSE;
+                                }
+                            }
+                            else
+                            {
+                                hitRun = FALSE;
                             }
                         }
-                        else
+
+                        if (debugging && !stepping)
                         {
-                            hitRun = FALSE;
+                            break;
                         }
-                    }
 
-                    if (debugging && !stepping)
-                    {
-                        break;
-                    }
+                        CPUStep step = StepCPU(nes);
 
-                    CPUStep step = StepCPU(nes);
+                        for (s32 i = 0; i < 3 * step.cycles; i++)
+                        {
+                            StepPPU(nes);
+                        }
 
-                    for (s32 i = 0; i < 3 * step.cycles; i++)
-                    {
-                        StepPPU(nes);
-                    }
-
-                    /*for (s32 i = 0; i < step.cycles; i++)
-                    {
+                        /*for (s32 i = 0; i < step.cycles; i++)
+                        {
                         StepAPU(nes);
-                    }*/
+                        }*/
 
-                    cycles -= step.cycles;
+                        cycles -= step.cycles;
 
-                    if (debugging)
-                    {
-                        stepping = FALSE;
+                        if (debugging)
+                        {
+                            stepping = FALSE;
+                        }
                     }
                 }
 
@@ -384,11 +312,66 @@ int CALLBACK WinMain(
                         debugging = TRUE;
                         stepping = TRUE;
                     }
+
+                    if (nk_button_label(ctx, "Open"))
+                    {
+                        debugging = TRUE;
+                        stepping = FALSE;
+
+                        OPENFILENAME openFileName;
+                        openFileName.lStructSize = sizeof(OPENFILENAME);
+                        openFileName.hwndOwner = window;
+                        openFileName.hInstance = NULL;
+                        openFileName.lpstrFilter = "Nes files (*.nes)\0*.nes\0\0";
+                        openFileName.lpstrCustomFilter = NULL;
+                        openFileName.nMaxCustFilter = 0;
+                        openFileName.nFilterIndex = 1;
+                        openFileName.lpstrFile = (char*)Allocate(256);
+                        openFileName.nMaxFile = 256;
+                        openFileName.lpstrFileTitle = NULL;
+                        openFileName.nMaxFileTitle = 0;
+                        openFileName.lpstrInitialDir = NULL;
+                        openFileName.lpstrTitle = NULL;
+                        openFileName.Flags = 0;
+                        openFileName.nFileOffset = 0;
+                        openFileName.nFileExtension = 0;
+                        openFileName.lpstrDefExt = "nes";
+                        openFileName.lCustData = NULL;
+                        openFileName.lpfnHook = NULL;
+                        openFileName.lpTemplateName = NULL;
+
+                        if (GetOpenFileName(&openFileName))
+                        {
+                            char *rom = openFileName.lpstrFile;
+
+                            Cartridge cartridge = {};
+                            if (LoadNesRom(rom, &cartridge))
+                            {
+                                if (nes)
+                                {
+                                    Destroy(nes);
+                                }
+
+                                nes = CreateNES(cartridge);
+
+                                memset(windowTitle, 0, 256);
+                                strcpy(windowTitle, "Nes emulator: ");
+                                strcat(windowTitle + 13, rom);
+                                SetWindowText(window, windowTitle);
+                            }
+                            else
+                            {
+                                MessageBox(window, "The file couldn't be loaded!", "Error", MB_OK | MB_ICONERROR | MB_APPLMODAL);
+                            }
+                        }
+                    }
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "CPU INFO", nk_rect(310, 10, 250, 170), flags))
+                if (nk_begin(ctx, "CPU INFO", nk_rect(310, 10, 250, 170), flags) && nes)
                 {
+                    CPU *cpu = &nes->cpu;
+
                     nk_layout_row_dynamic(ctx, 20, 2);
 
                     nk_label(ctx, DebugText("%s:%02X", "A", cpu->a), NK_TEXT_LEFT);
@@ -412,7 +395,7 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "CONTROLLER 0", nk_rect(310, 190, 250, 120), flags))
+                if (nk_begin(ctx, "CONTROLLER 0", nk_rect(310, 190, 250, 120), flags) && nes)
                 {
                     local s32 buttons[8];
 
@@ -441,8 +424,10 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "PPU INFO", nk_rect(570, 10, 310, 300), flags))
+                if (nk_begin(ctx, "PPU INFO", nk_rect(570, 10, 310, 300), flags) && nes)
                 {
+                    PPU *ppu = &nes->ppu;
+
                     nk_layout_row_dynamic(ctx, 20, 2);
 
                     nk_label(ctx, DebugText("CTRL (0x2000):%02X", ppu->control), NK_TEXT_LEFT);
@@ -466,8 +451,10 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "SCREEN", nk_rect(890, 10, 300, 300), flags))
+                if (nk_begin(ctx, "SCREEN", nk_rect(890, 10, 300, 300), flags) && nes)
                 {
+                    GUI *gui = &nes->gui;
+
                     nk_layout_row_static(ctx, 240, 256, 1);
 
                     struct nk_command_buffer *canvas;
@@ -484,8 +471,6 @@ int CALLBACK WinMain(
                             // update_your_widget_by_user_input(...);
                         }
 
-                        GUI *gui = &nes->gui;
-
                         struct nk_image image;
                         image.w = gui->width;
                         image.h = gui->height;
@@ -500,8 +485,11 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 190, 290, 600), flags))
+                if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 190, 290, 600), flags) && nes)
                 {
+                    CPU *cpu = &nes->cpu;
+                    PPU *ppu = &nes->ppu;
+
                     // REVISAR TAMBIEN ESTA SECCION DEL CODIGO PARA CUANDO SE PONGA UNA DIRECCION EN LA SECCION DE INSTRUCCTIONS
                     // SE VAYA A LA INSTRUCCION MAS CERCANA, Y NO COJA LA DIRECCION LITERAL, YA QUE PUEDE QUE EN ESA DIRECCION NO
                     // HAYA NINGUNA INSTRUCCION O SEA UN PARAMETRO
@@ -658,7 +646,7 @@ int CALLBACK WinMain(
                                 col += sprintf(debugBuffer + col, " ($%04X)", address);
                                 break;
                             }
-                            
+
                             // Pre-Indexed-Indirect ($00, X)
                             case AM_IZX:
                             {
@@ -666,7 +654,7 @@ int CALLBACK WinMain(
                                 col += sprintf(debugBuffer + col, " ($%02X, X)", address);
                                 break;
                             }
-                            
+
                             // Post-Indexed-Indirect ($00), Y
                             case AM_IZY:
                             {
@@ -678,12 +666,12 @@ int CALLBACK WinMain(
                             // Implied
                             case AM_IMP:
                                 break;
-                            
-                            // Accumulator
+
+                                // Accumulator
                             case AM_ACC:
                                 break;
 
-                            // Relative $0000
+                                // Relative $0000
                             case AM_REL:
                             {
                                 s8 address = (s8)ReadU8(&nes->cpuMemory, pc + 1);
@@ -708,8 +696,11 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "MEMORY", nk_rect(310, 320, 425, 470), flags))
+                if (nk_begin(ctx, "MEMORY", nk_rect(310, 320, 425, 470), flags) && nes)
                 {
+                    CPU *cpu = &nes->cpu;
+                    PPU *ppu = &nes->ppu;
+
                     enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
                     local s32 option = CPU_MEM;
 
@@ -797,8 +788,11 @@ int CALLBACK WinMain(
                 }
                 nk_end(ctx);
 
-                if (nk_begin(ctx, "VIDEO", nk_rect(745, 320, 445, 470), flags))
+                if (nk_begin(ctx, "VIDEO", nk_rect(745, 320, 445, 470), flags) && nes)
                 {
+                    CPU *cpu = &nes->cpu;
+                    PPU *ppu = &nes->ppu;
+
                     enum options { PATTERNS_PALETTES_OAM, NAMETABLES };
                     static s32 option = PATTERNS_PALETTES_OAM;
 

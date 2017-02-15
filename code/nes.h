@@ -6,5 +6,6 @@
 
 NES* CreateNES(Cartridge cartridge);
 void ResetNES(NES *nes);
+void Destroy(NES *nes);
 
 #endif

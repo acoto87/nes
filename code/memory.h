@@ -4,15 +4,19 @@
 
 #include "types.h"
 
-inline Memory* CreateMemory(u32 length)
+inline void CreateMemory(Memory *memory, u32 length)
 {
-    Memory *memory = (Memory*)Allocate(sizeof(Memory));
-
-    memory->created = true;
-    memory->length = length;
     memory->bytes = (u8*)Allocate(length);
+    memory->length = length;
+    memory->created = true;
+}
 
-    return memory;
+inline void DestroyMemory(Memory *memory)
+{
+    if (memory->bytes)
+    {
+        Free(memory->bytes);
+    }
 }
 
 inline void ZeroMemoryBytes(Memory *memory)

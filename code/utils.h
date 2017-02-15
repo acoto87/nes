@@ -11,6 +11,7 @@
 #include <string.h>
 #include <windows.h>
 #include <varargs.h>
+#include <commdlg.h>
 
 #define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
 

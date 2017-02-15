@@ -16,7 +16,7 @@
 #define CPU_IRQ_ADDRESS 0xFFFE 
 #define CPU_NMI_ADDRESS 0xFFFA 
 
-#define CPU_STATUS_INITIAL_VALUE 0x24 // or 0x34
+#define CPU_STATUS_INITIAL_VALUE 0x34 // or 0x24
 #define CPU_STACK_PTR_INITIAL_VALUE 0xFF
 
 #define CPU_PGR_BANK_0_OFFSET 0x8000
@@ -101,7 +101,7 @@ global CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT] =
     { 0x0E, CPU_ASL, AM_ABS, CPU_NR, 3, 6, 0 },
     { 0x0F, CPU_SLO, AM_ABS, CPU_NR, 3, 6, 0 },
     { 0x10, CPU_BPL, AM_REL, CPU_NR, 2, 2, 1 },
-    { 0x11, CPU_ORA, AM_IZY, CPU_YR, 2, 5, 0 },
+    { 0x11, CPU_ORA, AM_IZY, CPU_YR, 2, 5, 1 },
     { 0x12, CPU_KIL, AM_NON, CPU_NR, 0, 0, 0 },
     { 0x13, CPU_SLO, AM_IZY, CPU_YR, 2, 8, 0 },
     { 0x14, CPU_NOP, AM_ZPX, CPU_XR, 2, 4, 0 },
@@ -746,6 +746,7 @@ inline u16 PopStackU16(NES *nes)
         ClearBitFlag(&cpu->p, NEGATIVE_FLAG);
 
 void ResetCPU(NES *nes);
+void PowerCPU(NES *nes);
 void InitCPU(NES *nes);
 CPUStep StepCPU(NES *nes);
 

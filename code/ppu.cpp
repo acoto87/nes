@@ -891,15 +891,31 @@ void ResetPPU(NES *nes)
     ppu->data = 0;
     ppu->oamAddress = 0;
     ppu->oamData = 0;
+}
 
-    //ResetSpriteColorsForScanline(ppu);
+void PowerPPU(NES *nes)
+{
+    PPU *ppu = &nes->ppu;
+
+    ppu->cycle = 0;
+    ppu->scanline = 241;
+    ppu->totalCycles = 0;
+    ppu->frameCount = 0;
+
+    ppu->control = 0;
+    ppu->mask = 0;
+    ppu->status = 0;
+    ppu->address = 0;
+    ppu->data = 0;
+    ppu->oamAddress = 0;
+    ppu->oamData = 0;
 }
 
 void InitPPU(NES *nes)
 {
     if (!nes->ppuMemory.created)
     {
-        nes->ppuMemory = *CreateMemory(PPU_RAM_SIZE);
+        CreateMemory(&nes->ppuMemory, PPU_RAM_SIZE);
 
         u32 chrSizeInBytes = nes->cartridge.chrSizeInBytes;
         if (chrSizeInBytes > 0)
@@ -908,9 +924,9 @@ void InitPPU(NES *nes)
             CopyMemoryBytes(&nes->ppuMemory, 0x0000, chr, MAX(chrSizeInBytes, 0x2000));
         }
 
-        nes->oamMemory = *CreateMemory(256);
-        nes->oamMemory2 = *CreateMemory(32);
+        CreateMemory(&nes->oamMemory, 256);
+        CreateMemory(&nes->oamMemory2, 32);
     }
 
-    ResetPPU(nes);
+    PowerPPU(nes);
 }

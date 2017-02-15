@@ -69,10 +69,35 @@ void ResetNES(NES *nes)
     ResetGUI(nes);
     ResetController(nes, 0);
     ResetController(nes, 1);
+}
 
-    ZeroMemoryBytes(&nes->cpuMemory);
-    ZeroMemoryBytes(&nes->ppuMemory);
-    ZeroMemoryBytes(&nes->oamMemory);
-    ZeroMemoryBytes(&nes->oamMemory2);
+void Destroy(NES *nes)
+{
+    DestroyMemory(&nes->cpuMemory);
+    DestroyMemory(&nes->ppuMemory);
+    DestroyMemory(&nes->oamMemory);
+    DestroyMemory(&nes->oamMemory2);
+
+    if (nes->cartridge.chr)
+    {
+        Free(nes->cartridge.chr);
+    }
+
+    if (nes->cartridge.pgr)
+    {
+        Free(nes->cartridge.pgr);
+    }
+
+    if (nes->cartridge.title)
+    {
+        Free(nes->cartridge.title);
+    }
+
+    if (nes->cartridge.trainer)
+    {
+        Free(nes->cartridge.trainer);
+    }
+
+    Free(nes);
 }
 

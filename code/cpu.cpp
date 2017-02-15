@@ -897,7 +897,7 @@ internal inline CPUInstruction* GetNextInstruction(NES *nes)
 
 #pragma endregion
 
-void ResetCPU(NES *nes)
+void PowerCPU(NES *nes)
 {
     CPU *cpu = &nes->cpu;
     cpu->a = 0;
@@ -914,11 +914,22 @@ void ResetCPU(NES *nes)
     PushStackU8(nes, 0xFF);
 }
 
+void ResetCPU(NES *nes)
+{
+    CPU *cpu = &nes->cpu;
+    cpu->cycles = 0;
+    cpu->waitCycles = 0;
+    cpu->sp -= 3;
+    cpu->p |= 0x04;
+    cpu->pc = ReadCPUU16(nes, CPU_RESET_ADDRESS);
+    cpu->interrupt = CPU_INTERRUPT_NON;
+}
+
 void InitCPU(NES *nes)
 {
     if (!nes->cpuMemory.created)
     {
-        nes->cpuMemory = *CreateMemory(CPU_RAM_TOTAL_SIZE);
+        CreateMemory(&nes->cpuMemory, CPU_RAM_TOTAL_SIZE);
 
         u32 pgrBanks = nes->cartridge.pgrBanks;
         u32 pgrSizeInBytes = nes->cartridge.pgrSizeInBytes;
@@ -931,7 +942,7 @@ void InitCPU(NES *nes)
         }
     }
 
-    ResetCPU(nes);
+    PowerCPU(nes);
 }
 
 internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)

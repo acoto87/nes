@@ -658,6 +658,7 @@ inline void WriteDMA(NES *nes, u8 value)
 }
 
 void ResetPPU(NES *nes);
+void PowerPPU(NES *nes);
 void InitPPU(NES *nes);
 void StepPPU(NES *nes);
 
