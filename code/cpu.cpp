@@ -552,7 +552,8 @@ internal inline void PLP(NES *nes)
 {
     CPU *cpu = &nes->cpu;
 
-    cpu->p = PopStackU8(nes);
+    u8 v = PopStackU8(nes);
+    cpu->p = (v & 0xC0) | (cpu->p & 0x20) | (v & 0x1F);
 }
 
 internal inline void ROL(NES *nes, u16 address)
@@ -639,7 +640,8 @@ internal inline void RTI(NES *nes)
 {
     CPU *cpu = &nes->cpu;
 
-    cpu->p = PopStackU8(nes);
+    u8 v = PopStackU8(nes);
+    cpu->p = (v & 0xC0) | (cpu->p & 0x20) | (v & 0x1F);
     cpu->pc = PopStackU16(nes);
 }
 
@@ -692,7 +694,6 @@ internal inline void SEI(NES *nes)
     CPU *cpu = &nes->cpu;
 
     SetInterrupt(cpu, 1);
-    // SetBitFlag(&cpu->p, INTERRUPT_FLAG);
 }
 
 internal inline void STA(NES *nes, u16 address)

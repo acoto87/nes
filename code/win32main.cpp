@@ -96,6 +96,14 @@ int CALLBACK WinMain(
     LPSTR     cmdLine,
     int       cmdShow)
 {
+
+    //
+    // Check with the tests under D:\Work\nes\misc\nes-test-roms\nes_instr_test\rom_singles
+    // those throws a LOT of ERRORS. 
+    // For the first one, $E144 is the address where it's can be seen the checksum at $0x11
+    // and compare with the values on the source file of the test.
+    //
+    
     LARGE_INTEGER initialCounter = Win32GetWallClock();
 
     LARGE_INTEGER perfCountFrequencyResult;
