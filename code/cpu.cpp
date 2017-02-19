@@ -7,11 +7,12 @@ internal void HandleInterrupt(NES *nes, u16 interruptAddress, b32 fromBRK)
 {
     CPU *cpu = &nes->cpu;
 
-    SetInterrupt(cpu, 1);
     SetBreak(cpu, fromBRK);
 
     PushStackU16(nes, cpu->pc);
-    PushStackU8(nes, cpu->p);
+    PushStackU8(nes, cpu->p | 0x30);
+
+    SetInterrupt(cpu, 1);
 
     cpu->pc = ReadCPUU16(nes, interruptAddress);
 
@@ -70,7 +71,7 @@ internal inline void ASL(NES *nes, u16 address)
         data = ReadCPUU8(nes, address);
     }
 
-    SetCarry(cpu, HAS_FLAG(data, BIT7_MASK));
+    SetCarry(cpu, data & 0x80);
 
     data <<= 1;
 
@@ -487,7 +488,7 @@ internal inline void LSR(NES *nes, u16 address)
         data = ReadCPUU8(nes, address);
     }
 
-    SetCarry(cpu, HAS_FLAG(data, BIT0_MASK));
+    SetCarry(cpu, data & 0x01);
 
     data >>= 1;
 
@@ -535,7 +536,7 @@ internal inline void PHP(NES *nes)
 {
     CPU *cpu = &nes->cpu;
 
-    PushStackU8(nes, cpu->p);
+    PushStackU8(nes, cpu->p | 0x30);
 }
 
 internal inline void PLA(NES *nes)
@@ -553,7 +554,7 @@ internal inline void PLP(NES *nes)
     CPU *cpu = &nes->cpu;
 
     u8 v = PopStackU8(nes);
-    cpu->p = (v & 0xC0) | (cpu->p & 0x20) | (v & 0x1F);
+    cpu->p = (v & 0xC0) | (cpu->p & 0x30) | (v & 0x0F);
 }
 
 internal inline void ROL(NES *nes, u16 address)
@@ -572,13 +573,13 @@ internal inline void ROL(NES *nes, u16 address)
         data = ReadCPUU8(nes, address);
     }
 
-    b32 setCarry = HAS_FLAG(data, BIT7_MASK);
+    b32 setCarry = data & 0x80;
 
     data <<= 1;
 
     if (GetCarry(cpu))
     {
-        data |= BIT0_MASK;
+        data |= 0x01;
     }
 
     SetCarry(cpu, setCarry);
@@ -612,13 +613,13 @@ internal inline void ROR(NES *nes, u16 address)
         data = ReadCPUU8(nes, address);
     }
 
-    b32 setCarry = HAS_FLAG(data, BIT0_MASK);
+    b32 setCarry = data & 0x01;
 
     data >>= 1;
 
     if (GetCarry(cpu))
     {
-        data |= BIT7_MASK;
+        data |= 0x80;
     }
 
     SetCarry(cpu, setCarry);
@@ -659,18 +660,19 @@ internal inline void SBC(NES *nes, u16 address)
 
     u8 data = ReadCPUU8(nes, address);
 
-    u16 temp = cpu->a - data;
+    u16 acc = cpu->a - data;
+    
     if (!GetCarry(cpu))
     {
-        temp -= 1;
+        acc -= 1;
     }
 
-    SetNegative(cpu, ISNEG(temp));
-    SetZero(cpu, !temp);
-    SetCarry(cpu, temp < 0x100);
-    SetOverflow(cpu, ((cpu->a ^ data) & 0x80) && ((cpu->a ^ temp) & 0x80));
+    SetCarry(cpu, acc < 0x100);
+    SetNegative(cpu, ISNEG(acc));
+    SetZero(cpu, !(acc & 0xFF));
+    SetOverflow(cpu, ((cpu->a ^ data) & 0x80) && ((cpu->a ^ acc) & 0x80));
 
-    cpu->a = (u8)temp;
+    cpu->a = (u8)acc;
 }
 
 internal inline void SEC(NES *nes, u16 address)
