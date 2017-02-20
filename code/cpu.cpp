@@ -33,7 +33,7 @@ internal inline void ADC(NES* nes, u16 address)
     {
         acc += 1;
     }
-    
+
     SetCarry(cpu, acc > 0xFF);
     SetNegative(cpu, ISNEG(acc));
     SetZero(cpu, !(acc & 0xFF));
@@ -59,7 +59,7 @@ internal inline void ASL(NES *nes, u16 address)
 {
     CPU *cpu = &nes->cpu;
 
-    u8 data;
+    u16 data;
 
     // if address = 0, then it's ACC addressing mode
     if (!address)
@@ -74,6 +74,7 @@ internal inline void ASL(NES *nes, u16 address)
     SetCarry(cpu, data & 0x80);
 
     data <<= 1;
+    data &= 0xFF;
 
     SetNegative(cpu, ISNEG(data));
     SetZero(cpu, !data);
@@ -81,11 +82,11 @@ internal inline void ASL(NES *nes, u16 address)
     // if address = 0, then it's ACC addressing mode
     if (!address)
     {
-        cpu->a = data;
+        cpu->a = (u8)data;
     }
     else
     {
-        WriteCPUU8(nes, address, data);
+        WriteCPUU8(nes, address, (u8)data);
     }
 }
 
@@ -444,7 +445,7 @@ internal inline void LDA(NES *nes, u16 address)
 
     SetNegative(cpu, ISNEG(data));
     SetZero(cpu, !data);
-    
+
     cpu->a = data;
 }
 
@@ -661,7 +662,7 @@ internal inline void SBC(NES *nes, u16 address)
     u8 data = ReadCPUU8(nes, address);
 
     u16 acc = cpu->a - data;
-    
+
     if (!GetCarry(cpu))
     {
         acc -= 1;
@@ -788,102 +789,300 @@ internal inline void TYA(NES *nes)
 }
 
 //
-// Illegal opcodes
+// Illegal or unofficial opcodes
 //
 
-internal inline void SLO(NES *nes)
+internal inline void SLO(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+
+    SetCarry(cpu, data & 0x80);
+
+    data <<= 1;
+
+    WriteCPUU8(nes, address, data);
+
+    data |= cpu->a;
+
+    SetNegative(cpu, ISNEG(data));
+    SetZero(cpu, !data);
+
+    cpu->a = data;
 }
 
-internal inline void ANC(NES *nes)
+internal inline void ANC(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+    data = cpu->a & data;
+
+    SetCarry(cpu, data & 0x80);
+    SetNegative(cpu, ISNEG(data));
+    SetZero(cpu, !data);
+
+    cpu->a = data;
 }
 
-internal inline void RLA(NES *nes)
+internal inline void RLA(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+
+    b32 setCarry = data & 0x80;
+
+    data <<= 1;
+
+    if (GetCarry(cpu))
+    {
+        data |= 0x01;
+    }
+
+    u8 acc = cpu->a & data;
+
+    SetCarry(cpu, setCarry);
+    SetNegative(cpu, ISNEG(acc));
+    SetZero(cpu, !acc);
+
+    WriteCPUU8(nes, address, data);
+    cpu->a = acc;
 }
 
-internal inline void SRE(NES *nes)
+internal inline void SRE(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+
+    SetCarry(cpu, data & 0x01);
+
+    data >>= 1;
+
+    WriteCPUU8(nes, address, data);
+
+    data = cpu->a ^ data;
+
+    SetNegative(cpu, ISNEG(data));
+    SetZero(cpu, !data);
+
+    cpu->a = data;
 }
 
-internal inline void ALR(NES *nes)
+internal inline void ALR(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+    data = cpu->a & data;
+
+    SetCarry(cpu, data & 0x01);
+
+    data >>= 1;
+
+    SetNegative(cpu, ISNEG(data));
+    SetZero(cpu, !data);
+
+    cpu->a = data;
 }
 
-internal inline void RRA(NES *nes)
+internal inline void RRA(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+
+    b32 setCarry = data & 0x01;
+
+    data >>= 1;
+
+    if (GetCarry(cpu))
+    {
+        data |= 0x80;
+    }
+
+    u16 acc = cpu->a + data;
+
+    if (setCarry)
+    {
+        acc += 1;
+    }
+
+    SetCarry(cpu, acc > 0xFF);
+    SetNegative(cpu, ISNEG(acc));
+    SetZero(cpu, !(acc & 0xFF));
+    SetOverflow(cpu, !((cpu->a ^ data) & 0x80) && ((cpu->a ^ acc) & 0x80));
+
+    WriteCPUU8(nes, address, data);
+    cpu->a = (u8)acc;
 }
 
-internal inline void ARR(NES *nes)
+internal inline void ARR(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+    data = cpu->a & data;
+
+    b32 setCarry = data & 0x01;
+
+    data >>= 1;
+
+    if (GetCarry(cpu))
+    {
+        data |= 0x80;
+    }
+
+    SetOverflow(cpu, (data & 0x20) ^ (data & 0x40));
+    SetCarry(cpu, data & 0x40);
+    SetNegative(cpu, ISNEG(data));
+    SetZero(cpu, !data);
+
+    cpu->a = data;
 }
 
-internal inline void SAX(NES *nes)
+internal inline void SAX(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    WriteCPUU8(nes, address, cpu->a & cpu->x);
 }
 
-internal inline void XAA(NES *nes)
+internal inline void XAA(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+    data &= cpu->x;
+
+    SetNegative(cpu, ISNEG(data));
+    SetZero(cpu, !data);
+
+    cpu->a = data;
 }
 
-internal inline void AHX(NES *nes)
+internal inline void AHX(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 H = (u8)((address & 0xFF00) >> 8);
+    WriteCPUU8(nes, address, cpu->a & cpu->x & H);
 }
 
-internal inline void TAS(NES *nes)
+internal inline void TAS(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
+    
+    cpu->sp = cpu->a & cpu->x;
 
+    u8 H = (u8)((address & 0xFF00) >> 8);
+    WriteCPUU8(nes, address, cpu->sp & H);
 }
 
-internal inline void SHY(NES *nes)
+internal inline void SHY(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 H = (u8)((address & 0xFF00) >> 8);
+    WriteCPUU8(nes, address, cpu->y & H);
 }
 
-internal inline void SHX(NES *nes)
+internal inline void SHX(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 H = (u8)((address & 0xFF00) >> 8);
+    WriteCPUU8(nes, address, cpu->x & H);
 }
 
-internal inline void LAX(NES *nes)
+internal inline void LAX(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+
+    SetNegative(cpu, ISNEG(data));
+    SetZero(cpu, !data);
+
+    cpu->a = data;
+    cpu->x = data;
 }
 
-internal inline void LAS(NES *nes)
+internal inline void LAS(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+
+    data &= cpu->sp;
+
+    cpu->a = data;
+    cpu->x = data;
+    cpu->sp = data;
+
+    SetNegative(cpu, ISNEG(data));
+    SetZero(cpu, !data);
 }
 
-internal inline void DCP(NES *nes)
+internal inline void DCP(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+    data -= 1;
+
+    u16 sub = cpu->a - data;
+
+    SetNegative(cpu, ISNEG(sub));
+    SetZero(cpu, !sub);
+    SetCarry(cpu, sub < 0x100);
+
+    WriteCPUU8(nes, address, data);
 }
 
-internal inline void AXS(NES *nes)
+internal inline void AXS(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u16 data = ReadCPUU8(nes, address);
+
+    data = (u16)(cpu->a & cpu->x) - data;
+
+    SetCarry(cpu, data < 0x100);
+    SetNegative(cpu, ISNEG(data));
+    SetZero(cpu, !(data & 0xFF));
+
+    cpu->x = (u8)data;
 }
 
-internal inline void ISC(NES *nes)
+internal inline void ISC(NES *nes, u16 address)
 {
+    CPU *cpu = &nes->cpu;
 
+    u8 data = ReadCPUU8(nes, address);
+    data += 1;
+
+    u16 acc = cpu->a - data;
+
+    if (!GetCarry(cpu))
+    {
+        acc -= 1;
+    }
+
+    SetCarry(cpu, acc < 0x100);
+    SetNegative(cpu, ISNEG(acc));
+    SetZero(cpu, !(acc & 0xFF));
+    SetOverflow(cpu, ((cpu->a ^ data) & 0x80) && ((cpu->a ^ acc) & 0x80));
+
+    WriteCPUU8(nes, address, data);
+    cpu->a = (u8)acc;
 }
 
 internal inline void KIL(NES *nes)
 {
-
+    ASSERT(FALSE);
 }
 
 internal inline void FEX(NES *nes)
@@ -1166,27 +1365,27 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
         case CPU_TXA: { TXA(nes); break; }
         case CPU_TXS: { TXS(nes); break; }
         case CPU_TYA: { TYA(nes); break; }
-        case CPU_SLO: { SLO(nes); break; }
-        case CPU_ANC: { ANC(nes); break; }
-        case CPU_RLA: { RLA(nes); break; }
-        case CPU_SRE: { SRE(nes); break; }
-        case CPU_ALR: { ALR(nes); break; }
-        case CPU_RRA: { RRA(nes); break; }
-        case CPU_ARR: { ARR(nes); break; }
-        case CPU_SAX: { SAX(nes); break; }
-        case CPU_XAA: { XAA(nes); break; }
-        case CPU_AHX: { AHX(nes); break; }
-        case CPU_TAS: { TAS(nes); break; }
-        case CPU_SHY: { SHY(nes); break; }
-        case CPU_SHX: { SHX(nes); break; }
-        case CPU_LAX: { LAX(nes); break; }
-        case CPU_LAS: { LAS(nes); break; }
-        case CPU_DCP: { DCP(nes); break; }
-        case CPU_AXS: { AXS(nes); break; }
-        case CPU_ISC: { ISC(nes); break; }
+        case CPU_SLO: { SLO(nes, address); break; }
+        case CPU_ANC: { ANC(nes, address); break; }
+        case CPU_RLA: { RLA(nes, address); break; }
+        case CPU_SRE: { SRE(nes, address); break; }
+        case CPU_ALR: { ALR(nes, address); break; }
+        case CPU_RRA: { RRA(nes, address); break; }
+        case CPU_ARR: { ARR(nes, address); break; }
+        case CPU_SAX: { SAX(nes, address); break; }
+        case CPU_XAA: { XAA(nes, address); break; }
+        case CPU_AHX: { AHX(nes, address); break; }
+        case CPU_TAS: { TAS(nes, address); break; }
+        case CPU_SHY: { SHY(nes, address); break; }
+        case CPU_SHX: { SHX(nes, address); break; }
+        case CPU_LAX: { LAX(nes, address); break; }
+        case CPU_LAS: { LAS(nes, address); break; }
+        case CPU_DCP: { DCP(nes, address); break; }
+        case CPU_AXS: { AXS(nes, address); break; }
+        case CPU_ISC: { ISC(nes, address); break; }
         case CPU_KIL: { KIL(nes); break; }
         case CPU_FEX: { FEX(nes); break; }
-        default: { break; } 
+        default: { break; }
     }
 }
 

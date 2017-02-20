@@ -267,7 +267,7 @@ global CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT] =
     { 0xB4, CPU_LDY, AM_ZPX, CPU_XR, 2, 4, 0 },
     { 0xB5, CPU_LDA, AM_ZPX, CPU_XR, 2, 4, 0 },
     { 0xB6, CPU_LDX, AM_ZPY, CPU_YR, 2, 4, 0 },
-    { 0xB7, CPU_FEX, AM_NON, CPU_NR, 1, 1, 0 },
+    { 0xB7, CPU_LAX, AM_ZPY, CPU_YR, 2, 4, 0 },
     { 0xB8, CPU_CLV, AM_IMP, CPU_NR, 1, 2, 0 },
     { 0xB9, CPU_LDA, AM_ABY, CPU_YR, 3, 4, 1 },
     { 0xBA, CPU_TSX, AM_IMP, CPU_NR, 1, 2, 0 },
