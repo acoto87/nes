@@ -276,6 +276,11 @@ struct PPU
     u8 data;                    // PPU Data Read/Write (0x2007)
     u8 oamDma;                  // OAM DMA high address (0x4014)
 
+    // NMI flags
+    b32 suppressNmi;
+    /*b32 outputNmi;
+    u8 delayNmi;*/
+
     // PPU registers
     u16 v;  // current vram address (15 bit)
     u16 t;  // temporary vram address (15 bit)

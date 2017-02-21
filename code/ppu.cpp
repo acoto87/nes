@@ -829,21 +829,14 @@ void StepPPU(NES *nes)
     {
         if (ppu->cycle == 1 && ppu->frameCount > 0)
         {
-            SetBitFlag(&ppu->status, VBLANK_FLAG);
-
-            if (GetBitFlag(ppu->control, VBLANK_FLAG))
-            {
-                cpu->interrupt = CPU_INTERRUPT_NMI;
-            }
+            SetVerticalBlank(nes);
         }
     }
     else if (ppu->scanline == 261)
     {
         if (ppu->cycle == 1)
         {
-            ClearBitFlag(&ppu->status, SCANLINE_COUNT_FLAG);
-            ClearBitFlag(&ppu->status, HIT_FLAG);
-            ClearBitFlag(&ppu->status, VBLANK_FLAG);
+            ClearVerticalBlank(nes);
         }
     }
 

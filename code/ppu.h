@@ -189,8 +189,8 @@ $3F1D-$3F1F  Sprite palette 3
 inline u8 ReadCPUU8(NES *nes, u16 address);
 
 // palette adapted from http://nesdev.parodius.com/NESTechFAQ.htm 
-global Color systemPalette[PPU_NUM_SYSTEM_COLOURS] = 
-{ 
+global Color systemPalette[PPU_NUM_SYSTEM_COLOURS] =
+{
     { 0x75, 0x75, 0x75, 0xFF },
     { 0x8F, 0x1B, 0x27, 0xFF },
     { 0xAB, 0x00, 0x00, 0xFF },
@@ -258,11 +258,11 @@ global Color systemPalette[PPU_NUM_SYSTEM_COLOURS] =
 };
 
 global u8 attributeTableLookup[PPU_VERTICAL_TILES_PER_ATTRIBUTE_BYTE][PPU_HORIZONTAL_TILES_PER_ATTRIBUTE_BYTE] =
-{ 
+{
     { 0x0, 0x1, 0x4, 0x5 },
     { 0x2, 0x3, 0x6, 0x7 },
     { 0x8, 0x9, 0xC, 0xD },
-    { 0xA, 0xB, 0xE, 0xF } 
+    { 0xA, 0xB, 0xE, 0xF }
 };
 
 inline u8 ReadPPUU8(NES *nes, u16 address)
@@ -477,6 +477,16 @@ inline u8 ReadStatus(NES *nes)
     ppu->status &= 0x7F;
     ppu->w = 0;
 
+    // Caution: Reading PPUSTATUS at the exact start of vertical blank will return 0 in bit 7 but clear the latch anyway, 
+    // causing the program to miss frames. 
+    if (ppu->scanline == 241)
+    {
+        if (ppu->cycle == 0)
+        {
+            ppu->suppressNmi = TRUE;
+        }
+    }
+
     return status;
 }
 
@@ -590,13 +600,13 @@ inline u8 ReadVramData(NES *nes)
     u8 value = ReadPPUU8(nes, ppu->v);
 
     // emulate buffered reads
-    if (ppu->v % 0x4000 < 0x3F00) 
+    if (ppu->v % 0x4000 < 0x3F00)
     {
         u8 buffered = ppu->data;
         ppu->data = value;
         value = buffered;
     }
-    else 
+    else
     {
         ppu->data = ReadPPUU8(nes, ppu->v - 0x1000);
     }
@@ -652,9 +662,42 @@ inline void WriteDMA(NES *nes, u8 value)
         ppu->oamAddress++;
     }
 
+    // This emulate the actual work of the CPU 
+    // transferring the bytes to the PPU
     cpu->waitCycles = 513;
     if (cpu->cycles & 0x01)
         ++cpu->waitCycles;
+}
+
+inline void SetVerticalBlank(NES *nes)
+{
+    CPU *cpu = &nes->cpu;
+    PPU *ppu = &nes->ppu;
+
+    if (!ppu->suppressNmi)
+    {
+        SetBitFlag(&ppu->status, VBLANK_FLAG);
+
+        if (GetBitFlag(ppu->control, VBLANK_FLAG))
+        {
+            cpu->interrupt = CPU_INTERRUPT_NMI;
+        }
+    }
+
+    ppu->suppressNmi = FALSE;
+}
+
+inline void ClearVerticalBlank(NES *nes)
+{
+    PPU *ppu = &nes->ppu;
+
+    ClearBitFlag(&ppu->status, SCANLINE_COUNT_FLAG);
+    ClearBitFlag(&ppu->status, HIT_FLAG);
+    ClearBitFlag(&ppu->status, VBLANK_FLAG);
+
+    /*ppu->delayNmi = 0;
+    ppu->outputNmi = FALSE;*/
+    ppu->suppressNmi = FALSE;
 }
 
 void ResetPPU(NES *nes);
