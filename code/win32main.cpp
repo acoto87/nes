@@ -103,7 +103,7 @@ int CALLBACK WinMain(
     // For the first one, $E144 is the address where it's can be seen the checksum at $0x11
     // and compare with the values on the source file of the test.
     //
-    
+
     LARGE_INTEGER initialCounter = Win32GetWallClock();
 
     LARGE_INTEGER perfCountFrequencyResult;
@@ -919,29 +919,46 @@ int CALLBACK WinMain(
                         for (s32 index = 0; index < 64; ++index)
                         {
                             u8 spriteY = ReadU8(&nes->oamMemory, index * 4 + 0);
-                            u8 spriteI = ReadU8(&nes->oamMemory, index * 4 + 1);
-                            u8 spriteA = ReadU8(&nes->oamMemory, index * 4 + 2);
+                            u8 spriteIdx = ReadU8(&nes->oamMemory, index * 4 + 1);
+                            u8 spriteAttr = ReadU8(&nes->oamMemory, index * 4 + 2);
                             u8 spriteX = ReadU8(&nes->oamMemory, index * 4 + 3);
 
-                            u8 highColorBits = spriteI & 0x03;
+                            u8 highColorBits = spriteAttr & 0x03;
 
                             for (s32 y = 0; y < 8; ++y)
                             {
-                                u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteI * 16 + y);
-                                u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteI * 16 + 8 + y);
+                                u8 rowOffset = y;
+
+                                // the bit 7 indicate that the sprite should flip vertically
+                                if (spriteAttr & 0x80)
+                                {
+                                    // @TODO: this doesn't care about 8x16 sprites
+                                    rowOffset = 7 - rowOffset;
+                                }
+
+                                u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + rowOffset);
+                                u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + 8 + rowOffset);
 
                                 for (s32 x = 0; x < 8; ++x)
                                 {
-                                    s32 pixelIndex = y * 8 + x;
+                                    u8 colOffset = x;
 
-                                    u8 h = ((row2 >> (7 - x)) & 0x1);
-                                    u8 l = ((row1 >> (7 - x)) & 0x1);
+                                    // the bit 6 indicate that the sprite should flip horizontally
+                                    if (spriteAttr & 0x40)
+                                    {
+                                        // @TODO: this doesn't care about 8x16 sprites
+                                        colOffset = 7 - colOffset;
+                                    }
+
+                                    u8 h = ((row2 >> (7 - colOffset)) & 0x1);
+                                    u8 l = ((row1 >> (7 - colOffset)) & 0x1);
                                     u8 v = (h << 0x1) | l;
 
                                     u32 paletteIndex = (highColorBits << 2) | v;
                                     u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
                                     Color color = systemPalette[colorIndex % 64];
 
+                                    s32 pixelIndex = y * 8 + x;
                                     sprites[index][pixelIndex] = color.bgra;
                                 }
                             }
@@ -974,29 +991,46 @@ int CALLBACK WinMain(
                         for (s32 index = 0; index < 8; ++index)
                         {
                             u8 spriteY = ReadU8(&nes->oamMemory2, index * 4 + 0);
-                            u8 spriteI = ReadU8(&nes->oamMemory2, index * 4 + 1);
-                            u8 spriteA = ReadU8(&nes->oamMemory2, index * 4 + 2);
+                            u8 spriteIdx = ReadU8(&nes->oamMemory2, index * 4 + 1);
+                            u8 spriteAttr = ReadU8(&nes->oamMemory2, index * 4 + 2);
                             u8 spriteX = ReadU8(&nes->oamMemory2, index * 4 + 3);
 
-                            u8 highColorBits = spriteI & 0x03;
+                            u8 highColorBits = spriteAttr & 0x03;
 
                             for (s32 y = 0; y < 8; ++y)
                             {
-                                u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteI * 16 + y);
-                                u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteI * 16 + 8 + y);
+                                u8 rowOffset = y;
+
+                                // the bit 7 indicate that the sprite should flip vertically
+                                if (spriteAttr & 0x80)
+                                {
+                                    // @TODO: this doesn't care about 8x16 sprites
+                                    rowOffset = 7 - rowOffset;
+                                }
+
+                                u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + y);
+                                u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + 8 + y);
 
                                 for (s32 x = 0; x < 8; ++x)
                                 {
-                                    s32 pixelIndex = y * 8 + x;
+                                    u8 colOffset = x;
 
-                                    u8 h = ((row2 >> (7 - x)) & 0x1);
-                                    u8 l = ((row1 >> (7 - x)) & 0x1);
+                                    // the bit 6 indicate that the sprite should flip horizontally
+                                    if (spriteAttr & 0x40)
+                                    {
+                                        // @TODO: this doesn't care about 8x16 sprites
+                                        colOffset = 7 - colOffset;
+                                    }
+
+                                    u8 h = ((row2 >> (7 - colOffset)) & 0x1);
+                                    u8 l = ((row1 >> (7 - colOffset)) & 0x1);
                                     u8 v = (h << 0x1) | l;
 
                                     u32 paletteIndex = (highColorBits << 2) | v;
                                     u32 colorIndex = ReadPPUU8(nes, 0x3F10 + paletteIndex);
                                     Color color = systemPalette[colorIndex % 64];
 
+                                    s32 pixelIndex = y * 8 + x;
                                     sprites2[index][pixelIndex] = color.bgra;
                                 }
                             }
@@ -1071,46 +1105,15 @@ int CALLBACK WinMain(
                                     u16 attributeIndex = attributeY * 8 + attributeX;
                                     u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
 
-                                    u8 highColorBits;
-
-                                    switch (attributeTableLookup[attributeOffsetX][attributeOffsetY])
-                                    {
-                                        case 0x00:
-                                        case 0x01:
-                                        case 0x02:
-                                        case 0x03:
-                                        {
-                                            highColorBits = (attributeByte & 0x03);
-                                            break;
-                                        }
-
-                                        case 0x04:
-                                        case 0x05:
-                                        case 0x06:
-                                        case 0x07:
-                                        {
-                                            highColorBits = ((attributeByte >> 2) & 0x03);
-                                            break;
-                                        }
-
-                                        case 0x08:
-                                        case 0x09:
-                                        case 0x0A:
-                                        case 0x0B:
-                                        {
-                                            highColorBits = ((attributeByte >> 4) & 0x03);
-                                            break;
-                                        }
-
-                                        case 0x0C:
-                                        case 0x0D:
-                                        case 0x0E:
-                                        case 0x0F:
-                                        {
-                                            highColorBits = ((attributeByte >> 6) & 0x03);
-                                            break;
-                                        }
-                                    }
+                                    // lookupValue is a number between 0 and 15, 
+                                    // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
+                                    // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
+                                    // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
+                                    // for value 0x0C, 0x0D, 0x0E, 0x0F, we need to get the bits 11000000
+                                    //
+                                    u8 lookupValue = attributeTableLookup[attributeOffsetY][attributeOffsetX];
+                                    u8 shiftValue = (lookupValue / 4) * 2;
+                                    u8 highColorBits = (attributeByte >> shiftValue) & 0x03;
 
                                     for (s32 y = 0; y < 8; ++y)
                                     {
@@ -1125,7 +1128,19 @@ int CALLBACK WinMain(
 
                                             u32 paletteIndex = (highColorBits << 2) | v;
                                             u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                            
+                                            // if the grayscale bit is set, then AND (&) with 0x30 to set
+                                            // any color in the palette to the grey ones
+                                            if (GetBitFlag(ppu->mask, COLOR_FLAG))
+                                            {
+                                                colorIndex &= 0x30;
+                                            }
+
                                             Color color = systemPalette[colorIndex % 64];
+
+                                            // check the bits 5, 6, 7 to color emphasis
+                                            u8 colorMask = (ppu->mask & 0xE0) >> 5;
+                                            ColorEmphasis(&color, colorMask);
 
                                             s32 pixel = y * 8 + x;
                                             nametable[tileX][tileY][pixel] = color.bgra;
@@ -1160,9 +1175,7 @@ int CALLBACK WinMain(
 
                             nk_layout_row_static(ctx, 240, 256, 1);
 
-                            u16 backgroundBaseAddress = 0;
-                            if (GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG))
-                                backgroundBaseAddress = 0x1000;
+                            u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
 
                             for (s32 tileY = 0; tileY < 30; ++tileY)
                             {
@@ -1180,46 +1193,15 @@ int CALLBACK WinMain(
                                     u16 attributeIndex = attributeY * 8 + attributeX;
                                     u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
 
-                                    u8 highColorBits;
-
-                                    switch (attributeTableLookup[attributeOffsetX][attributeOffsetY])
-                                    {
-                                        case 0x00:
-                                        case 0x01:
-                                        case 0x02:
-                                        case 0x03:
-                                        {
-                                            highColorBits = (attributeByte & 0x03);
-                                            break;
-                                        }
-
-                                        case 0x04:
-                                        case 0x05:
-                                        case 0x06:
-                                        case 0x07:
-                                        {
-                                            highColorBits = ((attributeByte >> 2) & 0x03);
-                                            break;
-                                        }
-
-                                        case 0x08:
-                                        case 0x09:
-                                        case 0x0A:
-                                        case 0x0B:
-                                        {
-                                            highColorBits = ((attributeByte >> 4) & 0x03);
-                                            break;
-                                        }
-
-                                        case 0x0C:
-                                        case 0x0D:
-                                        case 0x0E:
-                                        case 0x0F:
-                                        {
-                                            highColorBits = ((attributeByte >> 6) & 0x03);
-                                            break;
-                                        }
-                                    }
+                                    // lookupValue is a number between 0 and 15, 
+                                    // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
+                                    // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
+                                    // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
+                                    // for value 0x0C, 0x0D, 0x0E, 0x0F, we need to get the bits 11000000
+                                    //
+                                    u8 lookupValue = attributeTableLookup[attributeOffsetY][attributeOffsetX];
+                                    u8 shiftValue = (lookupValue / 4) * 2;
+                                    u8 highColorBits = (attributeByte >> shiftValue) & 0x03;
 
                                     for (s32 y = 0; y < 8; ++y)
                                     {
@@ -1234,7 +1216,19 @@ int CALLBACK WinMain(
 
                                             u32 paletteIndex = (highColorBits << 2) | v;
                                             u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+
+                                            // if the grayscale bit is set, then AND (&) with 0x30 to set
+                                            // any color in the palette to the grey ones
+                                            if (GetBitFlag(ppu->mask, COLOR_FLAG))
+                                            {
+                                                colorIndex &= 0x30;
+                                            }
+
                                             Color color = systemPalette[colorIndex % 64];
+
+                                            // check the bits 5, 6, 7 to color emphasis
+                                            u8 colorMask = (ppu->mask & 0xE0) >> 5;
+                                            ColorEmphasis(&color, colorMask);
 
                                             s32 pixelX = (tileX * 8 + x);
                                             s32 pixelY = (tileY * 8 + y);

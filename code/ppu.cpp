@@ -7,20 +7,6 @@
  * http://wiki.nesdev.com/w/index.php/PPU_sprite_evaluation
  */
 
-internal inline u16 GetBaseSpritePatternAddress(PPU *ppu)
-{
-    return GetBitFlag(ppu->control, SPRITE_ADDR_FLAG)
-        ? PPU_PATTERN_TABLE_1_OFFSET
-        : PPU_PATTERN_TABLE_0_OFFSET;
-}
-
-internal inline u16 GetBaseBackgroundPatternAddress(PPU *ppu)
-{
-    return GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG)
-        ? PPU_PATTERN_TABLE_1_OFFSET
-        : PPU_PATTERN_TABLE_0_OFFSET;
-}
-
 internal inline u8 GetCurrentY(PPU *ppu)
 {
     // since there are 262 scanlines, but the screen size in NTSC is 240, 
@@ -32,167 +18,6 @@ internal inline u8 GetCurrentX(PPU *ppu)
 {
     // since the ppu render 1 pixel per scanline cycle, this refers to the x position in the screen
     return ppu->cycle;
-}
-
-internal u8 GetPatternColorIndex(NES *nes, u16 basePatternAddress, u8 patternTileNumber, u8 x, u8 y)
-{
-    PPU *ppu = &nes->ppu;
-
-    u16 horizontalOffset = patternTileNumber * 16;
-    u16 verticalOffset = (y % 8);
-
-    u16 pattern1Address = basePatternAddress + horizontalOffset + verticalOffset;
-    u16 pattern2Address = pattern1Address + 8;
-
-    u8 pattern1 = ReadPPUU8(nes, pattern1Address);
-    u8 pattern2 = ReadPPUU8(nes, pattern2Address);
-
-    // combine pattern bytes
-    pattern1 = pattern1 << (x % 8);
-    pattern1 = pattern1 >> (8 - 1);
-
-    pattern2 = pattern2 << (x % 8);
-    pattern2 = pattern2 >> (8 - 1);
-    pattern2 = pattern2 << 1;
-
-    u8 patternIndex = pattern1 + pattern2;
-    ASSERT(patternIndex <= 3);
-
-    return patternIndex;
-}
-
-internal inline u16 GetBaseNametableAddress(PPU *ppu)
-{
-    u16 nametableStart = PPU_NAME_TABLE_0_FIRST_ADDRESS;
-    /*
-        if (GetBitFlag(ppu->control, NAMETABLE_Y_SCROLL_FLAG))
-        {
-            nametableStart += PPU_NAME_TABLE_SIZE;
-        }
-
-        if (GetBitFlag(ppu->control, NAMETABLE_X_SCROLL_FLAG))
-        {
-            nametableStart += PPU_NAME_TABLE_SIZE;
-            nametableStart += PPU_NAME_TABLE_SIZE;
-        }
-    */
-    return nametableStart;
-}
-
-internal inline u16 GetBackgroundTileNumber(u8 x, u8 y)
-{
-    u8 horizontalOffset = (x / PPU_HORIZONTAL_PIXELS_PER_TILE);
-    u8 verticalOffset = (y / PPU_VERTICAL_PIXELS_PER_TILE) * PPU_BACKGROUND_TILES_PER_ROW;
-
-    u16 tileNumber = horizontalOffset + verticalOffset;
-    return tileNumber;
-}
-
-internal u8 GetBackgroundColor(NES *nes)
-{
-    PPU *ppu = &nes->ppu;
-
-    u8 backgroundColorIndex = 0;
-
-    // get current background color
-    if (GetBitFlag(ppu->mask, BACKGROUND_ENABLED_FLAG))
-    {
-        u8 screenX = GetCurrentX(ppu);
-        u8 screenY = GetCurrentY(ppu);
-
-        // get the background nametable byte
-        u8 patternTileNumber;
-        {
-            u16 nametableStart = GetBaseNametableAddress(ppu);
-
-            ASSERT(nametableStart == PPU_NAME_TABLE_0_FIRST_ADDRESS ||
-                nametableStart == PPU_NAME_TABLE_1_FIRST_ADDRESS ||
-                nametableStart == PPU_NAME_TABLE_2_FIRST_ADDRESS ||
-                nametableStart == PPU_NAME_TABLE_3_FIRST_ADDRESS);
-
-            u16 tileNumber = GetBackgroundTileNumber(screenX, screenY);
-            u16 nametableAddress = nametableStart + tileNumber;
-
-            patternTileNumber = ReadPPUU8(nes, nametableAddress);
-        }
-
-        // get the address of the background as the control1 flag is set
-        u8 basePatternAddress = GetBaseBackgroundPatternAddress(ppu);
-        // get pattern color index
-        u8 patternColorIndex = GetPatternColorIndex(nes, basePatternAddress, patternTileNumber, screenX, screenY);
-
-        // get background attribute color index
-        u8 attributeColourIndex;
-        {
-            u16 nametableStart = GetBaseNametableAddress(ppu);
-
-            ASSERT(nametableStart == PPU_NAME_TABLE_0_FIRST_ADDRESS ||
-                nametableStart == PPU_NAME_TABLE_1_FIRST_ADDRESS ||
-                nametableStart == PPU_NAME_TABLE_2_FIRST_ADDRESS ||
-                nametableStart == PPU_NAME_TABLE_3_FIRST_ADDRESS);
-
-            u16 attributetableStart = nametableStart + PPU_NAMETABLE_BYTES_BEFORE_ATTRIBUTE_TABLE;
-            u16 tileNumber = GetBackgroundTileNumber(screenX, screenY);
-
-            u16 tileRowNumber = (tileNumber / PPU_BACKGROUND_TILES_PER_ROW);
-            u16 tileColumnNumber = tileNumber % PPU_BACKGROUND_TILES_PER_ROW;
-
-            u16 horizontalOffset = (tileColumnNumber / PPU_HORIZONTAL_TILES_PER_ATTRIBUTE_BYTE);
-            u16 verticalOffset = (tileRowNumber / PPU_VERTICAL_TILES_PER_ATTRIBUTE_BYTE) * PPU_ATTRIBUTE_BYTES_PER_ROW;
-            u16 attributeByteAddress = attributetableStart + horizontalOffset + verticalOffset;
-            u8 attributeByte = ReadPPUU8(nes, attributeByteAddress);
-
-            u16 hOffset = (tileNumber % PPU_HORIZONTAL_TILES_PER_ATTRIBUTE_BYTE);
-            u16 vOffset = (tileRowNumber % PPU_VERTICAL_TILES_PER_ATTRIBUTE_BYTE);
-
-            s32 attributeTileNumber = attributeTableLookup[vOffset][hOffset];
-            switch (attributeTileNumber)
-            {
-                case 0x0:
-                case 0x1:
-                case 0x2:
-                case 0x3:
-                    attributeColourIndex = (attributeByte << 6);
-                    break;
-
-                case 0x4:
-                case 0x5:
-                case 0x6:
-                case 0x7:
-                    attributeColourIndex = (attributeByte << 4);
-                    break;
-
-                case 0x8:
-                case 0x9:
-                case 0xA:
-                case 0xB:
-                    attributeColourIndex = (attributeByte << 2);
-                    break;
-
-                case 0xC:
-                case 0xD:
-                case 0xE:
-                case 0xF:
-                    attributeColourIndex = attributeByte;
-                    break;
-            }
-
-            attributeColourIndex = attributeColourIndex >> 6;
-            attributeColourIndex = attributeColourIndex << 2;
-        }
-
-        // if transparent, use the background colour   
-        if (patternColorIndex == 0)
-        {
-            backgroundColorIndex = 0;
-        }
-        else
-        {
-            backgroundColorIndex = patternColorIndex + attributeColourIndex;
-        }
-    }
-
-    return backgroundColorIndex;
 }
 
 internal void RenderPixel(NES *nes)
@@ -230,7 +55,7 @@ internal void RenderPixel(NES *nes)
             u8 spriteAttr = ReadU8(&nes->oamMemory2, i * 4 + 2);
             u8 spriteX = ReadU8(&nes->oamMemory2, i * 4 + 3);
 
-            u8 rowOffset = y - spriteY;
+            u8 rowOffset = y - spriteY - 1;
             u8 colOffset = x - spriteX;
 
             // the bit 6 indicate that the sprite should flip horizontally
@@ -240,7 +65,7 @@ internal void RenderPixel(NES *nes)
                 colOffset = 7 - colOffset;
             }
 
-            // the bit 7 indicate that the sprite should flip horizontally
+            // the bit 7 indicate that the sprite should flip vertically
             if (spriteAttr & 0x80)
             {
                 // @TODO: this doesn't care about 8x16 sprites
@@ -272,17 +97,21 @@ internal void RenderPixel(NES *nes)
         }
     }
 
+    b32 b = background % 4 != 0;
+    b32 s = sprite % 4 != 0;
+
     u8 colorIndex;
 
-    if (!background && !sprite)
+    if (!b && !s)
     {
         colorIndex = 0;
     }
-    else if (!background && sprite)
+    else if (!b && s)
     {
+        // AND (&) with 0x10 to make sure that the color is picked from palette 2 (0x3F10)
         colorIndex = sprite | 0x10;
     }
-    else if (background && !sprite)
+    else if (b && !s)
     {
         colorIndex = background;
     }
@@ -295,7 +124,8 @@ internal void RenderPixel(NES *nes)
         }
 
         // the bit 5 indicate that the sprite has priority over the background
-        if (a & 0x20)
+        // 0 - front, 1 - back
+        if (!(a & 0x20))
         {
             // AND (&) with 0x10 to make sure that the color is picked from palette 2 (0x3F10)
             colorIndex = sprite | 0x10;
@@ -308,7 +138,7 @@ internal void RenderPixel(NES *nes)
 
     colorIndex = ReadPPUU8(nes, 0x3F00 + colorIndex);
 
-    // if the grayscale bit is set, the AND (&) with 0x30 to set
+    // if the grayscale bit is set, then AND (&) with 0x30 to set
     // any color in the palette to the grey ones
     if (GetBitFlag(ppu->mask, COLOR_FLAG))
     {
@@ -319,41 +149,7 @@ internal void RenderPixel(NES *nes)
 
     // check the bits 5, 6, 7 to color emphasis
     u8 colorMask = (ppu->mask & 0xE0) >> 5;
-    switch (colorMask)
-    {
-        case 0x1:
-            color.g = (u8)(color.g * 0.85);
-            color.b = (u8)(color.b * 0.85);
-            break;
-        case 0x2:
-            color.r = (u8)(color.r * 0.85);
-            color.b = (u8)(color.b * 0.85);
-            break;
-        case 0x3:
-            color.r = (u8)(color.r * 0.85);
-            color.g = (u8)(color.g * 0.85);
-            color.b = (u8)(color.b * 0.70);
-            break;
-        case 0x4:
-            color.r = (u8)(color.r * 0.85);
-            color.g = (u8)(color.g * 0.85);
-            break;
-        case 0x5:
-            color.r = (u8)(color.r * 0.85);
-            color.g = (u8)(color.g * 0.70);
-            color.b = (u8)(color.b * 0.85);
-            break;
-        case 0x6:
-            color.r = (u8)(color.r * 0.70);
-            color.g = (u8)(color.g * 0.85);
-            color.b = (u8)(color.b * 0.85);
-            break;
-        case 0x7:
-            color.r = (u8)(color.r * 0.70);
-            color.g = (u8)(color.g * 0.70);
-            color.b = (u8)(color.b * 0.70);
-            break;
-    }
+    ColorEmphasis(&color, colorMask);
 
     // draw pixel at 'x', 'y' with color 'color'
     SetPixel(gui, x, y, color);

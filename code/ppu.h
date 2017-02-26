@@ -669,6 +669,45 @@ inline void WriteDMA(NES *nes, u8 value)
         ++cpu->waitCycles;
 }
 
+inline void ColorEmphasis(Color *color, u8 mask)
+{
+    switch (mask)
+    {
+        case 0x1:
+            color->g = (u8)(color->g * 0.85);
+            color->b = (u8)(color->b * 0.85);
+            break;
+        case 0x2:
+            color->r = (u8)(color->r * 0.85);
+            color->b = (u8)(color->b * 0.85);
+            break;
+        case 0x3:
+            color->r = (u8)(color->r * 0.85);
+            color->g = (u8)(color->g * 0.85);
+            color->b = (u8)(color->b * 0.70);
+            break;                      
+        case 0x4:                       
+            color->r = (u8)(color->r * 0.85);
+            color->g = (u8)(color->g * 0.85);
+            break;                      
+        case 0x5:                       
+            color->r = (u8)(color->r * 0.85);
+            color->g = (u8)(color->g * 0.70);
+            color->b = (u8)(color->b * 0.85);
+            break;                      
+        case 0x6:                       
+            color->r = (u8)(color->r * 0.70);
+            color->g = (u8)(color->g * 0.85);
+            color->b = (u8)(color->b * 0.85);
+            break;                      
+        case 0x7:                       
+            color->r = (u8)(color->r * 0.70);
+            color->g = (u8)(color->g * 0.70);
+            color->b = (u8)(color->b * 0.70);
+            break;
+    }
+}
+
 inline void SetVerticalBlank(NES *nes)
 {
     CPU *cpu = &nes->cpu;
