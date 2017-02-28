@@ -102,14 +102,18 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SDL_OPENGL2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
+      <AdditionalIncludeDirectories>D:\Work\nes\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>user32.lib;gdi32.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;opengl32.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <ManifestFile />
       <ProfileGuidedDatabase />
+      <AdditionalLibraryDirectories>D:\Work\nes\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <SubSystem>NotSet</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -145,8 +149,8 @@
     <ClCompile Include="..\code\gui.cpp" />
     <ClCompile Include="..\code\nes.cpp" />
     <ClCompile Include="..\code\ppu.cpp" />
-    <ClCompile Include="..\code\win32main.cpp" />
-    <ClCompile Include="..\code\win32nes.cpp" />
+    <ClCompile Include="..\code\sdl_opengl2.cpp" />
+    <ClCompile Include="..\code\win32_software.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\code\cartridge.h" />
@@ -157,12 +161,9 @@
     <ClInclude Include="..\code\nes.h" />
     <ClInclude Include="..\code\nuklear.h" />
     <ClInclude Include="..\code\nuklear_gdi.h" />
-    <ClInclude Include="..\code\nuklear_gdip.h" />
+    <ClInclude Include="..\code\nuklear_sdl_gl2.h" />
     <ClInclude Include="..\code\oam.h" />
     <ClInclude Include="..\code\ppu.h" />
-    <ClInclude Include="..\code\stb_image.h" />
-    <ClInclude Include="..\code\stb_image_write.h" />
-    <ClInclude Include="..\code\stb_truetype.h" />
     <ClInclude Include="..\code\types.h" />
     <ClInclude Include="..\code\utils.h" />
   </ItemGroup>

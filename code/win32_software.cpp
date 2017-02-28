@@ -1,3 +1,5 @@
+#ifdef WIN32_SOFTWARE
+
 #include "types.h"
 #include "cartridge.h"
 #include "nes.h"
@@ -81,7 +83,6 @@ LRESULT CALLBACK Win32MainWindowCallback(
         }
     }
 
-    //if (!nk_gdip_handle_event(window, msg, wParam, lParam))
     if (!nk_gdi_handle_event(window, msg, wParam, lParam))
     {
         result = DefWindowProc(window, msg, wParam, lParam);
@@ -96,14 +97,6 @@ int CALLBACK WinMain(
     LPSTR     cmdLine,
     int       cmdShow)
 {
-
-    //
-    // Check with the tests under D:\Work\nes\misc\nes-test-roms\nes_instr_test\rom_singles
-    // those throws a LOT of ERRORS. 
-    // For the first one, $E144 is the address where it's can be seen the checksum at $0x11
-    // and compare with the values on the source file of the test.
-    //
-
     LARGE_INTEGER initialCounter = Win32GetWallClock();
 
     LARGE_INTEGER perfCountFrequencyResult;
@@ -155,10 +148,6 @@ int CALLBACK WinMain(
 
             GdiFont *font = nk_gdifont_create("Consolas", 14);
             nk_context *ctx = nk_gdi_init(font, dc, windowWidth, windowHeight);
-
-            /*nk_context *ctx = nk_gdip_init(window, windowWidth, windowHeight);
-            GdipFont *font = nk_gdipfont_create("Consolas", 14);
-            nk_gdip_set_font(font);*/
 
             LARGE_INTEGER startCounter = Win32GetWallClock();
             dt = Win32GetSecondsElapsed(initialCounter, startCounter);
@@ -1275,3 +1264,4 @@ int CALLBACK WinMain(
 
     return 0;
 }
+#endif // DEBUG
