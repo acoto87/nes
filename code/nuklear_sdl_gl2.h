@@ -3,13 +3,13 @@
  * no warrenty implied; use at your own risk.
  * authored from 2015-2016 by Micha Mettke
  */
-/*
- * ==============================================================
- *
- *                              API
- *
- * ===============================================================
- */
+ /*
+  * ==============================================================
+  *
+  *                              API
+  *
+  * ===============================================================
+  */
 #ifndef NK_SDL_GL2_H_
 #define NK_SDL_GL2_H_
 
@@ -18,7 +18,7 @@ NK_API struct nk_context*   nk_sdl_init(SDL_Window *win);
 NK_API void                 nk_sdl_font_stash_begin(struct nk_font_atlas **atlas);
 NK_API void                 nk_sdl_font_stash_end(void);
 NK_API int                  nk_sdl_handle_event(SDL_Event *evt);
-NK_API void                 nk_sdl_render(enum nk_anti_aliasing , int max_vertex_buffer, int max_element_buffer);
+NK_API void                 nk_sdl_render(enum nk_anti_aliasing, int max_vertex_buffer, int max_element_buffer);
 NK_API void                 nk_sdl_shutdown(void);
 
 #endif
@@ -59,7 +59,7 @@ nk_sdl_device_upload_atlas(const void *image, int width, int height)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, image);
+        GL_RGBA, GL_UNSIGNED_BYTE, image);
 }
 
 NK_API void
@@ -73,10 +73,10 @@ nk_sdl_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_b
 
     SDL_GetWindowSize(sdl.win, &width, &height);
     SDL_GL_GetDrawableSize(sdl.win, &display_width, &display_height);
-    scale.x = (float)display_width/(float)width;
-    scale.y = (float)display_height/(float)height;
+    scale.x = (float)display_width / (float)width;
+    scale.y = (float)display_height / (float)height;
 
-    glPushAttrib(GL_ENABLE_BIT|GL_COLOR_BUFFER_BIT|GL_TRANSFORM_BIT);
+    glPushAttrib(GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT | GL_TRANSFORM_BIT);
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_SCISSOR_TEST);
@@ -85,7 +85,7 @@ nk_sdl_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_b
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     /* setup viewport/project */
-    glViewport(0,0,(GLsizei)display_width,(GLsizei)display_height);
+    glViewport(0, 0, (GLsizei)display_width, (GLsizei)display_height);
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
@@ -134,10 +134,12 @@ nk_sdl_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_b
         nk_convert(&sdl.ctx, &dev->cmds, &vbuf, &ebuf, &config);
 
         /* setup vertex buffer pointer */
-        {const void *vertices = nk_buffer_memory_const(&vbuf);
-        glVertexPointer(2, GL_FLOAT, vs, (const void*)((const nk_byte*)vertices + vp));
-        glTexCoordPointer(2, GL_FLOAT, vs, (const void*)((const nk_byte*)vertices + vt));
-        glColorPointer(4, GL_UNSIGNED_BYTE, vs, (const void*)((const nk_byte*)vertices + vc));}
+        {
+            const void *vertices = nk_buffer_memory_const(&vbuf);
+            glVertexPointer(2, GL_FLOAT, vs, (const void*)((const nk_byte*)vertices + vp));
+            glTexCoordPointer(2, GL_FLOAT, vs, (const void*)((const nk_byte*)vertices + vt));
+            glColorPointer(4, GL_UNSIGNED_BYTE, vs, (const void*)((const nk_byte*)vertices + vc));
+        }
 
         /* iterate over and execute each draw command */
         offset = (const nk_draw_index*)nk_buffer_memory_const(&ebuf);
@@ -191,7 +193,7 @@ nk_sdl_clipbard_copy(nk_handle usr, const char *text, int len)
     char *str = 0;
     (void)usr;
     if (!len) return;
-    str = (char*)malloc((size_t)len+1);
+    str = (char*)malloc((size_t)len + 1);
     if (!str) return;
     memcpy(str, text, (size_t)len);
     str[len] = '\0';
@@ -239,7 +241,8 @@ nk_sdl_handle_event(SDL_Event *evt)
     if (ctx->input.mouse.grab) {
         SDL_SetRelativeMouseMode(SDL_TRUE);
         ctx->input.mouse.grab = 0;
-    } else if (ctx->input.mouse.ungrab) {
+    }
+    else if (ctx->input.mouse.ungrab) {
         int x = (int)ctx->input.mouse.prev.x, y = (int)ctx->input.mouse.prev.y;
         SDL_SetRelativeMouseMode(SDL_FALSE);
         SDL_WarpMouseInWindow(sdl.win, x, y);
@@ -263,14 +266,18 @@ nk_sdl_handle_event(SDL_Event *evt)
         else if (sym == SDLK_HOME) {
             nk_input_key(ctx, NK_KEY_TEXT_START, down);
             nk_input_key(ctx, NK_KEY_SCROLL_START, down);
-        } else if (sym == SDLK_END) {
+        }
+        else if (sym == SDLK_END) {
             nk_input_key(ctx, NK_KEY_TEXT_END, down);
             nk_input_key(ctx, NK_KEY_SCROLL_END, down);
-        } else if (sym == SDLK_PAGEDOWN) {
+        }
+        else if (sym == SDLK_PAGEDOWN) {
             nk_input_key(ctx, NK_KEY_SCROLL_DOWN, down);
-        } else if (sym == SDLK_PAGEUP) {
+        }
+        else if (sym == SDLK_PAGEUP) {
             nk_input_key(ctx, NK_KEY_SCROLL_UP, down);
-        } else if (sym == SDLK_z)
+        }
+        else if (sym == SDLK_z)
             nk_input_key(ctx, NK_KEY_TEXT_UNDO, down && state[SDL_SCANCODE_LCTRL]);
         else if (sym == SDLK_r)
             nk_input_key(ctx, NK_KEY_TEXT_REDO, down && state[SDL_SCANCODE_LCTRL]);
@@ -292,13 +299,16 @@ nk_sdl_handle_event(SDL_Event *evt)
             if (state[SDL_SCANCODE_LCTRL])
                 nk_input_key(ctx, NK_KEY_TEXT_WORD_LEFT, down);
             else nk_input_key(ctx, NK_KEY_LEFT, down);
-        } else if (sym == SDLK_RIGHT) {
+        }
+        else if (sym == SDLK_RIGHT) {
             if (state[SDL_SCANCODE_LCTRL])
                 nk_input_key(ctx, NK_KEY_TEXT_WORD_RIGHT, down);
             else nk_input_key(ctx, NK_KEY_RIGHT, down);
-        } else return 0;
+        }
+        else return 0;
         return 1;
-    } else if (evt->type == SDL_MOUSEBUTTONDOWN || evt->type == SDL_MOUSEBUTTONUP) {
+    }
+    else if (evt->type == SDL_MOUSEBUTTONDOWN || evt->type == SDL_MOUSEBUTTONUP) {
         /* mouse button */
         int down = evt->type == SDL_MOUSEBUTTONDOWN;
         const int x = evt->button.x, y = evt->button.y;
@@ -310,19 +320,23 @@ nk_sdl_handle_event(SDL_Event *evt)
             nk_input_button(ctx, NK_BUTTON_RIGHT, x, y, down);
         else return 0;
         return 1;
-    } else if (evt->type == SDL_MOUSEMOTION) {
+    }
+    else if (evt->type == SDL_MOUSEMOTION) {
         if (ctx->input.mouse.grabbed) {
             int x = (int)ctx->input.mouse.prev.x, y = (int)ctx->input.mouse.prev.y;
             nk_input_motion(ctx, x + evt->motion.xrel, y + evt->motion.yrel);
-        } else nk_input_motion(ctx, evt->motion.x, evt->motion.y);
+        }
+        else nk_input_motion(ctx, evt->motion.x, evt->motion.y);
         return 1;
-    } else if (evt->type == SDL_TEXTINPUT) {
+    }
+    else if (evt->type == SDL_TEXTINPUT) {
         nk_glyph glyph;
         memcpy(glyph, evt->text.text, NK_UTF_SIZE);
         nk_input_glyph(ctx, glyph);
         return 1;
-    } else if (evt->type == SDL_MOUSEWHEEL) {
-        nk_input_scroll(ctx,(float)evt->wheel.y);
+    }
+    else if (evt->type == SDL_MOUSEWHEEL) {
+        nk_input_scroll(ctx, (float)evt->wheel.y);
         return 1;
     }
     return 0;

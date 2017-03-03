@@ -7,9 +7,11 @@
 #include "ppu.h"
 
 #include <SDL2/SDL.h>
+#undef main
+
+#include "glew.h"
 #include <SDL2/SDL_opengl.h>
 #include <SDL2/SDL_syswm.h>
-#undef main
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -29,6 +31,8 @@
 #define WINDOW_WIDTH 1200
 #define WINDOW_HEIGHT 800
 
+#define NK_SHADER_VERSION "#version 150\n"
+
 global s64 globalPerfCountFrequency;
 global b32 running;
 global b32 needs_refresh = TRUE;
@@ -41,6 +45,7 @@ global b32 coarseButtons[8];
 global b32 oneCycleAtTime;
 
 global NES *nes;
+
 
 internal inline LARGE_INTEGER Win32GetWallClock(void)
 {
@@ -65,6 +70,115 @@ internal inline char* DebugText(char *fmt, ...)
     return debugBuffer;
 }
 
+struct device {
+    struct nk_buffer cmds;
+    struct nk_draw_null_texture null;
+    GLuint vbo, vao, ebo;
+    GLuint prog;
+    GLuint vert_shdr;
+    GLuint frag_shdr;
+    GLint attrib_pos;
+    GLint attrib_uv;
+    GLint attrib_col;
+    GLint uniform_tex;
+    GLint uniform_proj;
+    GLuint screen_tex;
+};
+
+internal void init_device(struct device *dev)
+{
+    GLint status;
+
+    static const GLchar *vertex_shader =
+        NK_SHADER_VERSION
+        "uniform mat4 ProjMtx;\n"
+        "in vec2 Position;\n"
+        "in vec2 TexCoord;\n"
+        "in vec4 Color;\n"
+        "out vec2 Frag_UV;\n"
+        "out vec4 Frag_Color;\n"
+        "void main() {\n"
+        "   Frag_UV = TexCoord;\n"
+        "   Frag_Color = Color;\n"
+        "   gl_Position = ProjMtx * vec4(Position.xy, 0, 1);\n"
+        "}\n";
+
+    static const GLchar *fragment_shader =
+        NK_SHADER_VERSION
+        "precision mediump float;\n"
+        "uniform sampler2D Texture;\n"
+        "in vec2 Frag_UV;\n"
+        "in vec4 Frag_Color;\n"
+        "out vec4 Out_Color;\n"
+        "void main(){\n"
+        "   Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
+        "}\n";
+
+    nk_buffer_init_default(&dev->cmds);
+    dev->prog = glCreateProgram();
+    dev->vert_shdr = glCreateShader(GL_VERTEX_SHADER);
+    dev->frag_shdr = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(dev->vert_shdr, 1, &vertex_shader, 0);
+    glShaderSource(dev->frag_shdr, 1, &fragment_shader, 0);
+    glCompileShader(dev->vert_shdr);
+    glCompileShader(dev->frag_shdr);
+    glGetShaderiv(dev->vert_shdr, GL_COMPILE_STATUS, &status);
+    assert(status == GL_TRUE);
+    glGetShaderiv(dev->frag_shdr, GL_COMPILE_STATUS, &status);
+    assert(status == GL_TRUE);
+    glAttachShader(dev->prog, dev->vert_shdr);
+    glAttachShader(dev->prog, dev->frag_shdr);
+    glLinkProgram(dev->prog);
+    glGetProgramiv(dev->prog, GL_LINK_STATUS, &status);
+    assert(status == GL_TRUE);
+
+    dev->uniform_tex = glGetUniformLocation(dev->prog, "Texture");
+    dev->uniform_proj = glGetUniformLocation(dev->prog, "ProjMtx");
+    dev->attrib_pos = glGetAttribLocation(dev->prog, "Position");
+    dev->attrib_uv = glGetAttribLocation(dev->prog, "TexCoord");
+    dev->attrib_col = glGetAttribLocation(dev->prog, "Color");
+
+    {
+        /* buffer setup */
+        GLsizei vs = sizeof(struct nk_sdl_vertex);
+        size_t vp = offsetof(struct nk_sdl_vertex, position);
+        size_t vt = offsetof(struct nk_sdl_vertex, uv);
+        size_t vc = offsetof(struct nk_sdl_vertex, col);
+
+        glGenBuffers(1, &dev->vbo);
+        glGenBuffers(1, &dev->ebo);
+        glGenVertexArrays(1, &dev->vao);
+
+        glBindVertexArray(dev->vao);
+        glBindBuffer(GL_ARRAY_BUFFER, dev->vbo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dev->ebo);
+
+        glEnableVertexAttribArray((GLuint)dev->attrib_pos);
+        glEnableVertexAttribArray((GLuint)dev->attrib_uv);
+        glEnableVertexAttribArray((GLuint)dev->attrib_col);
+
+        glVertexAttribPointer((GLuint)dev->attrib_pos, 2, GL_FLOAT, GL_FALSE, vs, (void*)vp);
+        glVertexAttribPointer((GLuint)dev->attrib_uv, 2, GL_FLOAT, GL_FALSE, vs, (void*)vt);
+        glVertexAttribPointer((GLuint)dev->attrib_col, 4, GL_UNSIGNED_BYTE, GL_TRUE, vs, (void*)vc);
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+internal void init_textures(struct device *dev)
+{
+    glGenTextures(1, &dev->screen_tex);
+    glBindTexture(GL_TEXTURE_2D, dev->screen_tex);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glGenerateMipmap(GL_TEXTURE_2D);
+}
+
 int CALLBACK WinMain(
     HINSTANCE instance,
     HINSTANCE prevInstance,
@@ -86,6 +200,7 @@ int CALLBACK WinMain(
 
     /* GUI */
     struct nk_context *ctx;
+    struct device device;
 
     initialCounter = Win32GetWallClock();
 
@@ -108,6 +223,9 @@ int CALLBACK WinMain(
     glContext = SDL_GL_CreateContext(win);
     SDL_GetWindowSize(win, &win_width, &win_height);
 
+    glewExperimental = GL_TRUE;
+    glewInit();
+
     // initialize info structure with SDL version info
     SDL_VERSION(&wmInfo.version);
 
@@ -118,7 +236,7 @@ int CALLBACK WinMain(
 
     /* GUI */
     ctx = nk_sdl_init(win);
-
+    init_device(&device);
     {
         struct nk_font_atlas *atlas;
         nk_sdl_font_stash_begin(&atlas);
@@ -128,7 +246,10 @@ int CALLBACK WinMain(
         nk_style_set_font(ctx, &future->handle);
     }
 
-    background = nk_rgb(28, 48, 62);
+    glEnable(GL_TEXTURE_2D);
+    init_textures(&device);
+
+    background = nk_rgb(0, 0, 0);
 
     LARGE_INTEGER startCounter = Win32GetWallClock();
     dt = Win32GetSecondsElapsed(initialCounter, startCounter);
@@ -145,7 +266,6 @@ int CALLBACK WinMain(
     *                                                  -acoto87 January 30, 2017
     */
     // nes->cpu.pc = 0xC000;
-
 
     while (running)
     {
@@ -171,6 +291,10 @@ int CALLBACK WinMain(
         {
             CPU *cpu = &nes->cpu;
             PPU *ppu = &nes->ppu;
+
+            // 
+            // ADD THE BINDINGS FOR SPACE, A AND S AGAIN
+            //
 
             SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down || coarseButtons[1]);
             SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down || coarseButtons[3]);
@@ -439,6 +563,11 @@ int CALLBACK WinMain(
         {
             GUI *gui = &nes->gui;
 
+            // and upload the texture data every time
+            glBindTexture(GL_TEXTURE_2D, device.screen_tex);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 240, 0, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
+            glGenerateMipmap(GL_TEXTURE_2D);
+
             nk_layout_row_static(ctx, 240, 256, 1);
 
             struct nk_command_buffer *canvas;
@@ -455,16 +584,8 @@ int CALLBACK WinMain(
                     // update_your_widget_by_user_input(...);
                 }
 
-                struct nk_image image;
-                image.w = gui->width;
-                image.h = gui->height;
-                image.handle.ptr = gui->pixels;
-                image.region[0] = space.x;
-                image.region[1] = space.y;
-                image.region[2] = space.w;
-                image.region[3] = space.h;
-
-                nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
+                struct nk_image image = nk_image_id((int)device.screen_tex);
+                nk_draw_image(canvas, space, &image, nk_rgb(255, 255, 255));
             }
         }
         nk_end(ctx);
