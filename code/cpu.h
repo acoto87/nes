@@ -78,7 +78,8 @@
 #define OVERFLOW_FLAG 6
 #define NEGATIVE_FLAG 7
 
-// The NES CPU operates at a speed of 21.477272 MHz / 12 = 1789773Hz.
+// The NES CPU operates at a speed of 21.477272 MHz / 12 = 1.789773 MHz = 1789773Hz,
+// that's is ~1789773 cycles per second.
 // see https://wiki.nesdev.com/w/index.php/Clock_rate
 #define CPU_FREQ 1789773
 

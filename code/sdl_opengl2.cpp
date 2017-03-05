@@ -46,6 +46,25 @@ global b32 oneCycleAtTime;
 
 global NES *nes;
 
+struct Device {
+    struct nk_buffer cmds;
+    GLuint vbo, vao, ebo;
+    GLuint prog;
+    GLuint vert_shdr;
+    GLuint frag_shdr;
+    GLint attrib_pos;
+    GLint attrib_uv;
+    GLint attrib_col;
+    GLint uniform_tex;
+    GLint uniform_proj;
+
+    struct nk_image screenImage;
+    struct nk_image patterns[2];
+    struct nk_image oam[64];
+    struct nk_image oam2[8];
+    struct nk_image nametable;
+    struct nk_image nametableSep[960];
+};
 
 internal inline LARGE_INTEGER Win32GetWallClock(void)
 {
@@ -70,22 +89,7 @@ internal inline char* DebugText(char *fmt, ...)
     return debugBuffer;
 }
 
-struct device {
-    struct nk_buffer cmds;
-    struct nk_draw_null_texture null;
-    GLuint vbo, vao, ebo;
-    GLuint prog;
-    GLuint vert_shdr;
-    GLuint frag_shdr;
-    GLint attrib_pos;
-    GLint attrib_uv;
-    GLint attrib_col;
-    GLint uniform_tex;
-    GLint uniform_proj;
-    GLuint screen_tex;
-};
-
-internal void init_device(struct device *dev)
+internal void InitDevice(struct Device *dev)
 {
     GLint status;
 
@@ -168,15 +172,84 @@ internal void init_device(struct device *dev)
     glBindVertexArray(0);
 }
 
-internal void init_textures(struct device *dev)
+internal struct nk_image InitTexture(GLuint tex, GLsizei width, GLsizei height)
 {
-    glGenTextures(1, &dev->screen_tex);
-    glBindTexture(GL_TEXTURE_2D, dev->screen_tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return nk_image_id((s32)tex);
+}
+
+internal void InitTextures(struct Device *dev)
+{
+    glEnable(GL_TEXTURE_2D);
+
+    s32 index = 0;
+    GLuint textures[1 + 2 + 64 + 8 + 1 + 960]; // delete 1036 textures
+
+    glGenTextures(1026, textures);
+
+    dev->screenImage = InitTexture(textures[index++], 256, 240);
+
+    for (s32 i = 0; i < 2; ++i)
+    {
+        dev->patterns[i] = InitTexture(textures[index++], 128, 128);
+    }
+
+    for (s32 i = 0; i < 64; ++i)
+    {
+        dev->oam[i] = InitTexture(textures[index++], 8, 8);
+    }
+
+    for (s32 i = 0; i < 8; ++i)
+    {
+        dev->oam2[i] = InitTexture(textures[index], 8, 8);
+    }
+
+    dev->nametable = InitTexture(textures[index++], 256, 240);
+
+    for (s32 i = 0; i < 960; ++i)
+    {
+        dev->nametableSep[i] = InitTexture(textures[index++], 8, 8);
+    }
+}
+
+internal void DeleteTextures(Device *dev)
+{
+    s32 index = 0;
+    GLuint textures[1 + 2 + 64 + 8 + 1 + 960]; // delete 1036 textures
+
+    textures[index++] = dev->screenImage.handle.id;
+
+    for (s32 i = 0; i < 2; ++i)
+    {
+        textures[index++] = dev->patterns[i].handle.id;
+    }
+
+    for (s32 i = 0; i < 64; ++i)
+    {
+        textures[index++] = dev->oam[i].handle.id;
+    }
+
+    for (s32 i = 0; i < 8; ++i)
+    {
+        textures[index++] = dev->oam2[i].handle.id;
+    }
+
+    textures[index++] = dev->nametable.handle.id;
+
+    for (s32 i = 0; i < 960; ++i)
+    {
+        textures[index++] = dev->nametableSep[i].handle.id;
+    }
+
+    glDisable(GL_TEXTURE_2D);
 }
 
 int CALLBACK WinMain(
@@ -190,9 +263,8 @@ int CALLBACK WinMain(
     SDL_SysWMinfo wmInfo;
     SDL_GLContext glContext;
     HWND winHwnd;
-    struct nk_color background;
     int win_width, win_height;
-    b32 running = TRUE, quit = FALSE;
+    b32 running, quit = FALSE;
     f32 dt = 0;
 
     LARGE_INTEGER initialCounter;
@@ -200,7 +272,7 @@ int CALLBACK WinMain(
 
     /* GUI */
     struct nk_context *ctx;
-    struct device device;
+    struct Device device;
 
     initialCounter = Win32GetWallClock();
 
@@ -236,7 +308,6 @@ int CALLBACK WinMain(
 
     /* GUI */
     ctx = nk_sdl_init(win);
-    init_device(&device);
     {
         struct nk_font_atlas *atlas;
         nk_sdl_font_stash_begin(&atlas);
@@ -246,14 +317,12 @@ int CALLBACK WinMain(
         nk_style_set_font(ctx, &future->handle);
     }
 
-    glEnable(GL_TEXTURE_2D);
-    init_textures(&device);
-
-    background = nk_rgb(0, 0, 0);
+    InitDevice(&device);
+    InitTextures(&device);
 
     LARGE_INTEGER startCounter = Win32GetWallClock();
     dt = Win32GetSecondsElapsed(initialCounter, startCounter);
-    running = true;
+    running = TRUE;
 
     /*
     * Emulator authors :
@@ -266,6 +335,7 @@ int CALLBACK WinMain(
     *                                                  -acoto87 January 30, 2017
     */
     // nes->cpu.pc = 0xC000;
+    f32 d1 = 0, d2 = 0;
 
     while (running)
     {
@@ -277,6 +347,7 @@ int CALLBACK WinMain(
             if (evt.type == SDL_QUIT)
             {
                 quit = TRUE;
+                break;
             }
             nk_sdl_handle_event(&evt);
         }
@@ -287,14 +358,12 @@ int CALLBACK WinMain(
             break;
         }
 
+        LARGE_INTEGER s = Win32GetWallClock();
+
         if (nes)
         {
             CPU *cpu = &nes->cpu;
             PPU *ppu = &nes->ppu;
-
-            // 
-            // ADD THE BINDINGS FOR SPACE, A AND S AGAIN
-            //
 
             SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down || coarseButtons[1]);
             SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down || coarseButtons[3]);
@@ -351,7 +420,7 @@ int CALLBACK WinMain(
 
                 /*for (s32 i = 0; i < step.cycles; i++)
                 {
-                StepAPU(nes);
+                    StepAPU(nes);
                 }*/
 
                 cycles -= step.cycles;
@@ -363,10 +432,15 @@ int CALLBACK WinMain(
             }
         }
 
+        LARGE_INTEGER e = Win32GetWallClock();
+        d1 = Win32GetSecondsElapsed(s, e);
+
+        s = Win32GetWallClock();
+
         /* GUI */
         nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
 
-        if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 290, 170), flags))
+        if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 290, 190), flags))
         {
             local s32 fps = 0;
             local s32 fpsCount = 0;
@@ -388,6 +462,9 @@ int CALLBACK WinMain(
             }
 
             nk_label(ctx, DebugText("fps: %d", fps), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText(""), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("d1: %.4f", d1), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("d2: %.4f", d2), NK_TEXT_LEFT);
             ++fpsCount;
 
             nk_layout_row_dynamic(ctx, 20, 2);
@@ -563,11 +640,6 @@ int CALLBACK WinMain(
         {
             GUI *gui = &nes->gui;
 
-            // and upload the texture data every time
-            glBindTexture(GL_TEXTURE_2D, device.screen_tex);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 240, 0, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
-            glGenerateMipmap(GL_TEXTURE_2D);
-
             nk_layout_row_static(ctx, 240, 256, 1);
 
             struct nk_command_buffer *canvas;
@@ -581,16 +653,19 @@ int CALLBACK WinMain(
             {
                 if (state != NK_WIDGET_ROM)
                 {
-                    // update_your_widget_by_user_input(...);
+                     // update_your_widget_by_user_input(...);
                 }
 
-                struct nk_image image = nk_image_id((int)device.screen_tex);
-                nk_draw_image(canvas, space, &image, nk_rgb(255, 255, 255));
+                glBindTexture(GL_TEXTURE_2D, device.screenImage.handle.id);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
+                glBindTexture(GL_TEXTURE_2D, 0);
+
+                nk_draw_image(canvas, space, &device.screenImage, nk_rgb(255, 255, 255));
             }
         }
         nk_end(ctx);
 
-        if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 190, 290, 600), flags) && nes)
+        if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 210, 290, 580), flags) && nes)
         {
             CPU *cpu = &nes->cpu;
             PPU *ppu = &nes->ppu;
@@ -897,6 +972,12 @@ int CALLBACK WinMain(
         {
             CPU *cpu = &nes->cpu;
             PPU *ppu = &nes->ppu;
+            GUI *gui = &nes->gui;
+
+            struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
+
+            struct nk_rect space;
+            enum nk_widget_layout_states state;
 
             enum options { PATTERNS_PALETTES_OAM, NAMETABLES };
             static s32 option = PATTERNS_PALETTES_OAM;
@@ -909,87 +990,45 @@ int CALLBACK WinMain(
 
             if (option == PATTERNS_PALETTES_OAM)
             {
-                nk_layout_row_dynamic(ctx, 25, 1);
-                nk_label(ctx, "PATTERNS", NK_TEXT_LEFT);
-
-                local u32 patterns[2][128 * 128];
-
-                nk_layout_row_static(ctx, 128, 128, 2);
-
-                struct nk_command_buffer *canvas;
-                struct nk_input *input = &ctx->input;
-                canvas = nk_window_get_canvas(ctx);
-
-                struct nk_rect space;
-                enum nk_widget_layout_states state;
-
-                for (s32 patternTable = 0; patternTable < 2; ++patternTable)
+                // PATTERNS
                 {
-                    u16 patternTableAddress = patternTable * 0x1000;
+                    nk_layout_row_dynamic(ctx, 25, 1);
+                    nk_label(ctx, "PATTERNS", NK_TEXT_LEFT);
 
-                    for (s32 tileY = 0; tileY < 16; ++tileY)
+                    nk_layout_row_static(ctx, 128, 128, 2);
+
+                    for (s32 index = 0; index < 2; ++index)
                     {
-                        for (s32 tileX = 0; tileX < 16; ++tileX)
+                        u16 baseAddress = index * 0x1000;
+
+                        for (s32 tileY = 0; tileY < 16; ++tileY)
                         {
-                            u16 patternIndex = tileY * 16 + tileX;
-
-                            for (s32 y = 0; y < 8; ++y)
+                            for (s32 tileX = 0; tileX < 16; ++tileX)
                             {
-                                u8 row1 = ReadPPUU8(nes, patternTableAddress + patternIndex * 16 + y);
-                                u8 row2 = ReadPPUU8(nes, patternTableAddress + patternIndex * 16 + 8 + y);
+                                u16 patternIndex = tileY * 16 + tileX;
 
-                                for (s32 x = 0; x < 8; ++x)
+                                for (s32 y = 0; y < 8; ++y)
                                 {
-                                    u8 h = ((row2 >> (7 - x)) & 0x1);
-                                    u8 l = ((row1 >> (7 - x)) & 0x1);
-                                    u8 v = (h << 0x1) | l;
+                                    u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
+                                    u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
 
-                                    s32 pixelX = (tileX * 8 + x);
-                                    s32 pixelY = (tileY * 8 + y);
-                                    s32 pixel = pixelY * 128 + pixelX;
+                                    for (s32 x = 0; x < 8; ++x)
+                                    {
+                                        u8 h = ((row2 >> (7 - x)) & 0x1);
+                                        u8 l = ((row1 >> (7 - x)) & 0x1);
+                                        u32 paletteIndex = (h << 0x1) | l;
+                                        u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                        Color color = systemPalette[colorIndex % 64];
 
-                                    u32 paletteIndex = v;
-                                    u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-                                    Color color = systemPalette[colorIndex % 64];
+                                        s32 pixelX = (tileX * 8 + x);
+                                        s32 pixelY = (tileY * 8 + y);
+                                        s32 pixel = pixelY * 128 + pixelX;
 
-                                    patterns[patternTable][pixel] = color.bgra;
+                                        gui->patterns[index][pixel] = color;
+                                    }
                                 }
                             }
                         }
-                    }
-
-                    state = nk_widget(&space, ctx);
-                    if (state)
-                    {
-                        if (state != NK_WIDGET_ROM)
-                        {
-                            // update_your_widget_by_user_input(...);
-                        }
-
-                        struct nk_image image;
-                        image.w = 128;
-                        image.h = 128;
-                        image.handle.ptr = patterns[patternTable];
-                        image.region[0] = space.x;
-                        image.region[1] = space.y;
-                        image.region[2] = space.w;
-                        image.region[3] = space.h;
-
-                        nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
-                    }
-                }
-
-                nk_layout_row_dynamic(ctx, 25, 1);
-                nk_label(ctx, "PALETTES", NK_TEXT_LEFT);
-
-                nk_layout_row_static(ctx, 20, 20, 16);
-
-                for (s32 paletteIndex = 0; paletteIndex < 2; ++paletteIndex)
-                {
-                    for (s32 i = 0; i < 16; ++i)
-                    {
-                        u8 colorIndex = ReadPPUU8(nes, 0x3F00 + (paletteIndex * 0x10) + i);
-                        Color color = systemPalette[colorIndex % 64];
 
                         state = nk_widget(&space, ctx);
                         if (state)
@@ -999,157 +1038,183 @@ int CALLBACK WinMain(
                                 // update_your_widget_by_user_input(...);
                             }
 
-                            nk_fill_rect(canvas, nk_rect(space.x, space.y, space.w, space.h), 0, nk_rgb(color.r, color.g, color.b));
+                            glBindTexture(GL_TEXTURE_2D, device.patterns[index].handle.id);
+                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, gui->patterns[index]);
+                            glBindTexture(GL_TEXTURE_2D, 0);
+
+                            nk_draw_image(canvas, space, &device.patterns[index], nk_rgb(255, 255, 255));
                         }
                     }
                 }
 
-                nk_layout_row_dynamic(ctx, 25, 1);
-                nk_label(ctx, "OAM", NK_TEXT_LEFT);
-
-                local u32 sprites[64][8 * 8];
-
-                nk_layout_row_static(ctx, 8, 8, 16);
-
-                u16 spriteBaseAddress = 0x1000 * GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
-
-                for (s32 index = 0; index < 64; ++index)
+                // PALETTES
                 {
-                    u8 spriteY = ReadU8(&nes->oamMemory, index * 4 + 0);
-                    u8 spriteIdx = ReadU8(&nes->oamMemory, index * 4 + 1);
-                    u8 spriteAttr = ReadU8(&nes->oamMemory, index * 4 + 2);
-                    u8 spriteX = ReadU8(&nes->oamMemory, index * 4 + 3);
+                    nk_layout_row_dynamic(ctx, 25, 1);
+                    nk_label(ctx, "PALETTES", NK_TEXT_LEFT);
 
-                    u8 highColorBits = spriteAttr & 0x03;
+                    nk_layout_row_static(ctx, 20, 20, 16);
 
-                    for (s32 y = 0; y < 8; ++y)
+                    for (s32 index = 0; index < 2; ++index)
                     {
-                        u8 rowOffset = y;
-
-                        // the bit 7 indicate that the sprite should flip vertically
-                        if (spriteAttr & 0x80)
+                        for (s32 i = 0; i < 16; ++i)
                         {
-                            // @TODO: this doesn't care about 8x16 sprites
-                            rowOffset = 7 - rowOffset;
-                        }
-
-                        u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + rowOffset);
-                        u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + 8 + rowOffset);
-
-                        for (s32 x = 0; x < 8; ++x)
-                        {
-                            u8 colOffset = x;
-
-                            // the bit 6 indicate that the sprite should flip horizontally
-                            if (spriteAttr & 0x40)
-                            {
-                                // @TODO: this doesn't care about 8x16 sprites
-                                colOffset = 7 - colOffset;
-                            }
-
-                            u8 h = ((row2 >> (7 - colOffset)) & 0x1);
-                            u8 l = ((row1 >> (7 - colOffset)) & 0x1);
-                            u8 v = (h << 0x1) | l;
-
-                            u32 paletteIndex = (highColorBits << 2) | v;
-                            u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                            u8 colorIndex = ReadPPUU8(nes, 0x3F00 + (index * 0x10) + i);
                             Color color = systemPalette[colorIndex % 64];
 
-                            s32 pixelIndex = y * 8 + x;
-                            sprites[index][pixelIndex] = color.bgra;
+                            state = nk_widget(&space, ctx);
+                            if (state)
+                            {
+                                if (state != NK_WIDGET_ROM)
+                                {
+                                    // update_your_widget_by_user_input(...);
+                                }
+
+                                nk_fill_rect(canvas, nk_rect(space.x, space.y, space.w, space.h), 0, nk_rgb(color.b, color.g, color.r));
+                            }
                         }
-                    }
-
-                    state = nk_widget(&space, ctx);
-                    if (state)
-                    {
-                        if (state != NK_WIDGET_ROM)
-                        {
-                            // update_your_widget_by_user_input(...);
-                        }
-
-                        struct nk_image image;
-                        image.w = 8;
-                        image.h = 8;
-                        image.handle.ptr = sprites[index];
-                        image.region[0] = space.x;
-                        image.region[1] = space.y;
-                        image.region[2] = space.w;
-                        image.region[3] = space.h;
-
-                        nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
                     }
                 }
 
-                local u32 sprites2[8][8 * 8];
-
-                nk_layout_row_static(ctx, 8, 8, 8);
-
-                for (s32 index = 0; index < 8; ++index)
+                // OAM
                 {
-                    u8 spriteY = ReadU8(&nes->oamMemory2, index * 4 + 0);
-                    u8 spriteIdx = ReadU8(&nes->oamMemory2, index * 4 + 1);
-                    u8 spriteAttr = ReadU8(&nes->oamMemory2, index * 4 + 2);
-                    u8 spriteX = ReadU8(&nes->oamMemory2, index * 4 + 3);
+                    nk_layout_row_dynamic(ctx, 25, 1);
+                    nk_label(ctx, "OAM", NK_TEXT_LEFT);
 
-                    u8 highColorBits = spriteAttr & 0x03;
+                    nk_layout_row_static(ctx, 8, 8, 16);
 
-                    for (s32 y = 0; y < 8; ++y)
+                    u16 baseAddress = 0x1000 * GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
+
+                    for (s32 index = 0; index < 64; ++index)
                     {
-                        u8 rowOffset = y;
+                        u8 spriteY = ReadU8(&nes->oamMemory, index * 4 + 0);
+                        u8 spriteIdx = ReadU8(&nes->oamMemory, index * 4 + 1);
+                        u8 spriteAttr = ReadU8(&nes->oamMemory, index * 4 + 2);
+                        u8 spriteX = ReadU8(&nes->oamMemory, index * 4 + 3);
 
-                        // the bit 7 indicate that the sprite should flip vertically
-                        if (spriteAttr & 0x80)
+                        u8 highColorBits = spriteAttr & 0x03;
+
+                        for (s32 y = 0; y < 8; ++y)
                         {
-                            // @TODO: this doesn't care about 8x16 sprites
-                            rowOffset = 7 - rowOffset;
-                        }
+                            u8 rowOffset = y;
 
-                        u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + y);
-                        u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + 8 + y);
-
-                        for (s32 x = 0; x < 8; ++x)
-                        {
-                            u8 colOffset = x;
-
-                            // the bit 6 indicate that the sprite should flip horizontally
-                            if (spriteAttr & 0x40)
+                            // the bit 7 indicate that the sprite should flip vertically
+                            if (spriteAttr & 0x80)
                             {
                                 // @TODO: this doesn't care about 8x16 sprites
-                                colOffset = 7 - colOffset;
+                                rowOffset = 7 - rowOffset;
                             }
 
-                            u8 h = ((row2 >> (7 - colOffset)) & 0x1);
-                            u8 l = ((row1 >> (7 - colOffset)) & 0x1);
-                            u8 v = (h << 0x1) | l;
+                            u8 row1 = ReadPPUU8(nes, baseAddress + spriteIdx * 16 + rowOffset);
+                            u8 row2 = ReadPPUU8(nes, baseAddress + spriteIdx * 16 + 8 + rowOffset);
 
-                            u32 paletteIndex = (highColorBits << 2) | v;
-                            u32 colorIndex = ReadPPUU8(nes, 0x3F10 + paletteIndex);
-                            Color color = systemPalette[colorIndex % 64];
+                            for (s32 x = 0; x < 8; ++x)
+                            {
+                                u8 colOffset = x;
 
-                            s32 pixelIndex = y * 8 + x;
-                            sprites2[index][pixelIndex] = color.bgra;
+                                // the bit 6 indicate that the sprite should flip horizontally
+                                if (spriteAttr & 0x40)
+                                {
+                                    // @TODO: this doesn't care about 8x16 sprites
+                                    colOffset = 7 - colOffset;
+                                }
+
+                                u8 h = ((row2 >> (7 - colOffset)) & 0x1);
+                                u8 l = ((row1 >> (7 - colOffset)) & 0x1);
+                                u8 v = (h << 0x1) | l;
+
+                                u32 paletteIndex = (highColorBits << 2) | v;
+                                u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                Color color = systemPalette[colorIndex % 64];
+
+                                s32 pixelIndex = y * 8 + x;
+                                gui->sprites[index][pixelIndex] = color;
+                            }
+                        }
+
+                        state = nk_widget(&space, ctx);
+                        if (state)
+                        {
+                            if (state != NK_WIDGET_ROM)
+                            {
+                                // update_your_widget_by_user_input(...);
+                            }
+
+                            glBindTexture(GL_TEXTURE_2D, device.oam[index].handle.id);
+                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->sprites[index]);
+                            glBindTexture(GL_TEXTURE_2D, 0);
+
+                            nk_draw_image(canvas, space, &device.oam[index], nk_rgb(255, 255, 255));
                         }
                     }
+                }
 
-                    state = nk_widget(&space, ctx);
-                    if (state)
+                // OAM 2
+                {
+                    nk_layout_row_static(ctx, 8, 8, 8);
+
+                    u16 baseAddress = 0x1000 * GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
+
+                    for (s32 index = 0; index < 8; ++index)
                     {
-                        if (state != NK_WIDGET_ROM)
+                        u8 spriteY = ReadU8(&nes->oamMemory2, index * 4 + 0);
+                        u8 spriteIdx = ReadU8(&nes->oamMemory2, index * 4 + 1);
+                        u8 spriteAttr = ReadU8(&nes->oamMemory2, index * 4 + 2);
+                        u8 spriteX = ReadU8(&nes->oamMemory2, index * 4 + 3);
+
+                        u8 highColorBits = spriteAttr & 0x03;
+
+                        for (s32 y = 0; y < 8; ++y)
                         {
-                            // update_your_widget_by_user_input(...);
+                            u8 rowOffset = y;
+
+                            // the bit 7 indicate that the sprite should flip vertically
+                            if (spriteAttr & 0x80)
+                            {
+                                // @TODO: this doesn't care about 8x16 sprites
+                                rowOffset = 7 - rowOffset;
+                            }
+
+                            u8 row1 = ReadPPUU8(nes, baseAddress + spriteIdx * 16 + y);
+                            u8 row2 = ReadPPUU8(nes, baseAddress + spriteIdx * 16 + 8 + y);
+
+                            for (s32 x = 0; x < 8; ++x)
+                            {
+                                u8 colOffset = x;
+
+                                // the bit 6 indicate that the sprite should flip horizontally
+                                if (spriteAttr & 0x40)
+                                {
+                                    // @TODO: this doesn't care about 8x16 sprites
+                                    colOffset = 7 - colOffset;
+                                }
+
+                                u8 h = ((row2 >> (7 - colOffset)) & 0x1);
+                                u8 l = ((row1 >> (7 - colOffset)) & 0x1);
+                                u8 v = (h << 0x1) | l;
+
+                                u32 paletteIndex = (highColorBits << 2) | v;
+                                u32 colorIndex = ReadPPUU8(nes, 0x3F10 + paletteIndex);
+                                Color color = systemPalette[colorIndex % 64];
+
+                                s32 pixelIndex = y * 8 + x;
+                                gui->sprites2[index][pixelIndex] = color;
+                            }
                         }
 
-                        struct nk_image image;
-                        image.w = 8;
-                        image.h = 8;
-                        image.handle.ptr = sprites2[index];
-                        image.region[0] = space.x;
-                        image.region[1] = space.y;
-                        image.region[2] = space.w;
-                        image.region[3] = space.h;
+                        state = nk_widget(&space, ctx);
+                        if (state)
+                        {
+                            if (state != NK_WIDGET_ROM)
+                            {
+                                // update_your_widget_by_user_input(...);
+                            }
 
-                        nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
+                            glBindTexture(GL_TEXTURE_2D, device.oam2[index].handle.id);
+                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->sprites2[index]);
+                            glBindTexture(GL_TEXTURE_2D, 0);
+
+                            nk_draw_image(canvas, space, &device.oam2[index], nk_rgb(255, 255, 255));
+                        }
                     }
                 }
             }
@@ -1169,19 +1234,10 @@ int CALLBACK WinMain(
                 local s32 showSepPixels;
                 nk_checkbox_label(ctx, "PIX", &showSepPixels);
 
-                struct nk_command_buffer *canvas;
-                struct nk_input *input = &ctx->input;
-                canvas = nk_window_get_canvas(ctx);
-
-                struct nk_rect space;
-                enum nk_widget_layout_states state;
-
                 u16 address = 0x2000 + option * 0x400;
 
                 if (showSepPixels)
                 {
-                    local u32 nametable[32][30][64];
-
                     nk_layout_row_static(ctx, 8, 8, 32);
 
                     u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
@@ -1240,7 +1296,7 @@ int CALLBACK WinMain(
                                     ColorEmphasis(&color, colorMask);
 
                                     s32 pixel = y * 8 + x;
-                                    nametable[tileX][tileY][pixel] = color.bgra;
+                                    gui->nametable2[tileX][tileY][pixel] = color;
                                 }
                             }
 
@@ -1252,24 +1308,17 @@ int CALLBACK WinMain(
                                     // update_your_widget_by_user_input(...);
                                 }
 
-                                struct nk_image image;
-                                image.w = 8;
-                                image.h = 8;
-                                image.handle.ptr = nametable[tileX][tileY];
-                                image.region[0] = space.x;
-                                image.region[1] = space.y;
-                                image.region[2] = space.w;
-                                image.region[3] = space.h;
+                                glBindTexture(GL_TEXTURE_2D, device.nametableSep[tileY * 32 + tileX].handle.id);
+                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->nametable2[tileX][tileY]);
+                                glBindTexture(GL_TEXTURE_2D, 0);
 
-                                nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
+                                nk_draw_image(canvas, space, &device.nametableSep[tileY * 32 + tileX], nk_rgb(255, 255, 255));
                             }
                         }
                     }
                 }
                 else
                 {
-                    local u32 nametable[256 * 240];
-
                     nk_layout_row_static(ctx, 240, 256, 1);
 
                     u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
@@ -1330,7 +1379,7 @@ int CALLBACK WinMain(
                                     s32 pixelX = (tileX * 8 + x);
                                     s32 pixelY = (tileY * 8 + y);
                                     s32 pixel = pixelY * 256 + pixelX;
-                                    nametable[pixel] = color.bgra;
+                                    gui->nametable[pixel] = color;
                                 }
                             }
                         }
@@ -1344,16 +1393,11 @@ int CALLBACK WinMain(
                             // update_your_widget_by_user_input(...);
                         }
 
-                        struct nk_image image;
-                        image.w = 256;
-                        image.h = 240;
-                        image.handle.ptr = nametable;
-                        image.region[0] = space.x;
-                        image.region[1] = space.y;
-                        image.region[2] = space.w;
-                        image.region[3] = space.h;
+                        glBindTexture(GL_TEXTURE_2D, device.nametable.handle.id);
+                        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->nametable);
+                        glBindTexture(GL_TEXTURE_2D, 0);
 
-                        nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
+                        nk_draw_image(canvas, space, &device.nametable, nk_rgb(255, 255, 255));
                     }
                 }
             }
@@ -1362,12 +1406,10 @@ int CALLBACK WinMain(
 
         /* Draw */
         {
-            float bg[4];
-            nk_color_fv(bg, background);
             SDL_GetWindowSize(win, &win_width, &win_height);
             glViewport(0, 0, win_width, win_height);
             glClear(GL_COLOR_BUFFER_BIT);
-            glClearColor(bg[0], bg[1], bg[2], bg[3]);
+            glClearColor(0, 0, 0, 1);
             /* IMPORTANT: `nk_sdl_render` modifies some global OpenGL state
             * with blending, scissor, face culling, depth test and viewport and
             * defaults everything back into a default state.
@@ -1376,8 +1418,16 @@ int CALLBACK WinMain(
             nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
             SDL_GL_SwapWindow(win);
         }
+
+        LARGE_INTEGER endCounter = Win32GetWallClock();
+        dt = Win32GetSecondsElapsed(startCounter, endCounter);
+        startCounter = endCounter;
+
+        e = Win32GetWallClock();
+        d2 = Win32GetSecondsElapsed(s, e);
     }
 
+    DeleteTextures(&device);
     nk_sdl_shutdown();
     SDL_GL_DeleteContext(glContext);
     SDL_DestroyWindow(win);

@@ -65,37 +65,28 @@ typedef u64 b64;
 #define TRUE  1
 #define FALSE 0
 
+#define NULL 0
+
 typedef size_t size;
 
 typedef union Color
 {
-    struct
-    {
-        u8 values[4];
-    };
-
-    struct
-    {
-        u8 b, g, r, a;
-    };
-
-    struct
-    {
-        s32 bgra;
-    };
+    struct { u8 values[4]; };
+    struct { u8 r, g, b, a; };
+    struct { s32 rgba; };
 };
 
 #define RGB(r, g, b) (((r) << 16) | ((g) << 8) | ((b) << 0))
 #define ARGB(a, r, g, b) (((a) << 24) | ((r) << 16) | ((g) << 8) | ((b) << 0))
-#define RGBA(a, r, g, b) (((r) << 24) | ((g) << 16) | ((b) << 8) | ((a) << 0))
-#define BGR(r, g, b) (((b) << 16) | ((g) << 8) | ((r) << 0))
-#define ABGR(a, r, g, b) (((a) << 24) | ((b) << 16) | ((g) << 8) | ((r) << 0))
-#define BGRA(a, r, g, b) (((b) << 24) | ((g) << 16) | ((r) << 8) | ((a) << 0))
+#define RGBA(r, g, b, a) (((r) << 24) | ((g) << 16) | ((b) << 8) | ((a) << 0))
+#define BGR(b, g, r) (((b) << 16) | ((g) << 8) | ((r) << 0))
+#define ABGR(a, b, g, r) (((a) << 24) | ((b) << 16) | ((g) << 8) | ((r) << 0))
+#define BGRA(b, g, r, a) (((b) << 24) | ((g) << 16) | ((r) << 8) | ((a) << 0))
 
-inline Color GetColor(u8 a, u8 r, u8 g, u8 b)
+inline Color GetColor(u8 r, u8 g, u8 b, u8 a)
 {
     Color result = {};
-    result.bgra = ARGB(a, r, g, b);
+    result.rgba = RGBA(r, g, b, a);
     return result;
 }
 

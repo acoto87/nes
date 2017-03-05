@@ -317,9 +317,15 @@ struct Win32BackBuffer
 
 struct GUI
 {
-    u32 width = PPU_SCREEN_WIDTH;
-    u32 height = PPU_SCREEN_HEIGHT;
-    Color pixels[PPU_SCREEN_WIDTH * PPU_SCREEN_HEIGHT];
+    u32 width = 256;
+    u32 height = 240;
+    Color pixels[256 * 240];
+    
+    Color patterns[2][128 * 128];
+    Color sprites[64][8 * 8];
+    Color sprites2[8][8 * 8];
+    Color nametable[256 * 240];
+    Color nametable2[32][30][64];
 };
 
 struct NES
