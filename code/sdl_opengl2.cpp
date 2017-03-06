@@ -209,7 +209,7 @@ internal void InitTextures(struct Device *dev)
 
     for (s32 i = 0; i < 8; ++i)
     {
-        dev->oam2[i] = InitTexture(textures[index], 8, 8);
+        dev->oam2[i] = InitTexture(textures[index++], 8, 8);
     }
 
     dev->nametable = InitTexture(textures[index++], 256, 240);
@@ -262,7 +262,7 @@ int CALLBACK WinMain(
     SDL_Window *win;
     SDL_SysWMinfo wmInfo;
     SDL_GLContext glContext;
-    HWND winHwnd;
+    HWND winHwnd = NULL;
     int win_width, win_height;
     b32 running, quit = FALSE;
     f32 dt = 0;
@@ -1293,7 +1293,10 @@ int CALLBACK WinMain(
 
                                     // check the bits 5, 6, 7 to color emphasis
                                     u8 colorMask = (ppu->mask & 0xE0) >> 5;
-                                    ColorEmphasis(&color, colorMask);
+                                    if (colorMask != 0)
+                                    {
+                                        ColorEmphasis(&color, colorMask);
+                                    }
 
                                     s32 pixel = y * 8 + x;
                                     gui->nametable2[tileX][tileY][pixel] = color;
@@ -1374,7 +1377,10 @@ int CALLBACK WinMain(
 
                                     // check the bits 5, 6, 7 to color emphasis
                                     u8 colorMask = (ppu->mask & 0xE0) >> 5;
-                                    ColorEmphasis(&color, colorMask);
+                                    if (colorMask != 0)
+                                    {
+                                        ColorEmphasis(&color, colorMask);
+                                    }
 
                                     s32 pixelX = (tileX * 8 + x);
                                     s32 pixelY = (tileY * 8 + y);

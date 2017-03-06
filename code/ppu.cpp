@@ -149,7 +149,10 @@ internal void RenderPixel(NES *nes)
 
     // check the bits 5, 6, 7 to color emphasis
     u8 colorMask = (ppu->mask & 0xE0) >> 5;
-    ColorEmphasis(&color, colorMask);
+    if (colorMask != 0)
+    {
+        ColorEmphasis(&color, colorMask);
+    }
 
     // draw pixel at 'x', 'y' with color 'color'
     SetPixel(gui, x, y, color);

@@ -53,6 +53,20 @@ internal inline char* DebugText(char *fmt, ...)
     return debugBuffer;
 }
 
+internal void ConvertToARGB(Color *srcPixels, Color *destPixels, s32 length)
+{
+    for (s32 i = 0; i < length; ++i)
+    {
+        u8 r = srcPixels[i].r;
+        u8 g = srcPixels[i].b;
+        u8 b = srcPixels[i].g;
+        u8 a = srcPixels[i].a;
+
+        destPixels[i].rgba = ARGB(a, r, g, b);
+    }
+}
+
+
 LRESULT CALLBACK Win32MainWindowCallback(
     HWND   window,
     UINT   msg,
@@ -789,6 +803,7 @@ int CALLBACK WinMain(
                 {
                     CPU *cpu = &nes->cpu;
                     PPU *ppu = &nes->ppu;
+                    GUI *gui = &nes->gui;
 
                     enum options { PATTERNS_PALETTES_OAM, NAMETABLES };
                     static s32 option = PATTERNS_PALETTES_OAM;
@@ -804,8 +819,6 @@ int CALLBACK WinMain(
                         nk_layout_row_dynamic(ctx, 25, 1);
                         nk_label(ctx, "PATTERNS", NK_TEXT_LEFT);
 
-                        local u32 patterns[2][128 * 128];
-
                         nk_layout_row_static(ctx, 128, 128, 2);
 
                         struct nk_command_buffer *canvas;
@@ -815,9 +828,9 @@ int CALLBACK WinMain(
                         struct nk_rect space;
                         enum nk_widget_layout_states state;
 
-                        for (s32 patternTable = 0; patternTable < 2; ++patternTable)
+                        for (s32 index = 0; index < 2; ++index)
                         {
-                            u16 patternTableAddress = patternTable * 0x1000;
+                            u16 baseAddress = index * 0x1000;
 
                             for (s32 tileY = 0; tileY < 16; ++tileY)
                             {
@@ -827,8 +840,8 @@ int CALLBACK WinMain(
 
                                     for (s32 y = 0; y < 8; ++y)
                                     {
-                                        u8 row1 = ReadPPUU8(nes, patternTableAddress + patternIndex * 16 + y);
-                                        u8 row2 = ReadPPUU8(nes, patternTableAddress + patternIndex * 16 + 8 + y);
+                                        u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
+                                        u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
 
                                         for (s32 x = 0; x < 8; ++x)
                                         {
@@ -844,7 +857,7 @@ int CALLBACK WinMain(
                                             u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
                                             Color color = systemPalette[colorIndex % 64];
 
-                                            patterns[patternTable][pixel] = color.bgra;
+                                            gui->patterns[index][pixel] = color;
                                         }
                                     }
                                 }
@@ -861,7 +874,7 @@ int CALLBACK WinMain(
                                 struct nk_image image;
                                 image.w = 128;
                                 image.h = 128;
-                                image.handle.ptr = patterns[patternTable];
+                                image.handle.ptr = gui->patterns[index];
                                 image.region[0] = space.x;
                                 image.region[1] = space.y;
                                 image.region[2] = space.w;
@@ -898,8 +911,6 @@ int CALLBACK WinMain(
 
                         nk_layout_row_dynamic(ctx, 25, 1);
                         nk_label(ctx, "OAM", NK_TEXT_LEFT);
-
-                        local u32 sprites[64][8 * 8];
 
                         nk_layout_row_static(ctx, 8, 8, 16);
 
@@ -948,7 +959,7 @@ int CALLBACK WinMain(
                                     Color color = systemPalette[colorIndex % 64];
 
                                     s32 pixelIndex = y * 8 + x;
-                                    sprites[index][pixelIndex] = color.bgra;
+                                    gui->sprites[index][pixelIndex] = color;
                                 }
                             }
 
@@ -963,7 +974,7 @@ int CALLBACK WinMain(
                                 struct nk_image image;
                                 image.w = 8;
                                 image.h = 8;
-                                image.handle.ptr = sprites[index];
+                                image.handle.ptr = &gui->sprites[index];
                                 image.region[0] = space.x;
                                 image.region[1] = space.y;
                                 image.region[2] = space.w;
@@ -972,8 +983,6 @@ int CALLBACK WinMain(
                                 nk_draw_image(canvas, space, &image, nk_rgb(255, 0, 0));
                             }
                         }
-
-                        local u32 sprites2[8][8 * 8];
 
                         nk_layout_row_static(ctx, 8, 8, 8);
 
@@ -1020,7 +1029,7 @@ int CALLBACK WinMain(
                                     Color color = systemPalette[colorIndex % 64];
 
                                     s32 pixelIndex = y * 8 + x;
-                                    sprites2[index][pixelIndex] = color.bgra;
+                                    gui->sprites2[index][pixelIndex] = color;
                                 }
                             }
 
@@ -1035,7 +1044,7 @@ int CALLBACK WinMain(
                                 struct nk_image image;
                                 image.w = 8;
                                 image.h = 8;
-                                image.handle.ptr = sprites2[index];
+                                image.handle.ptr = &gui->sprites2[index];
                                 image.region[0] = space.x;
                                 image.region[1] = space.y;
                                 image.region[2] = space.w;
@@ -1072,8 +1081,6 @@ int CALLBACK WinMain(
 
                         if (showSepPixels)
                         {
-                            local u32 nametable[32][30][64];
-
                             nk_layout_row_static(ctx, 8, 8, 32);
 
                             u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
@@ -1117,7 +1124,7 @@ int CALLBACK WinMain(
 
                                             u32 paletteIndex = (highColorBits << 2) | v;
                                             u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-                                            
+
                                             // if the grayscale bit is set, then AND (&) with 0x30 to set
                                             // any color in the palette to the grey ones
                                             if (GetBitFlag(ppu->mask, COLOR_FLAG))
@@ -1129,10 +1136,13 @@ int CALLBACK WinMain(
 
                                             // check the bits 5, 6, 7 to color emphasis
                                             u8 colorMask = (ppu->mask & 0xE0) >> 5;
-                                            ColorEmphasis(&color, colorMask);
+                                            if (colorMask != 0)
+                                            {
+                                                ColorEmphasis(&color, colorMask);
+                                            }
 
                                             s32 pixel = y * 8 + x;
-                                            nametable[tileX][tileY][pixel] = color.bgra;
+                                            gui->nametable2[tileX][tileY][pixel] = color;
                                         }
                                     }
 
@@ -1147,7 +1157,7 @@ int CALLBACK WinMain(
                                         struct nk_image image;
                                         image.w = 8;
                                         image.h = 8;
-                                        image.handle.ptr = nametable[tileX][tileY];
+                                        image.handle.ptr = &gui->nametable2[tileX][tileY];
                                         image.region[0] = space.x;
                                         image.region[1] = space.y;
                                         image.region[2] = space.w;
@@ -1160,8 +1170,6 @@ int CALLBACK WinMain(
                         }
                         else
                         {
-                            local u32 nametable[256 * 240];
-
                             nk_layout_row_static(ctx, 240, 256, 1);
 
                             u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
@@ -1217,12 +1225,15 @@ int CALLBACK WinMain(
 
                                             // check the bits 5, 6, 7 to color emphasis
                                             u8 colorMask = (ppu->mask & 0xE0) >> 5;
-                                            ColorEmphasis(&color, colorMask);
+                                            if (colorMask != 0)
+                                            {
+                                                ColorEmphasis(&color, colorMask);
+                                            }
 
                                             s32 pixelX = (tileX * 8 + x);
                                             s32 pixelY = (tileY * 8 + y);
                                             s32 pixel = pixelY * 256 + pixelX;
-                                            nametable[pixel] = color.bgra;
+                                            gui->nametable[pixel] = color;
                                         }
                                     }
                                 }
@@ -1239,7 +1250,7 @@ int CALLBACK WinMain(
                                 struct nk_image image;
                                 image.w = 256;
                                 image.h = 240;
-                                image.handle.ptr = nametable;
+                                image.handle.ptr = gui->nametable;
                                 image.region[0] = space.x;
                                 image.region[1] = space.y;
                                 image.region[2] = space.w;
@@ -1253,7 +1264,6 @@ int CALLBACK WinMain(
                 nk_end(ctx);
 
                 nk_gdi_render(nk_rgb(0, 0, 0));
-                //nk_gdip_render(nk_rgb(0, 0, 0));
 
                 LARGE_INTEGER endCounter = Win32GetWallClock();
                 dt = Win32GetSecondsElapsed(startCounter, endCounter);
