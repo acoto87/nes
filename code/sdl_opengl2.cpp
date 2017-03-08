@@ -30,6 +30,7 @@
 
 #define WINDOW_WIDTH 1200
 #define WINDOW_HEIGHT 800
+#define NUM_TEXTURES 1 + 2 + 64 + 8 + 1 + 960
 
 #define NK_SHADER_VERSION "#version 150\n"
 
@@ -49,21 +50,21 @@ global NES *nes;
 struct Device {
     struct nk_buffer cmds;
     GLuint vbo, vao, ebo;
-    GLuint prog;
+   /* GLuint prog;
     GLuint vert_shdr;
     GLuint frag_shdr;
     GLint attrib_pos;
     GLint attrib_uv;
     GLint attrib_col;
     GLint uniform_tex;
-    GLint uniform_proj;
+    GLint uniform_proj;*/
 
-    struct nk_image screenImage;
+    struct nk_image screen;
     struct nk_image patterns[2];
     struct nk_image oam[64];
     struct nk_image oam2[8];
     struct nk_image nametable;
-    struct nk_image nametableSep[960];
+    struct nk_image nametable2[960];
 };
 
 internal inline LARGE_INTEGER Win32GetWallClock(void)
@@ -91,7 +92,7 @@ internal inline char* DebugText(char *fmt, ...)
 
 internal void InitDevice(struct Device *dev)
 {
-    GLint status;
+    /*GLint status;
 
     static const GLchar *vertex_shader =
         NK_SHADER_VERSION
@@ -116,13 +117,13 @@ internal void InitDevice(struct Device *dev)
         "out vec4 Out_Color;\n"
         "void main(){\n"
         "   Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
-        "}\n";
+        "}\n";*/
 
     nk_buffer_init_default(&dev->cmds);
-    dev->prog = glCreateProgram();
+    /*dev->prog = glCreateProgram();
     dev->vert_shdr = glCreateShader(GL_VERTEX_SHADER);
-    dev->frag_shdr = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(dev->vert_shdr, 1, &vertex_shader, 0);
+    dev->frag_shdr = glCreateShader(GL_FRAGMENT_SHADER);*/
+    /*glShaderSource(dev->vert_shdr, 1, &vertex_shader, 0);
     glShaderSource(dev->frag_shdr, 1, &fragment_shader, 0);
     glCompileShader(dev->vert_shdr);
     glCompileShader(dev->frag_shdr);
@@ -134,13 +135,13 @@ internal void InitDevice(struct Device *dev)
     glAttachShader(dev->prog, dev->frag_shdr);
     glLinkProgram(dev->prog);
     glGetProgramiv(dev->prog, GL_LINK_STATUS, &status);
-    assert(status == GL_TRUE);
+    assert(status == GL_TRUE);*/
 
-    dev->uniform_tex = glGetUniformLocation(dev->prog, "Texture");
+    /*dev->uniform_tex = glGetUniformLocation(dev->prog, "Texture");
     dev->uniform_proj = glGetUniformLocation(dev->prog, "ProjMtx");
     dev->attrib_pos = glGetAttribLocation(dev->prog, "Position");
     dev->attrib_uv = glGetAttribLocation(dev->prog, "TexCoord");
-    dev->attrib_col = glGetAttribLocation(dev->prog, "Color");
+    dev->attrib_col = glGetAttribLocation(dev->prog, "Color");*/
 
     {
         /* buffer setup */
@@ -157,13 +158,13 @@ internal void InitDevice(struct Device *dev)
         glBindBuffer(GL_ARRAY_BUFFER, dev->vbo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dev->ebo);
 
-        glEnableVertexAttribArray((GLuint)dev->attrib_pos);
+        /*glEnableVertexAttribArray((GLuint)dev->attrib_pos);
         glEnableVertexAttribArray((GLuint)dev->attrib_uv);
         glEnableVertexAttribArray((GLuint)dev->attrib_col);
 
         glVertexAttribPointer((GLuint)dev->attrib_pos, 2, GL_FLOAT, GL_FALSE, vs, (void*)vp);
         glVertexAttribPointer((GLuint)dev->attrib_uv, 2, GL_FLOAT, GL_FALSE, vs, (void*)vt);
-        glVertexAttribPointer((GLuint)dev->attrib_col, 4, GL_UNSIGNED_BYTE, GL_TRUE, vs, (void*)vc);
+        glVertexAttribPointer((GLuint)dev->attrib_col, 4, GL_UNSIGNED_BYTE, GL_TRUE, vs, (void*)vc);*/
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -176,7 +177,7 @@ internal struct nk_image InitTexture(GLuint tex, GLsizei width, GLsizei height)
 {
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -191,11 +192,11 @@ internal void InitTextures(struct Device *dev)
     glEnable(GL_TEXTURE_2D);
 
     s32 index = 0;
-    GLuint textures[1 + 2 + 64 + 8 + 1 + 960]; // delete 1036 textures
+    GLuint textures[NUM_TEXTURES]; // init 1036 textures
 
-    glGenTextures(1026, textures);
+    glGenTextures(NUM_TEXTURES, textures);
 
-    dev->screenImage = InitTexture(textures[index++], 256, 240);
+    dev->screen = InitTexture(textures[index++], 256, 240);
 
     for (s32 i = 0; i < 2; ++i)
     {
@@ -216,16 +217,16 @@ internal void InitTextures(struct Device *dev)
 
     for (s32 i = 0; i < 960; ++i)
     {
-        dev->nametableSep[i] = InitTexture(textures[index++], 8, 8);
+        dev->nametable2[i] = InitTexture(textures[index++], 8, 8);
     }
 }
 
 internal void DeleteTextures(Device *dev)
 {
     s32 index = 0;
-    GLuint textures[1 + 2 + 64 + 8 + 1 + 960]; // delete 1036 textures
+    GLuint textures[NUM_TEXTURES]; // delete 1036 textures
 
-    textures[index++] = dev->screenImage.handle.id;
+    textures[index++] = dev->screen.handle.id;
 
     for (s32 i = 0; i < 2; ++i)
     {
@@ -246,9 +247,10 @@ internal void DeleteTextures(Device *dev)
 
     for (s32 i = 0; i < 960; ++i)
     {
-        textures[index++] = dev->nametableSep[i].handle.id;
+        textures[index++] = dev->nametable2[i].handle.id;
     }
 
+    glDeleteTextures(NUM_TEXTURES, textures);
     glDisable(GL_TEXTURE_2D);
 }
 
@@ -638,6 +640,8 @@ int CALLBACK WinMain(
 
         if (nk_begin(ctx, "SCREEN", nk_rect(890, 10, 300, 300), flags) && nes)
         {
+            CPU *cpu = &nes->cpu;
+            PPU *ppu = &nes->ppu;
             GUI *gui = &nes->gui;
 
             nk_layout_row_static(ctx, 240, 256, 1);
@@ -656,11 +660,11 @@ int CALLBACK WinMain(
                      // update_your_widget_by_user_input(...);
                 }
 
-                glBindTexture(GL_TEXTURE_2D, device.screenImage.handle.id);
+                glBindTexture(GL_TEXTURE_2D, device.screen.handle.id);
                 glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
                 glBindTexture(GL_TEXTURE_2D, 0);
-
-                nk_draw_image(canvas, space, &device.screenImage, nk_rgb(255, 255, 255));
+                
+                nk_draw_image(canvas, space, &device.screen, nk_rgb(255, 255, 255));
             }
         }
         nk_end(ctx);
@@ -1311,11 +1315,11 @@ int CALLBACK WinMain(
                                     // update_your_widget_by_user_input(...);
                                 }
 
-                                glBindTexture(GL_TEXTURE_2D, device.nametableSep[tileY * 32 + tileX].handle.id);
+                                glBindTexture(GL_TEXTURE_2D, device.nametable2[tileY * 32 + tileX].handle.id);
                                 glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->nametable2[tileX][tileY]);
                                 glBindTexture(GL_TEXTURE_2D, 0);
 
-                                nk_draw_image(canvas, space, &device.nametableSep[tileY * 32 + tileX], nk_rgb(255, 255, 255));
+                                nk_draw_image(canvas, space, &device.nametable2[tileY * 32 + tileX], nk_rgb(255, 255, 255));
                             }
                         }
                     }
@@ -1425,12 +1429,20 @@ int CALLBACK WinMain(
             SDL_GL_SwapWindow(win);
         }
 
-        LARGE_INTEGER endCounter = Win32GetWallClock();
-        dt = Win32GetSecondsElapsed(startCounter, endCounter);
-        startCounter = endCounter;
-
         e = Win32GetWallClock();
         d2 = Win32GetSecondsElapsed(s, e);
+
+        LARGE_INTEGER endCounter = Win32GetWallClock();
+        f32 secondsElapsed = Win32GetSecondsElapsed(startCounter, endCounter);
+
+        while (secondsElapsed < 0.0167)
+        {
+            endCounter = Win32GetWallClock();
+            secondsElapsed = Win32GetSecondsElapsed(startCounter, endCounter);
+        }
+
+        dt = Win32GetSecondsElapsed(startCounter, endCounter);
+        startCounter = endCounter;
     }
 
     DeleteTextures(&device);

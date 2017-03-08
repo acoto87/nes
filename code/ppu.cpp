@@ -7,19 +7,6 @@
  * http://wiki.nesdev.com/w/index.php/PPU_sprite_evaluation
  */
 
-internal inline u8 GetCurrentY(PPU *ppu)
-{
-    // since there are 262 scanlines, but the screen size in NTSC is 240, 
-    // there are 21 scanlines that aren't part of the visible scanlines
-    return ppu->scanline;
-}
-
-internal inline u8 GetCurrentX(PPU *ppu)
-{
-    // since the ppu render 1 pixel per scanline cycle, this refers to the x position in the screen
-    return ppu->cycle;
-}
-
 internal void RenderPixel(NES *nes)
 {
     PPU *ppu = &nes->ppu;
@@ -31,8 +18,12 @@ internal void RenderPixel(NES *nes)
     u8 background = 0;
     u8 sprite = 0, a = 0, idx = -1;
 
-    u8 x = GetCurrentX(ppu);
-    u8 y = GetCurrentY(ppu);
+    // since the ppu render 1 pixel per scanline cycle, this refers to the x position in the screen
+    u8 x = ppu->cycle;
+
+    // since there are 262 scanlines, but the screen size in NTSC is 240, 
+    // there are 21 scanlines that aren't part of the visible scanlines
+    u8 y = ppu->scanline;
 
     if (renderBackground)
     {

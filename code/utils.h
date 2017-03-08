@@ -83,6 +83,9 @@ typedef union Color
 #define ABGR(a, b, g, r) (((a) << 24) | ((b) << 16) | ((g) << 8) | ((r) << 0))
 #define BGRA(b, g, r, a) (((b) << 24) | ((g) << 16) | ((r) << 8) | ((a) << 0))
 
+#define GetBitFlag(v, f) ((v) & (1 << (f)) ? 1 : 0)
+#define SetBitFlag(v, f) (*(v) = (*(v) | (1 << (f))))
+
 inline Color GetColor(u8 r, u8 g, u8 b, u8 a)
 {
     Color result = {};
@@ -90,15 +93,15 @@ inline Color GetColor(u8 r, u8 g, u8 b, u8 a)
     return result;
 }
 
-inline u8 GetBitFlag(u8 v, u8 flag)
-{
-    return v & (1 << flag) ? 1 : 0;
-}
+//inline u8 GetBitFlag(u8 v, u8 flag)
+//{
+//    return v & (1 << flag) ? 1 : 0;
+//}
 
-inline void SetBitFlag(u8 *v, u8 flag)
-{
-    *v = (*v | (1 << flag));
-}
+//inline void SetBitFlag(u8 *v, u8 flag)
+//{
+//    *v = (*v | (1 << flag));
+//}
 
 inline void ClearBitFlag(u8 *v, u8 flag)
 {
