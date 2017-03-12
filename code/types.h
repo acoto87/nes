@@ -68,7 +68,7 @@ struct Cartridge
 {
     MirrorType mirrorType;
     b32 hasBatteryPack;
-    u8 memoryMapper;
+    u8 mapper;
     u8 prgRAMSize;
 
     u8 title[MAX_TITLE_LENGTH];
@@ -320,7 +320,7 @@ struct GUI
     u32 width = 256;
     u32 height = 240;
     Color pixels[256 * 240];
-    
+
     Color patterns[2][128 * 128];
     Color sprites[64][8 * 8];
     Color sprites2[8][8 * 8];
@@ -343,6 +343,11 @@ struct NES
     Controller controllers[2];
 
     GUI gui;
+
+    void(*mapperInit)(NES *nes);
+    u8(*mapperReadU8)(NES *nes, u16 address);
+    void(*mapperWriteU8)(NES *nes, u16 address, u8 value);
+    void* mapperData;
 };
 
 struct CPUStep

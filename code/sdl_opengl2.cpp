@@ -604,9 +604,11 @@ int CALLBACK WinMain(
 
             if (nk_button_label(ctx, "Reset"))
             {
-                ResetNES(nes);
-
-                debugging = TRUE;
+                if (nes) 
+                {
+                    ResetNES(nes);
+                    debugging = TRUE;
+                }
             }
 
             if (nk_button_label(ctx, "Pause"))

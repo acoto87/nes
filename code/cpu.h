@@ -532,7 +532,7 @@ inline u8 ReadCPUU8(NES *nes, u16 address)
     
     if (ISBETWEEN(address, 0x8000, 0x10000))
     {
-        return ReadU8(&nes->cpuMemory, address);
+        return nes->mapperReadU8(nes, address);
     }
 
     // it should no get here
@@ -648,19 +648,21 @@ inline void WriteCPUU8(NES *nes, u16 address, u8 value)
     if (ISBETWEEN(address, 0x6000, 0x8000))
     {
         WriteU8(&nes->cpuMemory, address, value);
+        return;
     }
 
     if (ISBETWEEN(address, 0x8000, 0x10000))
     {
-        WriteU8(&nes->cpuMemory, address, value);
+        nes->mapperWriteU8(nes, address, value);
+        return;
     }
 }
 
 inline void WriteCPUU16(NES *nes, u16 address, u16 value)
 {
     // write in little-endian mode
-    u8 lo = value & U16LOW_MASK;
-    u8 hi = (value & U16HIGH_MASK) >> 8;
+    u8 lo = value & 0xFF;
+    u8 hi = (value & 0xFF00) >> 8;
     WriteCPUU8(nes, address, lo);
     WriteCPUU8(nes, address + 1, hi);
 }

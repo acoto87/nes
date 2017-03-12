@@ -1136,11 +1136,11 @@ void InitCPU(NES *nes)
         u32 pgrBanks = nes->cartridge.pgrBanks;
         u32 pgrSizeInBytes = nes->cartridge.pgrSizeInBytes;
         u8 *pgr = nes->cartridge.pgr;
-        CopyMemoryBytes(&nes->cpuMemory, CPU_PGR_BANK_0_OFFSET, pgr, pgrSizeInBytes);
+        CopyMemoryBytes(&nes->cpuMemory, CPU_PGR_BANK_0_OFFSET, pgr, CPU_PGR_BANK_SIZE);
 
         if (pgrBanks < 2)
         {
-            CopyMemoryBytes(&nes->cpuMemory, CPU_PGR_BANK_1_OFFSET, pgr, pgrSizeInBytes);
+            CopyMemoryBytes(&nes->cpuMemory, CPU_PGR_BANK_1_OFFSET, pgr, CPU_PGR_BANK_SIZE);
         }
     }
 
