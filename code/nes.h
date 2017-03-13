@@ -5,7 +5,7 @@
 #include "types.h"
 
 #define HEADER_SIZE 16
-#define CPU_PGR_BANK_SIZE KILOBYTES(16)
+#define CPU_PRG_BANK_SIZE KILOBYTES(16)
 #define CHR_BANK_SIZE KILOBYTES(8)
 
 #define VMIRROR_MASK BIT0_MASK

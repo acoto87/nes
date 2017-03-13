@@ -89,16 +89,22 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
     cartridge->prgRAMSize = header.prgRAMSize;
     cartridge->mapper = ((header.flags6 & 0xF0) >> 4) | (header.flags7 & 0xF0);
 
-    cartridge->pgrBanks = header.prgROMSize;
-    cartridge->pgrSizeInBytes = cartridge->pgrBanks * CPU_PGR_BANK_SIZE;
-    cartridge->pgr = (u8*)Allocate(cartridge->pgrSizeInBytes);
-    read = fread(cartridge->pgr, sizeof(u8), cartridge->pgrSizeInBytes, file);
+    cartridge->prgBanks = header.prgROMSize;
+    if (cartridge->prgBanks > 0)
+    {
+        cartridge->prgSizeInBytes = cartridge->prgBanks * CPU_PRG_BANK_SIZE;
+        cartridge->prg = (u8*)Allocate(cartridge->prgSizeInBytes);
+        fread(cartridge->prg, sizeof(u8), cartridge->prgSizeInBytes, file);
+    }
 
     cartridge->chrBanks = header.chrROMSize;
-    cartridge->chrSizeInBytes = cartridge->chrBanks * CHR_BANK_SIZE;
-    cartridge->chr = (u8*)Allocate(cartridge->chrSizeInBytes);
-    read = fread(cartridge->chr, sizeof(u8), cartridge->chrSizeInBytes, file);
-
+    if (cartridge->chrBanks > 0)
+    {
+        cartridge->chrSizeInBytes = cartridge->chrBanks * CHR_BANK_SIZE;
+        cartridge->chr = (u8*)Allocate(cartridge->chrSizeInBytes);
+        fread(cartridge->chr, sizeof(u8), cartridge->chrSizeInBytes, file);
+    }
+    
     fread(cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
 
     fclose(file);
@@ -160,18 +166,21 @@ NES* CreateNES(Cartridge cartridge)
     {
         nes->cartridge = cartridge;
     
-        InitMapper(nes);
         InitCPU(nes);
         InitPPU(nes);
         //InitAPU(nes)
         InitGUI(nes);
         InitController(nes, 0);
         InitController(nes, 1);
+        InitMapper(nes);
 
         if (cartridge.hasBatteryPack)
         {
             // load battery ram
         }
+
+        PowerCPU(nes);
+        PowerPPU(nes);
     }
 
     return nes;
@@ -199,9 +208,9 @@ void Destroy(NES *nes)
         Free(nes->cartridge.chr);
     }
 
-    if (nes->cartridge.pgr)
+    if (nes->cartridge.prg)
     {
-        Free(nes->cartridge.pgr);
+        Free(nes->cartridge.prg);
     }
 
     if (nes->cartridge.title)

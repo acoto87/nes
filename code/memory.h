@@ -55,8 +55,8 @@ inline u16 ReadU16(Memory *memory, u16 address)
 inline void WriteU16(Memory *memory, u16 address, u16 value)
 {
     // write in little-endian mode
-    u8 lo = value & U16LOW_MASK;
-    u8 hi = (value & U16HIGH_MASK) >> 8;
+    u8 lo = value & 0xFF;
+    u8 hi = (value & 0xFF00) >> 8;
     WriteU8(memory, address, lo);
     WriteU8(memory, address + 1, hi);
 }

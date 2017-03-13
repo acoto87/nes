@@ -1132,19 +1132,7 @@ void InitCPU(NES *nes)
     if (!nes->cpuMemory.created)
     {
         CreateMemory(&nes->cpuMemory, CPU_RAM_TOTAL_SIZE);
-
-        u32 pgrBanks = nes->cartridge.pgrBanks;
-        u32 pgrSizeInBytes = nes->cartridge.pgrSizeInBytes;
-        u8 *pgr = nes->cartridge.pgr;
-        CopyMemoryBytes(&nes->cpuMemory, CPU_PGR_BANK_0_OFFSET, pgr, CPU_PGR_BANK_SIZE);
-
-        if (pgrBanks < 2)
-        {
-            CopyMemoryBytes(&nes->cpuMemory, CPU_PGR_BANK_1_OFFSET, pgr, CPU_PGR_BANK_SIZE);
-        }
     }
-
-    PowerCPU(nes);
 }
 
 internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)

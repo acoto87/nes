@@ -76,9 +76,9 @@ struct Cartridge
     b32 hasTrainer;
     u8 trainer[TRAINER_SIZE];
 
-    u32 pgrBanks;
-    u32 pgrSizeInBytes;
-    u8 *pgr;
+    u32 prgBanks;
+    u32 prgSizeInBytes;
+    u8 *prg;
 
     u32 chrBanks;
     u32 chrSizeInBytes;

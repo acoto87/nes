@@ -699,17 +699,15 @@ void InitPPU(NES *nes)
     if (!nes->ppuMemory.created)
     {
         CreateMemory(&nes->ppuMemory, PPU_RAM_SIZE);
-
-        u32 chrSizeInBytes = nes->cartridge.chrSizeInBytes;
-        if (chrSizeInBytes > 0)
-        {
-            u8 *chr = nes->cartridge.chr;
-            CopyMemoryBytes(&nes->ppuMemory, 0x0000, chr, MAX(chrSizeInBytes, 0x2000));
-        }
-
-        CreateMemory(&nes->oamMemory, 256);
-        CreateMemory(&nes->oamMemory2, 32);
     }
 
-    PowerPPU(nes);
+    if (!nes->oamMemory.created)
+    {
+        CreateMemory(&nes->oamMemory, 256);
+    }
+
+    if (!nes->oamMemory2.created)
+    {
+        CreateMemory(&nes->oamMemory2, 32);
+    }
 }

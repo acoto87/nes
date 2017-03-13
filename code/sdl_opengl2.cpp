@@ -840,12 +840,12 @@ int CALLBACK WinMain(
                     {
                         case 2:
                         {
-                            col += sprintf(debugBuffer + col, " %02X", ReadU8(&nes->cpuMemory, pc + 1));
+                            col += sprintf(debugBuffer + col, " %02X", ReadCPUU8(nes, pc + 1));
                             break;
                         }
                         case 3:
                         {
-                            col += sprintf(debugBuffer + col, " %02X %02X", ReadU8(&nes->cpuMemory, pc + 1), ReadU8(&nes->cpuMemory, pc + 2));
+                            col += sprintf(debugBuffer + col, " %02X %02X", ReadCPUU8(nes, pc + 1), ReadCPUU8(nes, pc + 2));
                             break;
                         }
                         default:
@@ -865,7 +865,7 @@ int CALLBACK WinMain(
                         // Immediate #$00
                         case AM_IMM:
                         {
-                            u8 data = ReadU8(&nes->cpuMemory, pc + 1);
+                            u8 data = ReadCPUU8(nes, pc + 1);
                             col += sprintf(debugBuffer + col, " #$%02X", data);
                             break;
                         }
@@ -873,8 +873,8 @@ int CALLBACK WinMain(
                         // Absolute $0000
                         case AM_ABS:
                         {
-                            u8 lo = ReadU8(&nes->cpuMemory, pc + 1);
-                            u8 hi = ReadU8(&nes->cpuMemory, pc + 2);
+                            u8 lo = ReadCPUU8(nes, pc + 1);
+                            u8 hi = ReadCPUU8(nes, pc + 2);
                             u16 address = (hi << 8) | lo;
 
                             col += sprintf(debugBuffer + col, " $%04X", address);
@@ -884,8 +884,8 @@ int CALLBACK WinMain(
                         // Absolute Indexed $0000, X
                         case AM_ABX:
                         {
-                            u8 lo = ReadU8(&nes->cpuMemory, pc + 1);
-                            u8 hi = ReadU8(&nes->cpuMemory, pc + 2);
+                            u8 lo = ReadCPUU8(nes, pc + 1);
+                            u8 hi = ReadCPUU8(nes, pc + 2);
                             u16 address = (hi << 8) | lo;
 
                             col += sprintf(debugBuffer + col, " $%04X, X", address);
@@ -895,8 +895,8 @@ int CALLBACK WinMain(
                         // Absolute Indexed $0000, Y
                         case AM_ABY:
                         {
-                            u8 lo = ReadU8(&nes->cpuMemory, pc + 1);
-                            u8 hi = ReadU8(&nes->cpuMemory, pc + 2);
+                            u8 lo = ReadCPUU8(nes, pc + 1);
+                            u8 hi = ReadCPUU8(nes, pc + 2);
                             u16 address = (hi << 8) | lo;
 
                             col += sprintf(debugBuffer + col, " $%04X, Y", address);
@@ -906,7 +906,7 @@ int CALLBACK WinMain(
                         // Zero-Page-Absolute $00
                         case AM_ZPA:
                         {
-                            u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                            u8 address = ReadCPUU8(nes, pc + 1);
                             col += sprintf(debugBuffer + col, " $%02X", address);
                             break;
                         }
@@ -914,7 +914,7 @@ int CALLBACK WinMain(
                         // Zero-Page-Indexed $00, X
                         case AM_ZPX:
                         {
-                            u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                            u8 address = ReadCPUU8(nes, pc + 1);
                             col += sprintf(debugBuffer + col, " $%02X, X", address);
                             break;
                         }
@@ -922,7 +922,7 @@ int CALLBACK WinMain(
                         // Zero-Page-Indexed $00, Y
                         case AM_ZPY:
                         {
-                            u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                            u8 address = ReadCPUU8(nes, pc + 1);
                             col += sprintf(debugBuffer + col, " $%02X, Y", address);
                             break;
                         }
@@ -930,8 +930,8 @@ int CALLBACK WinMain(
                         // Indirect ($0000)
                         case AM_IND:
                         {
-                            u8 lo = ReadU8(&nes->cpuMemory, pc + 1);
-                            u8 hi = ReadU8(&nes->cpuMemory, pc + 2);
+                            u8 lo = ReadCPUU8(nes, pc + 1);
+                            u8 hi = ReadCPUU8(nes, pc + 2);
                             u16 address = (hi << 8) | lo;
 
                             col += sprintf(debugBuffer + col, " ($%04X)", address);
@@ -941,7 +941,7 @@ int CALLBACK WinMain(
                         // Pre-Indexed-Indirect ($00, X)
                         case AM_IZX:
                         {
-                            u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                            u8 address = ReadCPUU8(nes, pc + 1);
                             col += sprintf(debugBuffer + col, " ($%02X, X)", address);
                             break;
                         }
@@ -949,7 +949,7 @@ int CALLBACK WinMain(
                         // Post-Indexed-Indirect ($00), Y
                         case AM_IZY:
                         {
-                            u8 address = ReadU8(&nes->cpuMemory, pc + 1);
+                            u8 address = ReadCPUU8(nes, pc + 1);
                             col += sprintf(debugBuffer + col, " ($%02X), Y", address);
                             break;
                         }
@@ -965,7 +965,7 @@ int CALLBACK WinMain(
                             // Relative $0000
                         case AM_REL:
                         {
-                            s8 address = (s8)ReadU8(&nes->cpuMemory, pc + 1);
+                            s8 address = (s8)ReadCPUU8(nes, pc + 1);
                             u16 jumpAddress = pc + instruction->bytesCount + address;
                             col += sprintf(debugBuffer + col, " $%04X", jumpAddress);
                             break;
@@ -1070,8 +1070,8 @@ int CALLBACK WinMain(
                         for (s32 j = 0; j < 16; ++j)
                         {
                             u8 v = (option == CPU_MEM)
-                                ? ReadU8(&nes->cpuMemory, address + i * 16 + j)
-                                : ReadU8(&nes->ppuMemory, address + i * 16 + j);
+                                ? ReadCPUU8(nes, address + i * 16 + j)
+                                : ReadPPUU8(nes, address + i * 16 + j);
 
                             col += sprintf(debugBuffer + col, " %02X", v);
                         }
@@ -1357,7 +1357,7 @@ int CALLBACK WinMain(
                     {
                         nk_layout_row_static(ctx, 8, 8, 32);
 
-                        u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
+                        u16 baseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
 
                         for (s32 tileY = 0; tileY < 30; ++tileY)
                         {
@@ -1387,8 +1387,8 @@ int CALLBACK WinMain(
 
                                 for (s32 y = 0; y < 8; ++y)
                                 {
-                                    u8 row1 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + y);
-                                    u8 row2 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + 8 + y);
+                                    u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
+                                    u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
 
                                     for (s32 x = 0; x < 8; ++x)
                                     {
