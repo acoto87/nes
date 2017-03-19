@@ -37,7 +37,8 @@ internal void RenderPixel(NES *nes)
 
     if (renderSprites)
     {
-        u16 spriteBaseAddress = 0x1000 * GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
+        u8 spriteAddr = GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
+        u8 spriteSize = 8 * (GetBitFlag(ppu->control, SPRITE_SIZE_FLAG) + 1);
 
         for (s32 i = 0; i < ppu->spriteCount; ++i)
         {
@@ -46,31 +47,34 @@ internal void RenderPixel(NES *nes)
             u8 spriteAttr = ReadU8(&nes->oamMemory2, i * 4 + 2);
             u8 spriteX = ReadU8(&nes->oamMemory2, i * 4 + 3);
 
+            u8 patternTableIndex = spriteAddr;
+
+            if (spriteSize == 16)
+            {
+                patternTableIndex = (spriteIdx & 1);
+                spriteIdx &= 0xFE;
+            }
+
+            u16 baseAddress = 0x1000 * patternTableIndex;
+
             u8 rowOffset = y - spriteY - 1;
             u8 colOffset = x - spriteX;
 
             // the bit 6 indicate that the sprite should flip horizontally
             if (spriteAttr & 0x40)
             {
-                // @TODO: this doesn't care about 8x16 sprites
                 colOffset = 7 - colOffset;
             }
 
             // the bit 7 indicate that the sprite should flip vertically
             if (spriteAttr & 0x80)
             {
-                // @TODO: this doesn't care about 8x16 sprites
-                rowOffset = 7 - rowOffset;
+                rowOffset = (spriteSize - 1) - rowOffset;
             }
 
             if (colOffset >= 0 && colOffset < 8)
             {
-                u8 row1 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + rowOffset);
-                u8 row2 = ReadPPUU8(nes, spriteBaseAddress + spriteIdx * 16 + 8 + rowOffset);
-
-                u8 h = ((row2 >> (7 - colOffset)) & 0x1);
-                u8 l = ((row1 >> (7 - colOffset)) & 0x1);
-                sprite = (h << 0x1) | l;
+                sprite = GetSpritePixel(nes, baseAddress, spriteIdx, colOffset, rowOffset);
 
                 sprite |= (spriteAttr & 0x03) << 2;
                 if (sprite % 4 != 0)

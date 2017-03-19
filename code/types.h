@@ -322,8 +322,9 @@ struct GUI
     Color pixels[256 * 240];
 
     Color patterns[2][128 * 128];
-    Color sprites[64][8 * 8];
-    Color sprites2[8][8 * 8];
+    Color patternHover[8 * 8];
+    Color sprites[64][8 * 16];
+    Color sprites2[8][8 * 16];
     Color nametable[256 * 240];
     Color nametable2[32][30][64];
 };

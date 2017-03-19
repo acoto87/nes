@@ -185,6 +185,10 @@ $3F1D-$3F1F  Sprite palette 3
 
 #define PPU_NUM_SYSTEM_COLOURS 64 
 
+#define GetPixelBit(row, x) (((row) >> (7 - (x))) & 0x1)
+#define GetPixelLowBits(row1, row2, x) (GetPixelBit(row2, x) << 0x1) | GetPixelBit(row1, x)
+#define GetPixelColorBits(row1, row2, x, h) (((h) << 2) | GetPixelLowBits(row1, row2, x))
+
 // this is a forward reference to a function in cpu.h, so WriteDMA could compile.
 inline u8 ReadCPUU8(NES *nes, u16 address);
 
@@ -645,14 +649,15 @@ inline void WriteVramData(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-// This is the fastest method and how is usually implemented in emulators
-// I'll try for now wihout using the cpu cycles and writing on the $2004 register
 inline void WriteDMA(NES *nes, u8 value)
 {
     CPU *cpu = &nes->cpu;
     PPU *ppu = &nes->ppu;
 
     u16 readAddress = ((u16)value << 8);
+
+    // This is the fastest method and how is usually implemented in emulators
+    // I'll try for now wihout using the cpu cycles and writing on the $2004 register
 
     for (u16 offset = 0; offset < 0x100; ++offset)
     {
@@ -667,6 +672,32 @@ inline void WriteDMA(NES *nes, u8 value)
     cpu->waitCycles = 513;
     if (cpu->cycles & 0x01)
         ++cpu->waitCycles;
+}
+
+inline u8 GetSpritePixelRow(NES *nes, u16 baseAddress, u8 spriteIndex, u8 y, u8 index)
+{
+    // this happen when the sprite size of ppu->control is set to 1 (8x16 sprites)
+    if (y >= 8)
+    {
+        ++spriteIndex;
+        y -= 8;
+    }
+
+    return ReadPPUU8(nes, baseAddress + spriteIndex * 16 + index * 8 + y);
+}
+
+inline u8 GetSpritePixel(NES *nes, u16 baseAddress, u8 spriteIndex, u8 x, u8 y)
+{
+    // this happen when the sprite size of ppu->control is set to 1 (8x16 sprites)
+    if (y >= 8)
+    {
+        ++spriteIndex;
+        y -= 8;
+    }
+
+    u8 row1 = ReadPPUU8(nes, baseAddress + spriteIndex * 16 + y);
+    u8 row2 = ReadPPUU8(nes, baseAddress + spriteIndex * 16 + 8 + y);
+    return GetPixelLowBits(row1, row2, x);
 }
 
 inline void ColorEmphasis(Color *color, u8 mask)

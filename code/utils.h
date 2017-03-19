@@ -69,11 +69,9 @@ typedef u64 b64;
 
 typedef size_t size;
 
-typedef union Color
+typedef struct Color
 {
-    struct { u8 values[4]; };
-    struct { u8 r, g, b, a; };
-    struct { s32 rgba; };
+    u8 r, g, b, a;
 };
 
 #define RGB(r, g, b) (((r) << 16) | ((g) << 8) | ((b) << 0))
@@ -85,13 +83,6 @@ typedef union Color
 
 #define GetBitFlag(v, f) ((v) & (1 << (f)) ? 1 : 0)
 #define SetBitFlag(v, f) (*(v) = (*(v) | (1 << (f))))
-
-inline Color GetColor(u8 r, u8 g, u8 b, u8 a)
-{
-    Color result = {};
-    result.rgba = RGBA(r, g, b, a);
-    return result;
-}
 
 //inline u8 GetBitFlag(u8 v, u8 flag)
 //{
