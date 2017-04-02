@@ -478,10 +478,10 @@ int CALLBACK WinMain(
 
                 CPUStep step = StepCPU(nes);
 
-                for (s32 i = 0; i < 3 * step.cycles; i++)
+                /*for (s32 i = 0; i < 3 * step.cycles; i++)
                 {
                     StepPPU(nes);
-                }
+                }*/
 
                 /*for (s32 i = 0; i < step.cycles; i++)
                 {

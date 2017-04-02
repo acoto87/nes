@@ -47,41 +47,43 @@ internal void RenderPixel(NES *nes)
             u8 spriteAttr = ReadU8(&nes->oamMemory2, i * 4 + 2);
             u8 spriteX = ReadU8(&nes->oamMemory2, i * 4 + 3);
 
-            u8 patternTableIndex = spriteAddr;
-
-            if (spriteSize == 16)
+            if (x >= spriteX && y >= spriteY + 1)
             {
-                patternTableIndex = (spriteIdx & 1);
-                spriteIdx &= 0xFE;
-            }
+                u8 rowOffset = y - spriteY - 1;
+                u8 colOffset = x - spriteX;
 
-            u16 baseAddress = 0x1000 * patternTableIndex;
-
-            u8 rowOffset = y - spriteY - 1;
-            u8 colOffset = x - spriteX;
-
-            // the bit 6 indicate that the sprite should flip horizontally
-            if (spriteAttr & 0x40)
-            {
-                colOffset = 7 - colOffset;
-            }
-
-            // the bit 7 indicate that the sprite should flip vertically
-            if (spriteAttr & 0x80)
-            {
-                rowOffset = (spriteSize - 1) - rowOffset;
-            }
-
-            if (colOffset >= 0 && colOffset < 8)
-            {
-                sprite = GetSpritePixel(nes, baseAddress, spriteIdx, colOffset, rowOffset);
-
-                sprite |= (spriteAttr & 0x03) << 2;
-                if (sprite % 4 != 0)
+                // the bit 6 indicate that the sprite should flip horizontally
+                if (spriteAttr & 0x40)
                 {
-                    idx = i;
-                    a = spriteAttr;
-                    break;
+                    colOffset = 7 - colOffset;
+                }
+
+                // the bit 7 indicate that the sprite should flip vertically
+                if (spriteAttr & 0x80)
+                {
+                    rowOffset = (spriteSize - 1) - rowOffset;
+                }
+
+                if (colOffset < 8)
+                {
+                    u8 patternTableIndex = spriteAddr;
+
+                    if (spriteSize == 16)
+                    {
+                        patternTableIndex = (spriteIdx & 1);
+                        spriteIdx &= 0xFE;
+                    }
+
+                    u16 baseAddress = 0x1000 * patternTableIndex;
+                    sprite = GetSpritePixel(nes, baseAddress, spriteIdx, colOffset, rowOffset);
+
+                    sprite |= (spriteAttr & 0x03) << 2;
+                    if (sprite % 4 != 0)
+                    {
+                        idx = i;
+                        a = spriteAttr;
+                        break;
+                    }
                 }
             }
         }
@@ -125,7 +127,7 @@ internal void RenderPixel(NES *nes)
             // AND (&) with 0x10 to make sure that the color is picked from palette 2 (0x3F10)
             colorIndex = sprite | 0x10;
         }
-        else 
+        else
         {
             colorIndex = background;
         }
@@ -479,12 +481,12 @@ void StepPPU(NES *nes)
 
                         ++count;
                     }
+                }
 
-                    if (count > 8)
-                    {
-                        count = 8;
-                        SetBitFlag(&ppu->status, SCANLINE_COUNT_FLAG);
-                    }
+                if (count > 8)
+                {
+                    SetBitFlag(&ppu->status, SCANLINE_COUNT_FLAG);
+                    count = 8;
                 }
 
                 ppu->spriteCount = count;
@@ -492,11 +494,7 @@ void StepPPU(NES *nes)
         }
         else
         {
-            for (s32 i = 0; i < 8 * 4; ++i)
-            {
-                WriteU8(&nes->oamMemory2, i, 0);
-            }
-
+            ZeroMemoryBytes(&nes->oamMemory2);
             ppu->spriteCount = 0;
         }
 

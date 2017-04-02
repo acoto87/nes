@@ -716,22 +716,22 @@ inline void ColorEmphasis(Color *color, u8 mask)
             color->r = (u8)(color->r * 0.85);
             color->g = (u8)(color->g * 0.85);
             color->b = (u8)(color->b * 0.70);
-            break;                      
-        case 0x4:                       
+            break;
+        case 0x4:
             color->r = (u8)(color->r * 0.85);
             color->g = (u8)(color->g * 0.85);
-            break;                      
-        case 0x5:                       
+            break;
+        case 0x5:
             color->r = (u8)(color->r * 0.85);
             color->g = (u8)(color->g * 0.70);
             color->b = (u8)(color->b * 0.85);
-            break;                      
-        case 0x6:                       
+            break;
+        case 0x6:
             color->r = (u8)(color->r * 0.70);
             color->g = (u8)(color->g * 0.85);
             color->b = (u8)(color->b * 0.85);
-            break;                      
-        case 0x7:                       
+            break;
+        case 0x7:
             color->r = (u8)(color->r * 0.70);
             color->g = (u8)(color->g * 0.70);
             color->b = (u8)(color->b * 0.70);
@@ -774,6 +774,14 @@ void ResetPPU(NES *nes);
 void PowerPPU(NES *nes);
 void InitPPU(NES *nes);
 void StepPPU(NES *nes);
+
+inline void StepPPU(NES *nes, s32 cycles)
+{
+    for (s32 i = 0; i < 3 * cycles; ++i)
+    {
+        StepPPU(nes);
+    }
+}
 
 #endif // !PPU_H
 

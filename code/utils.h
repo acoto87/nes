@@ -83,6 +83,7 @@ typedef struct Color
 
 #define GetBitFlag(v, f) ((v) & (1 << (f)) ? 1 : 0)
 #define SetBitFlag(v, f) (*(v) = (*(v) | (1 << (f))))
+#define ClearBitFlag(v, f) (*(v) = *(v) ^ (*(v) & (1 << (f))))
 
 //inline u8 GetBitFlag(u8 v, u8 flag)
 //{
@@ -94,10 +95,10 @@ typedef struct Color
 //    *v = (*v | (1 << flag));
 //}
 
-inline void ClearBitFlag(u8 *v, u8 flag)
-{
-    *v = *v ^ (*v & (1 << flag));
-}
+//inline void ClearBitFlag(u8 *v, u8 flag)
+//{
+//    *v = *v ^ (*v & (1 << flag));
+//}
 
 inline void* Allocate(size size)
 {
