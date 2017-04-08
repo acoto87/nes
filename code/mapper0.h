@@ -58,9 +58,6 @@ inline void Mapper0WriteU8(NES *nes, u16 address, u8 value)
 
     if (ISBETWEEN(address, 0x8000, 0x10000))
     {
-        // this mapper doesn't support writing to PRG
-        //ASSERT(FALSE);
-
         WriteU8(&nes->cpuMemory, address, value);
         return;
     }

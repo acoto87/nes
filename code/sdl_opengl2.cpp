@@ -438,7 +438,6 @@ int CALLBACK WinMain(
                 }
             }
 
-
             // Frame
             // I'm targeting 60fps, so run the amount of cpu cycles for 0.0167 seconds
             //
@@ -550,7 +549,7 @@ int CALLBACK WinMain(
                 OPENFILENAME openFileName;
                 openFileName.lStructSize = sizeof(OPENFILENAME);
                 openFileName.hInstance = NULL;
-                openFileName.lpstrFilter = "Nes files (*.nes)\0*.nes\0\0";
+                openFileName.lpstrFilter = "Nes files (*.nes)\0*.nes\0Nes save files (*.nsave)\0*.nsave\0\0";
                 openFileName.lpstrCustomFilter = NULL;
                 openFileName.nMaxCustFilter = 0;
                 openFileName.nFilterIndex = 1;
@@ -577,28 +576,110 @@ int CALLBACK WinMain(
                 {
                     char *rom = openFileName.lpstrFile;
 
-                    Cartridge cartridge = {};
-                    if (LoadNesRom(rom, &cartridge))
+                    s32 extlen = 0;
+                    char ext[10] = "";
+
+                    s32 len = strlen(rom);
+                    for (s32 i = len - 1; i >= 0 && rom[i] != '.'; --i, ++extlen)
+                    {
+                    }
+
+                    for (s32 i = len - 1, j = extlen - 1; i >= 0 && j >= 0 && rom[i] != '.'; --i, --j)
+                    {
+                        ext[j] = rom[i];
+                    }
+
+                    if (strcmp(ext, "nes") == 0)
+                    {
+                        Cartridge cartridge = {};
+                        if (LoadNesRom(rom, &cartridge))
+                        {
+                            if (nes)
+                            {
+                                Destroy(nes);
+                            }
+
+                            nes = CreateNES(cartridge);
+
+                            memset(windowTitle, 0, 256);
+                            strcpy(windowTitle, "Nes emulator: ");
+                            strcat(windowTitle + 13, rom);
+                            SDL_SetWindowTitle(win, windowTitle);
+                        }
+                        else
+                        {
+                            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
+                        }
+                    }
+                    else if (strcmp(ext, "nsave") == 0)
                     {
                         if (nes)
                         {
                             Destroy(nes);
                         }
 
-                        nes = CreateNES(cartridge);
+                        nes = LoadNesSave(rom);
 
-                        memset(windowTitle, 0, 256);
-                        strcpy(windowTitle, "Nes emulator: ");
-                        strcat(windowTitle + 13, rom);
-                        SDL_SetWindowTitle(win, windowTitle);
+                        if (nes)
+                        {
+                            memset(windowTitle, 0, 256);
+                            strcpy(windowTitle, "Nes emulator: ");
+                            strcat(windowTitle + 13, rom);
+                            SDL_SetWindowTitle(win, windowTitle);
+                        }
+                        else
+                        {
+                            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
+                        }
                     }
                     else
                     {
                         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
                     }
+                    
                 }
             }
 
+            if (nk_button_label(ctx, "Save"))
+            {
+                if (nes)
+                {
+                    debugging = TRUE;
+                    stepping = FALSE;
+
+                    OPENFILENAME saveFileName;
+                    saveFileName.lStructSize = sizeof(OPENFILENAME);
+                    saveFileName.hInstance = NULL;
+                    saveFileName.lpstrFilter = "Nes save files (*.nsave)\0*.nsave\0\0";
+                    saveFileName.lpstrCustomFilter = NULL;
+                    saveFileName.nMaxCustFilter = 0;
+                    saveFileName.nFilterIndex = 1;
+                    saveFileName.lpstrFile = (char*)Allocate(256);
+                    saveFileName.nMaxFile = 256;
+                    saveFileName.lpstrFileTitle = NULL;
+                    saveFileName.nMaxFileTitle = 0;
+                    saveFileName.lpstrInitialDir = NULL;
+                    saveFileName.lpstrTitle = NULL;
+                    saveFileName.Flags = 0;
+                    saveFileName.nFileOffset = 0;
+                    saveFileName.nFileExtension = 0;
+                    saveFileName.lpstrDefExt = "nsave";
+                    saveFileName.lCustData = NULL;
+                    saveFileName.lpfnHook = NULL;
+                    saveFileName.lpTemplateName = NULL;
+
+                    if (winHwnd)
+                    {
+                        saveFileName.hwndOwner = winHwnd;
+                    }
+
+                    if (GetSaveFileName(&saveFileName))
+                    {
+                        char *file = saveFileName.lpstrFile;
+                        Save(nes, file);
+                    }
+                }
+            }
 
             if (nk_button_label(ctx, "Run"))
             {
@@ -609,7 +690,7 @@ int CALLBACK WinMain(
 
             if (nk_button_label(ctx, "Reset"))
             {
-                if (nes) 
+                if (nes)
                 {
                     ResetNES(nes);
                     debugging = TRUE;
@@ -730,7 +811,7 @@ int CALLBACK WinMain(
         {
             screenRect = nk_rect(890, 10, 300, 300);
         }
-        else 
+        else
         {
             screenRect = nk_rect(310, 10, 880, 780);
         }
@@ -1299,7 +1380,7 @@ int CALLBACK WinMain(
 
                             // the bit 7 indicate that the sprite should flip vertically
                             b32 flipV = spriteAttr & 0x80;
-                            
+
                             // the bit 6 indicate that the sprite should flip horizontally
                             b32 flipH = spriteAttr & 0x40;
 
@@ -1366,7 +1447,7 @@ int CALLBACK WinMain(
                                         nk_label(ctx, DebugText("Color:  %02X", pixelHighBits), NK_TEXT_LEFT);
                                         nk_label(ctx, DebugText("Y:      %02X", spriteY), NK_TEXT_LEFT);
                                         nk_label(ctx, DebugText("Flags:  %s%s", (flipV ? "V" : ""), (flipH ? "H" : "")), NK_TEXT_LEFT);
-                                        
+
                                         nk_tooltip_end(ctx);
                                     }
                                 }

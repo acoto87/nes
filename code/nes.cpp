@@ -104,7 +104,7 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
         cartridge->chr = (u8*)Allocate(cartridge->chrSizeInBytes);
         fread(cartridge->chr, sizeof(u8), cartridge->chrSizeInBytes, file);
     }
-    
+
     fread(cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
 
     fclose(file);
@@ -165,7 +165,7 @@ NES* CreateNES(Cartridge cartridge)
     if (nes)
     {
         nes->cartridge = cartridge;
-    
+
         InitCPU(nes);
         InitPPU(nes);
         //InitAPU(nes)
@@ -224,5 +224,220 @@ void Destroy(NES *nes)
     }
 
     Free(nes);
+}
+
+internal inline void SaveMemory(Memory *memory, FILE *file)
+{
+    fwrite(&memory->created, sizeof(b32), 1, file);
+    fwrite(&memory->length, sizeof(u32), 1, file);
+    fwrite(memory->bytes, sizeof(u8), memory->length, file);
+}
+
+void Save(NES *nes, char *filePath)
+{
+    FILE *file = fopen(filePath, "wb");
+
+    // Write ram data
+    SaveMemory(&nes->cpuMemory, file);
+    SaveMemory(&nes->ppuMemory, file);
+    SaveMemory(&nes->oamMemory, file);
+    SaveMemory(&nes->oamMemory2, file);
+
+    // Write CPU, PPU and APU data
+    fwrite(&nes->cpu, sizeof(CPU), 1, file);
+    fwrite(&nes->ppu, sizeof(PPU), 1, file);
+    // fwrite(&nes->apu, sizeof(APU), 1, file);
+
+    // Write cartridge data
+    Cartridge *cartridge = &nes->cartridge;
+    fwrite(&cartridge->mirrorType, sizeof(MirrorType), 1, file);
+    fwrite(&cartridge->hasBatteryPack, sizeof(b32), 1, file);
+    fwrite(&cartridge->mapper, sizeof(u8), 1, file);
+    fwrite(&cartridge->prgRAMSize, sizeof(u8), 1, file);
+
+    fwrite(&cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
+
+    fwrite(&cartridge->hasTrainer, sizeof(b32), 1, file);
+    fwrite(&cartridge->trainer, sizeof(u8), TRAINER_SIZE, file);
+
+    fwrite(&cartridge->prgBanks, sizeof(u32), 1, file);
+    fwrite(&cartridge->prgSizeInBytes, sizeof(u32), 1, file);
+    fwrite(&cartridge->prg, sizeof(u8), cartridge->prgSizeInBytes, file);
+
+    fwrite(&cartridge->chrBanks, sizeof(u32), 1, file);
+    fwrite(&cartridge->chrSizeInBytes, sizeof(u32), 1, file);
+    fwrite(&cartridge->chr, sizeof(u8), cartridge->chrSizeInBytes, file);
+
+    // Write controllers data
+    fwrite(&nes->controllers[0], sizeof(Controller), 1, file);
+    fwrite(&nes->controllers[1], sizeof(Controller), 1, file);
+
+    // Write GUI data
+    GUI *gui = &nes->gui;
+    fwrite(&gui->width, sizeof(u32), 1, file);
+    fwrite(&gui->height, sizeof(u32), 1, file);
+    fwrite(gui->pixels, sizeof(Color), 256 * 240, file);
+
+    for (s32 i = 0; i < 2; ++i)
+    {
+        fwrite(gui->patterns[i], sizeof(Color), 128 * 128, file);
+    }
+
+    fwrite(gui->patternHover, sizeof(Color), 8 * 8, file);
+
+    for (s32 i = 0; i < 64; ++i)
+    {
+        fwrite(gui->sprites[i], sizeof(Color), 8 * 16, file);
+    }
+
+    for (s32 i = 0; i < 8; ++i)
+    {
+        fwrite(gui->sprites2[i], sizeof(Color), 8 * 16, file);
+    }
+
+    fwrite(gui->nametable, sizeof(Color), 256 * 240, file);
+
+    for (s32 i = 0; i < 32; ++i)
+    {
+        for (s32 j = 0; j < 30; ++j)
+        {
+            fwrite(gui->nametable2[i][j], sizeof(Color), 64, file);
+        }
+    }
+
+    fclose(file);
+}
+
+internal inline void ReadMemory(Memory *memory, FILE *file)
+{
+    fread(&memory->created, sizeof(b32), 1, file);
+    fread(&memory->length, sizeof(u32), 1, file);
+    
+    memory->bytes = (u8*)Allocate(memory->length);
+    fread(memory->bytes, sizeof(u8), memory->length, file);
+}
+
+NES* LoadNesSave(char *filePath)
+{
+    FILE *file = fopen(filePath, "rb");
+
+    NES* nes = (NES*)Allocate(sizeof(NES));
+
+    // Read ram data
+    ReadMemory(&nes->cpuMemory, file);
+    ReadMemory(&nes->ppuMemory, file);
+    ReadMemory(&nes->oamMemory, file);
+    ReadMemory(&nes->oamMemory2, file);
+
+    // Read CPU, PPU and APU data
+    fread(&nes->cpu, sizeof(CPU), 1, file);
+    fread(&nes->ppu, sizeof(PPU), 1, file);
+    // fread(&nes->apu, sizeof(APU), 1, file);
+
+    // Write cartridge data
+    Cartridge *cartridge = &nes->cartridge;
+    fread(&cartridge->mirrorType, sizeof(MirrorType), 1, file);
+    fread(&cartridge->hasBatteryPack, sizeof(b32), 1, file);
+    fread(&cartridge->mapper, sizeof(u8), 1, file);
+    fread(&cartridge->prgRAMSize, sizeof(u8), 1, file);
+
+    fread(cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
+
+    fread(&cartridge->hasTrainer, sizeof(b32), 1, file);
+    fread(&cartridge->trainer, sizeof(u8), TRAINER_SIZE, file);
+
+    fread(&cartridge->prgBanks, sizeof(u32), 1, file);
+    fread(&cartridge->prgSizeInBytes, sizeof(u32), 1, file);
+
+    cartridge->prg = (u8*)Allocate(cartridge->prgSizeInBytes);
+    fread(cartridge->prg, sizeof(u8), cartridge->prgSizeInBytes, file);
+
+    fread(&cartridge->chrBanks, sizeof(u32), 1, file);
+    fread(&cartridge->chrSizeInBytes, sizeof(u32), 1, file);
+
+    cartridge->chr = (u8*)Allocate(cartridge->chrSizeInBytes);
+    fread(cartridge->chr, sizeof(u8), cartridge->chrSizeInBytes, file);
+
+    // Write controllers data
+    fread(&nes->controllers[0], sizeof(Controller), 1, file);
+    fread(&nes->controllers[1], sizeof(Controller), 1, file);
+
+    // Write GUI data
+    GUI *gui = &nes->gui;
+    fread(&gui->width, sizeof(u32), 1, file);
+    fread(&gui->height, sizeof(u32), 1, file);
+    fread(gui->pixels, sizeof(Color), 256 * 240, file);
+
+    for (s32 i = 0; i < 2; ++i)
+    {
+        fread(gui->patterns[i], sizeof(Color), 128 * 128, file);
+    }
+
+    fread(gui->patternHover, sizeof(Color), 8 * 8, file);
+
+    for (s32 i = 0; i < 64; ++i)
+    {
+        fread(gui->sprites[i], sizeof(Color), 8 * 16, file);
+    }
+
+    for (s32 i = 0; i < 8; ++i)
+    {
+        fread(gui->sprites2[i], sizeof(Color), 8 * 16, file);
+    }
+
+    fread(gui->nametable, sizeof(Color), 256 * 240, file);
+
+    for (s32 i = 0; i < 32; ++i)
+    {
+        for (s32 j = 0; j < 30; ++j)
+        {
+            fread(gui->nametable2[i][j], sizeof(Color), 64, file);
+        }
+    }
+
+    fclose(file);
+
+    switch (nes->cartridge.mapper)
+    {
+        case 0:
+        {
+            nes->mapperInit = Mapper0Init;
+            nes->mapperReadU8 = Mapper0ReadU8;
+            nes->mapperWriteU8 = Mapper0WriteU8;
+            break;
+        }
+
+        case 1:
+        {
+            nes->mapperInit = Mapper1Init;
+            nes->mapperReadU8 = Mapper1ReadU8;
+            nes->mapperWriteU8 = Mapper1WriteU8;
+            break;
+        }
+
+        case 2:
+        {
+            nes->mapperInit = Mapper2Init;
+            nes->mapperReadU8 = Mapper2ReadU8;
+            nes->mapperWriteU8 = Mapper2WriteU8;
+            break;
+        }
+
+        case 3:
+        {
+            nes->mapperInit = Mapper3Init;
+            nes->mapperReadU8 = Mapper3ReadU8;
+            nes->mapperWriteU8 = Mapper3WriteU8;
+            break;
+        }
+
+        default:
+        {
+            ASSERT(FALSE);
+            break;
+        }
+    }
+
+    return nes;
 }
 

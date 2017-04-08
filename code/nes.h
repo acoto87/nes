@@ -21,5 +21,7 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge);
 NES* CreateNES(Cartridge cartridge);
 void ResetNES(NES *nes);
 void Destroy(NES *nes);
+NES* LoadNesSave(char *filePath);
+void Save(NES *nes, char *filePath);
 
 #endif
