@@ -112,7 +112,7 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
     return true;
 }
 
-void InitMapper(NES *nes)
+internal void CreateMapper(NES *nes)
 {
     switch (nes->cartridge.mapper)
     {
@@ -129,6 +129,8 @@ void InitMapper(NES *nes)
             nes->mapperInit = Mapper1Init;
             nes->mapperReadU8 = Mapper1ReadU8;
             nes->mapperWriteU8 = Mapper1WriteU8;
+            nes->mapperSave = Mapper1Save;
+            nes->mapperLoad = Mapper1Load;
             break;
         }
 
@@ -154,7 +156,11 @@ void InitMapper(NES *nes)
             break;
         }
     }
+}
 
+void InitMapper(NES *nes)
+{
+    CreateMapper(nes);
     nes->mapperInit(nes);
 }
 
@@ -255,23 +261,29 @@ void Save(NES *nes, char *filePath)
     fwrite(&cartridge->mapper, sizeof(u8), 1, file);
     fwrite(&cartridge->prgRAMSize, sizeof(u8), 1, file);
 
-    fwrite(&cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
+    fwrite(cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
 
     fwrite(&cartridge->hasTrainer, sizeof(b32), 1, file);
-    fwrite(&cartridge->trainer, sizeof(u8), TRAINER_SIZE, file);
+    fwrite(cartridge->trainer, sizeof(u8), TRAINER_SIZE, file);
 
     fwrite(&cartridge->prgBanks, sizeof(u32), 1, file);
     fwrite(&cartridge->prgSizeInBytes, sizeof(u32), 1, file);
-    fwrite(&cartridge->prg, sizeof(u8), cartridge->prgSizeInBytes, file);
+    fwrite(cartridge->prg, sizeof(u8), cartridge->prgSizeInBytes, file);
 
     fwrite(&cartridge->chrBanks, sizeof(u32), 1, file);
     fwrite(&cartridge->chrSizeInBytes, sizeof(u32), 1, file);
-    fwrite(&cartridge->chr, sizeof(u8), cartridge->chrSizeInBytes, file);
+    fwrite(cartridge->chr, sizeof(u8), cartridge->chrSizeInBytes, file);
 
     // Write controllers data
     fwrite(&nes->controllers[0], sizeof(Controller), 1, file);
     fwrite(&nes->controllers[1], sizeof(Controller), 1, file);
 
+    // Write mapper
+    if (nes->mapperSave)
+    {
+        nes->mapperSave(nes, file);
+    }
+    
     // Write GUI data
     GUI *gui = &nes->gui;
     fwrite(&gui->width, sizeof(u32), 1, file);
@@ -334,7 +346,7 @@ NES* LoadNesSave(char *filePath)
     fread(&nes->ppu, sizeof(PPU), 1, file);
     // fread(&nes->apu, sizeof(APU), 1, file);
 
-    // Write cartridge data
+    // Read cartridge data
     Cartridge *cartridge = &nes->cartridge;
     fread(&cartridge->mirrorType, sizeof(MirrorType), 1, file);
     fread(&cartridge->hasBatteryPack, sizeof(b32), 1, file);
@@ -358,11 +370,18 @@ NES* LoadNesSave(char *filePath)
     cartridge->chr = (u8*)Allocate(cartridge->chrSizeInBytes);
     fread(cartridge->chr, sizeof(u8), cartridge->chrSizeInBytes, file);
 
-    // Write controllers data
+    // Read controllers data
     fread(&nes->controllers[0], sizeof(Controller), 1, file);
     fread(&nes->controllers[1], sizeof(Controller), 1, file);
 
-    // Write GUI data
+    // Read mapper
+    CreateMapper(nes);
+    if (nes->mapperLoad)
+    {
+        nes->mapperLoad(nes, file);
+    }
+
+    // Read GUI data
     GUI *gui = &nes->gui;
     fread(&gui->width, sizeof(u32), 1, file);
     fread(&gui->height, sizeof(u32), 1, file);
@@ -396,47 +415,6 @@ NES* LoadNesSave(char *filePath)
     }
 
     fclose(file);
-
-    switch (nes->cartridge.mapper)
-    {
-        case 0:
-        {
-            nes->mapperInit = Mapper0Init;
-            nes->mapperReadU8 = Mapper0ReadU8;
-            nes->mapperWriteU8 = Mapper0WriteU8;
-            break;
-        }
-
-        case 1:
-        {
-            nes->mapperInit = Mapper1Init;
-            nes->mapperReadU8 = Mapper1ReadU8;
-            nes->mapperWriteU8 = Mapper1WriteU8;
-            break;
-        }
-
-        case 2:
-        {
-            nes->mapperInit = Mapper2Init;
-            nes->mapperReadU8 = Mapper2ReadU8;
-            nes->mapperWriteU8 = Mapper2WriteU8;
-            break;
-        }
-
-        case 3:
-        {
-            nes->mapperInit = Mapper3Init;
-            nes->mapperReadU8 = Mapper3ReadU8;
-            nes->mapperWriteU8 = Mapper3WriteU8;
-            break;
-        }
-
-        default:
-        {
-            ASSERT(FALSE);
-            break;
-        }
-    }
 
     return nes;
 }

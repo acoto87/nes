@@ -348,6 +348,8 @@ struct NES
     void(*mapperInit)(NES *nes);
     u8(*mapperReadU8)(NES *nes, u16 address);
     void(*mapperWriteU8)(NES *nes, u16 address, u8 value);
+    void(*mapperSave)(NES *nes, FILE *file);
+    void(*mapperLoad)(NES *nes, FILE *file);
     void* mapperData;
 };
 
