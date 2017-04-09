@@ -12,6 +12,7 @@
 #include "glew.h"
 #include <SDL2/SDL_opengl.h>
 #include <SDL2/SDL_syswm.h>
+#include <SDL2/SDL_audio.h>
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -260,6 +261,30 @@ internal void DeleteTextures(Device *dev)
     glDisable(GL_TEXTURE_2D);
 }
 
+internal void SDLAudioCallback(void* userdata, u8* buffer, s32 len)
+{
+    local s32 samplesPerSecond = 48000;
+    local s32 toneHz = 256;
+    local s32 wavePeriod = samplesPerSecond / toneHz;
+    local s32 bytesPerSample = sizeof(s16) * 2;
+    local s32 toneVolume = 3000;
+    local u32 wavePos = 0;
+
+    #define PI 3.14159265359f
+
+    s16 *sampleOut = (s16*)buffer;
+    for (s32 i = 0; i <= len / bytesPerSample; i++)
+    {
+        f32 t = 2.0f * PI * (f32)wavePos / (f32)wavePeriod;
+        f32 sineValue = sinf(t);
+        s16 sampleValue = (s16)(sineValue * toneVolume);
+        sampleOut[2 * i + 0] = sampleValue;
+        sampleOut[2 * i + 1] = sampleValue;
+
+        ++wavePos;
+    }
+}
+
 int CALLBACK WinMain(
     HINSTANCE instance,
     HINSTANCE prevInstance,
@@ -292,7 +317,7 @@ int CALLBACK WinMain(
 
     /* SDL setup */
     SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0");
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -340,6 +365,25 @@ int CALLBACK WinMain(
 
     InitDevice(&device);
     InitTextures(&device);
+
+    SDL_AudioSpec want, have;
+    SDL_AudioDeviceID dev;
+
+    SDL_memset(&want, 0, sizeof(want));
+    want.freq = 48000;
+    want.format = AUDIO_S16;
+    want.channels = 2;
+    want.samples = 4096;
+    want.callback = SDLAudioCallback;
+
+    dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    if (dev) 
+    {
+        if (have.format != want.format) {
+            SDL_Log("We didn't get Single32 audio format.");
+        }
+        SDL_PauseAudioDevice(dev, 0);
+    }
 
     LARGE_INTEGER startCounter = Win32GetWallClock();
     dt = Win32GetSecondsElapsed(initialCounter, startCounter);
@@ -636,7 +680,7 @@ int CALLBACK WinMain(
                     {
                         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
                     }
-                    
+
                 }
             }
 
@@ -1781,6 +1825,11 @@ int CALLBACK WinMain(
 
         dt = Win32GetSecondsElapsed(startCounter, endCounter);
         startCounter = endCounter;
+    }
+
+    if (dev)
+    {
+        SDL_CloseAudioDevice(dev);
     }
 
     if (controller)

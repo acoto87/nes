@@ -7,97 +7,9 @@ struct Mapper1Data
 {
     u8 control;
     u8 shift;
-    
     u8 prgMode;
-    /*u8 prgBank;*/
-    
     u8 chrMode;
-    /*u8 chrBank0;
-    u8 chrBank1;*/
-    
-    /*s32 prgBanks;
-    s32 chrBanks;
-    s32 prgOffsets[2];
-    s32 chrOffsets[2];*/
 };
-
-//inline s32 PrgBankOffset(Mapper1Data* data, s32 index)
-//{
-//    if (index >= 0x80)
-//    {
-//        index -= 0x100;
-//    }
-//    index %= data->prgBanks;
-//    s32 offset = index * 0x4000;
-//    if (offset < 0) {
-//        offset += data->prgBanks * 0x4000;
-//    }
-//    return offset;
-//}
-//
-//inline s32 ChrBankOffset(Mapper1Data* data, s32 index)
-//{
-//    if (data->chrBanks == 0)
-//        return 0;
-//
-//    if (index >= 0x80)
-//    {
-//        index -= 0x100;
-//    }
-//    index %= data->chrBanks;
-//    s32 offset = index * 0x1000;
-//    if (offset < 0) {
-//        offset += data->chrBanks * 0x1000;
-//    }
-//    return offset;
-//}
-//
-//inline void UpdateOffsets(NES *nes, Mapper1Data *data)
-//{
-//    switch (data->prgMode)
-//    {
-//        case 0:
-//        case 1:
-//        {
-//            data->prgOffsets[0] = PrgBankOffset(data, data->prgBank & 0xFE);
-//            data->prgOffsets[1] = PrgBankOffset(data, data->prgBank & 0x01);
-//            break;
-//        }
-//
-//        case 2:
-//        {
-//            data->prgOffsets[0] = 0;
-//            data->prgOffsets[1] = PrgBankOffset(data, data->prgBank);
-//            break;
-//        }
-//
-//        case 3:
-//        {
-//            data->prgOffsets[0] = PrgBankOffset(data, data->prgBank);
-//            data->prgOffsets[1] = PrgBankOffset(data, -1);
-//            break;
-//        }
-//
-//    }
-//
-//    switch (data->chrMode)
-//    {
-//        case 0:
-//        {
-//            data->chrOffsets[0] = ChrBankOffset(data, data->chrBank0 & 0xFE);
-//            data->chrOffsets[1] = ChrBankOffset(data, data->chrBank0 | 0x01);
-//            break;
-//        }
-//
-//        case 1:
-//        {
-//            data->chrOffsets[0] = ChrBankOffset(data, data->chrBank0);
-//            data->chrOffsets[1] = ChrBankOffset(data, data->chrBank1);
-//            break;
-//        }
-//
-//    }
-//}
 
 inline void WriteControl(NES *nes, Mapper1Data *data, u8 value)
 {
@@ -207,7 +119,6 @@ inline void WritePrgBank(NES *nes, Mapper1Data *data, u8 value)
             CopyMemoryBytes(&nes->cpuMemory, 0xC000, prg + (prgBanks - 1) * 0x4000, 0x4000);
             break;
         }
-
     }
 }
 
@@ -268,7 +179,7 @@ inline void Mapper1Init(NES *nes)
 
     if (chrBanks > 0)
     {
-        u8* chr = nes->cartridge.chr;
+        u8 *chr = nes->cartridge.chr;
         CopyMemoryBytes(&nes->ppuMemory, 0x0000, chr, 0x2000);
     }
 
@@ -276,7 +187,7 @@ inline void Mapper1Init(NES *nes)
     data->control = 0x1C;
     data->shift = 0x10;
 
-    nes->mapperData = (void*)data;
+    nes->mapperData = data;
 }
 
 inline u8 Mapper1ReadU8(NES *nes, u16 address)
@@ -286,23 +197,11 @@ inline u8 Mapper1ReadU8(NES *nes, u16 address)
     if (ISBETWEEN(address, 0x0000, 0x2000))
     {
         return ReadU8(&nes->ppuMemory, address);
-
-        /*u8* chr = nes->cartridge.chr;
-        s32 bank = address / 0x1000;
-        s32 offset = address % 0x1000;
-        return chr[data->chrOffsets[bank] + offset];*/
     }
 
     if (ISBETWEEN(address, 0x8000, 0x10000))
     {
         return ReadU8(&nes->cpuMemory, address);
-        
-        /*u8* prg = nes->cartridge.prg;
-
-        address = address - 0x8000;
-        s32 bank = address / 0x4000;
-        s32 offset = address % 0x4000;
-        return prg[data->prgOffsets[bank] + offset];*/
     }
 
     ASSERT(FALSE);
@@ -316,13 +215,6 @@ inline void Mapper1WriteU8(NES *nes, u16 address, u8 value)
     if (ISBETWEEN(address, 0x0000, 0x2000))
     {
         return WriteU8(&nes->ppuMemory, address, value);
-/*
-        u8* chr = nes->cartridge.chr;
-
-        s32 bank = address / 0x1000;
-        s32 offset = address % 0x1000;
-        chr[data->chrOffsets[bank] + offset] = value;*/
-        return;
     }
 
     if (ISBETWEEN(address, 0x8000, 0x10000))
@@ -332,4 +224,15 @@ inline void Mapper1WriteU8(NES *nes, u16 address, u8 value)
     }
 
     ASSERT(FALSE);
+}
+
+inline void Mapper1Save(NES *nes, FILE *file)
+{
+    fwrite(nes->mapperData, sizeof(Mapper1Data), 1, file);
+}
+
+inline void Mapper1Load(NES *nes, FILE *file)
+{
+    nes->mapperData = (Mapper1Data*)Allocate(sizeof(Mapper1Data));
+    fread(nes->mapperData, sizeof(Mapper1Data), 1, file);
 }
