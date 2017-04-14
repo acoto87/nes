@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "oam.h"
 #include "ppu.h"
+#include "apu.h"
 #include "controller.h"
 
 #define CPU_RAM_TOTAL_SIZE KILOBYTES(64)
@@ -453,7 +454,7 @@ inline u8 ReadCPUU8(NES *nes, u16 address)
         address = (address % 0x800);
         return ReadU8(&nes->cpuMemory, address);
     }
-    
+
     if (ISBETWEEN(address, 0x2000, 0x4000))
     {
         // Memory locations $2000-$2008 are mirrored each 8 bytes.
@@ -464,46 +465,46 @@ inline u8 ReadCPUU8(NES *nes, u16 address)
         {
             case 0x2000:
             {
-                return ReadCtrl(nes);
+                return ReadPPUCtrl(nes);
             }
 
             case 0x2001:
             {
-                return ReadMask(nes);
+                return ReadPPUMask(nes);
             }
 
             case 0x2002:
             {
-                return ReadStatus(nes);
+                return ReadPPUStatus(nes);
             }
 
             case 0x2003:
             {
-                return ReadOamAddr(nes);
+                return ReadPPUOamAddr(nes);
             }
 
             case 0x2004:
             {
-                return ReadOamData(nes);
+                return ReadPPUOamData(nes);
             }
 
             case 0x2005:
             {
-                return ReadScroll(nes);
+                return ReadPPUScroll(nes);
             }
 
             case 0x2006:
             {
-                return ReadVramAddr(nes);
+                return ReadPPUVramAddr(nes);
             }
 
             case 0x2007:
             {
-                return ReadVramData(nes);
+                return ReadPPUVramData(nes);
             }
         }
     }
-    
+
     if (ISBETWEEN(address, 0x4000, 0x4020))
     {
         switch (address)
@@ -511,6 +512,11 @@ inline u8 ReadCPUU8(NES *nes, u16 address)
             case 0x4014:
             {
                 return 0;
+            }
+
+            case 0x4015:
+            {
+                return ReadAPUStatus(nes);
             }
 
             case 0x4016:
@@ -524,12 +530,12 @@ inline u8 ReadCPUU8(NES *nes, u16 address)
             }
         }
     }
-    
+
     if (ISBETWEEN(address, 0x6000, 0x8000))
     {
         return ReadU8(&nes->cpuMemory, address);
     }
-    
+
     if (ISBETWEEN(address, 0x8000, 0x10000))
     {
         return nes->mapperReadU8(nes, address);
@@ -571,49 +577,49 @@ inline void WriteCPUU8(NES *nes, u16 address, u8 value)
         {
             case 0x2000:
             {
-                WriteCtrl(nes, value);
+                WritePPUCtrl(nes, value);
                 return;
             }
 
             case 0x2001:
             {
-                WriteMask(nes, value);
+                WritePPUMask(nes, value);
                 return;
             }
 
             case 0x2002:
             {
-                WriteStatus(nes, value);
+                WritePPUStatus(nes, value);
                 return;
             }
 
             case 0x2003:
             {
-                WriteOamAddr(nes, value);
+                WritePPUOamAddr(nes, value);
                 return;
             }
 
             case 0x2004:
             {
-                WriteOamData(nes, value);
+                WritePPUOamData(nes, value);
                 return;
             }
 
             case 0x2005:
             {
-                WriteScroll(nes, value);
+                WritePPUScroll(nes, value);
                 return;
             }
 
             case 0x2006:
             {
-                WriteVramAddr(nes, value);
+                WritePPUVramAddr(nes, value);
                 return;
             }
 
             case 0x2007:
             {
-                WriteVramData(nes, value);
+                WritePPUVramData(nes, value);
                 return;
             }
         }
@@ -623,9 +629,135 @@ inline void WriteCPUU8(NES *nes, u16 address, u8 value)
     {
         switch (address)
         {
+            case 0x4000:
+            {
+                WriteAPUPulseEnvelope(nes, &nes->apu.pulse1, value);
+                break;
+            }
+
+            case 0x4001:
+            {
+                WriteAPUPulseSweep(nes, &nes->apu.pulse1, value);
+                break;
+            }
+
+            case 0x4002:
+            {
+                WriteAPUPulseTimer(nes, &nes->apu.pulse1, value);
+                break;
+            }
+
+            case 0x4003:
+            {
+                WriteAPUPulseLength(nes, &nes->apu.pulse1, value);
+                break;
+            }
+
+            case 0x4004:
+            {
+                WriteAPUPulseEnvelope(nes, &nes->apu.pulse2, value);
+                break;
+            }
+
+            case 0x4005:
+            {
+                WriteAPUPulseSweep(nes, &nes->apu.pulse2, value);
+                break;
+            }
+
+            case 0x4006:
+            {
+                WriteAPUPulseTimer(nes, &nes->apu.pulse2, value);
+                break;
+            }
+
+            case 0x4007:
+            {
+                WriteAPUPulseLength(nes, &nes->apu.pulse2, value);
+                break;
+            }
+
+            //case 0x4008:
+            //{
+            //    WriteAPUTriangleControl(nes, value);
+            //    break;
+            //}
+
+            //case 0x4009:
+            //{
+            //    // unused
+            //    break;
+            //}
+
+            //case 0x400A:
+            //{
+            //    WriteAPUTriangleTimerLow(nes, value);
+            //    break;
+            //}
+
+            //case 0x400A:
+            //{
+            //    WriteAPUTriangleTimerHigh(nes, value);
+            //    break;
+            //}
+
+            //case 0x400C:
+            //{
+            //    WriteAPUNoiseControl(nes, value);
+            //    break;
+            //}
+
+            //case 0x400D:
+            //{
+            //    // unused
+            //    break;
+            //}
+
+            //case 0x400E:
+            //{
+            //    WriteAPUNoisePeriod(nes, value);
+            //    break;
+            //}
+
+            //case 0x400F:
+            //{
+            //    WriteAPUNoiseLength(nes, value);
+            //    break;
+            //}
+
+            //case 0x4010:
+            //{
+            //    WriteAPUDMCControl(nes, value);
+            //    break;
+            //}
+
+            //case 0x4011:
+            //{
+            //    WriteAPUDMCValue(nes, value);
+            //    break;
+            //}
+
+            //case 0x4012:
+            //{
+            //    WriteAPUDMCAddress(nes, value);
+            //    break;
+            //}
+
+            //case 0x4013:
+            //{
+            //    WriteAPUDMCLength(nes, value);
+            //    break;
+            //}
+            
             case 0x4014:
             {
-                WriteDMA(nes, value);
+                WritePPUDMA(nes, value);
+                break;
+            }
+
+            case 0x4015:
+            {
+                WriteAPUStatus(nes, value);
                 break;
             }
 
@@ -638,6 +770,7 @@ inline void WriteCPUU8(NES *nes, u16 address, u8 value)
 
             case 0x4017:
             {
+                WriteAPUFrameCounter(nes, value);
                 break;
             }
         }
@@ -701,52 +834,38 @@ inline u16 PopStackU16(NES *nes)
 
 #define GetCarry(cpu) GetBitFlag(cpu->p, CARRY_FLAG)
 #define SetCarry(cpu, v) \
-    if (v) \
-        SetBitFlag(&cpu->p, CARRY_FLAG); \
-    else \
-        ClearBitFlag(&cpu->p, CARRY_FLAG);
+    if (v) SetBitFlag(&cpu->p, CARRY_FLAG); \
+    else   ClearBitFlag(&cpu->p, CARRY_FLAG);
 
 #define GetZero(cpu) GetBitFlag(cpu->p, ZERO_FLAG)
 #define SetZero(cpu, v) \
-    if (v) \
-        SetBitFlag(&cpu->p, ZERO_FLAG); \
-    else \
-        ClearBitFlag(&cpu->p, ZERO_FLAG);
+    if (v) SetBitFlag(&cpu->p, ZERO_FLAG); \
+    else   ClearBitFlag(&cpu->p, ZERO_FLAG);
 
 #define GetInterrupt(cpu) GetBitFlag(cpu->p, INTERRUPT_FLAG)
 #define SetInterrupt(cpu, v) \
-    if (v) \
-        SetBitFlag(&cpu->p, INTERRUPT_FLAG); \
-    else \
-        ClearBitFlag(&cpu->p, INTERRUPT_FLAG);
+    if (v) SetBitFlag(&cpu->p, INTERRUPT_FLAG); \
+    else   ClearBitFlag(&cpu->p, INTERRUPT_FLAG);
 
 #define GetDecimal(cpu) GetBitFlag(cpu->p, DECIMAL_FLAG)
 #define SetDecimal(cpu, v) \
-    if (v) \
-        SetBitFlag(&cpu->p, DECIMAL_FLAG); \
-    else \
-        ClearBitFlag(&cpu->p, DECIMAL_FLAG);
+    if (v) SetBitFlag(&cpu->p, DECIMAL_FLAG); \
+    else   ClearBitFlag(&cpu->p, DECIMAL_FLAG);
 
 #define GetBreak(cpu) GetBitFlag(cpu->p, BREAK_FLAG)
 #define SetBreak(cpu, v) \
-    if (v) \
-        SetBitFlag(&cpu->p, BREAK_FLAG); \
-    else \
-        ClearBitFlag(&cpu->p, BREAK_FLAG);
+    if (v) SetBitFlag(&cpu->p, BREAK_FLAG); \
+    else   ClearBitFlag(&cpu->p, BREAK_FLAG);
 
 #define GetOverflow(cpu) GetBitFlag(cpu->p, OVERFLOW_FLAG)
 #define SetOverflow(cpu, v) \
-    if (v) \
-        SetBitFlag(&cpu->p, OVERFLOW_FLAG); \
-    else \
-        ClearBitFlag(&cpu->p, OVERFLOW_FLAG);
+    if (v) SetBitFlag(&cpu->p, OVERFLOW_FLAG); \
+    else   ClearBitFlag(&cpu->p, OVERFLOW_FLAG);
 
 #define GetNegative(cpu) GetBitFlag(cpu->p, NEGATIVE_FLAG)
 #define SetNegative(cpu, v) \
-    if (v) \
-        SetBitFlag(&cpu->p, NEGATIVE_FLAG); \
-    else \
-        ClearBitFlag(&cpu->p, NEGATIVE_FLAG);
+    if (v) SetBitFlag(&cpu->p, NEGATIVE_FLAG); \
+    else   ClearBitFlag(&cpu->p, NEGATIVE_FLAG);
 
 void ResetCPU(NES *nes);
 void PowerCPU(NES *nes);

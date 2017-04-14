@@ -298,21 +298,57 @@ struct PPU
     u8 spriteCount;
 };
 
+struct APU
+{
+    // $4000 - $4007
+    struct Pulse
+    {
+        b32 enabled;
+        u8 channel;
+        
+        b32 lengthEnabled;
+        u8 lengthValue;
+        
+        u16 timerPeriod;
+        u16 timerValue;
+        
+        u8 dutyMode;
+        u8 dutyValue;
+        
+        b32 sweepReload;
+        b32 sweepEnabled;
+        b32 sweepNegate;
+        u8 sweepShift;
+        u8 sweepPeriod;
+        u8 sweepValue;
+        
+        b32 envelopeEnabled;
+        b32 envelopeLoop;
+        b32 envelopeStart;
+        u8 envelopePeriod;
+        u8 envelopeValue;
+        u8 envelopeVolume;
+        
+        u8 constantVolume;
+    } pulse1, pulse2;
+
+    f32 channel;
+    f64 sampleRate;
+    u64 cycles;
+    u8 framePeriod;
+    u8 frameValue;
+    b32 frameIRQ;
+
+    // 48000 samples per second / 60 frames per second = 800 samples
+    s32 bufferPos;
+    f32 buffer[4096];
+};
+
 struct Controller
 {
     u8 state;
     u8 index;
     u8 strobe;
-};
-
-struct Win32BackBuffer
-{
-    BITMAPINFO bitmapInfo;
-    u32 bitmapWidth;
-    u32 bitmapHeight;
-    u32 pitch;
-    u32 bytesPerPixel;
-    void *bitmap;
 };
 
 struct GUI
@@ -338,7 +374,7 @@ struct NES
 
     CPU cpu;
     PPU ppu;
-    //APU apu;
+    APU apu;
 
     Cartridge cartridge;
     Controller controllers[2];

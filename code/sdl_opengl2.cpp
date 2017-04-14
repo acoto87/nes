@@ -263,7 +263,23 @@ internal void DeleteTextures(Device *dev)
 
 internal void SDLAudioCallback(void* userdata, u8* buffer, s32 len)
 {
-    local s32 samplesPerSecond = 48000;
+    local const s32 samplesPerSecond = 48000;
+    local const s32 bytesPerSample = sizeof(f32) * 2;
+
+    if (nes)
+    {
+        APU *apu = &nes->apu;
+
+        s16 *sampleOut = (s16*)buffer;
+        for (s32 i = 0; i < len / bytesPerSample; i++)
+        {
+            f32 sampleValue = apu->buffer[i];
+            sampleOut[2 * i + 0] = sampleValue;
+            sampleOut[2 * i + 1] = sampleValue;
+        }
+    }
+
+    /*local s32 samplesPerSecond = 48000;
     local s32 toneHz = 256;
     local s32 wavePeriod = samplesPerSecond / toneHz;
     local s32 bytesPerSample = sizeof(s16) * 2;
@@ -273,7 +289,7 @@ internal void SDLAudioCallback(void* userdata, u8* buffer, s32 len)
     #define PI 3.14159265359f
 
     s16 *sampleOut = (s16*)buffer;
-    for (s32 i = 0; i <= len / bytesPerSample; i++)
+    for (s32 i = 0; i < len / bytesPerSample; i++)
     {
         f32 t = 2.0f * PI * (f32)wavePos / (f32)wavePeriod;
         f32 sineValue = sinf(t);
@@ -282,7 +298,7 @@ internal void SDLAudioCallback(void* userdata, u8* buffer, s32 len)
         sampleOut[2 * i + 1] = sampleValue;
 
         ++wavePos;
-    }
+    }*/
 }
 
 int CALLBACK WinMain(
@@ -371,13 +387,13 @@ int CALLBACK WinMain(
 
     SDL_memset(&want, 0, sizeof(want));
     want.freq = 48000;
-    want.format = AUDIO_S16;
+    want.format = AUDIO_F32;
     want.channels = 2;
     want.samples = 4096;
     want.callback = SDLAudioCallback;
 
     dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
-    if (dev) 
+    if (dev)
     {
         if (have.format != want.format) {
             SDL_Log("We didn't get Single32 audio format.");
@@ -526,10 +542,10 @@ int CALLBACK WinMain(
                     StepPPU(nes);
                 }*/
 
-                /*for (s32 i = 0; i < step.cycles; i++)
+                for (s32 i = 0; i < step.cycles; i++)
                 {
                     StepAPU(nes);
-                }*/
+                }
 
                 cycles -= step.cycles;
 

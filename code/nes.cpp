@@ -174,7 +174,7 @@ NES* CreateNES(Cartridge cartridge)
 
         InitCPU(nes);
         InitPPU(nes);
-        //InitAPU(nes)
+        InitAPU(nes);
         InitGUI(nes);
         InitController(nes, 0);
         InitController(nes, 1);
@@ -187,6 +187,7 @@ NES* CreateNES(Cartridge cartridge)
 
         PowerCPU(nes);
         PowerPPU(nes);
+        PowerAPU(nes);
     }
 
     return nes;
@@ -196,7 +197,7 @@ void ResetNES(NES *nes)
 {
     ResetCPU(nes);
     ResetPPU(nes);
-    // ResetAPU(nes);
+    ResetAPU(nes);
     ResetGUI(nes);
     ResetController(nes, 0);
     ResetController(nes, 1);

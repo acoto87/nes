@@ -438,13 +438,13 @@ inline void WritePPUU16(NES *nes, u16 address, u16 value)
     WritePPUU8(nes, address + 1, hi);
 }
 
-inline u8 ReadCtrl(NES *nes)
+inline u8 ReadPPUCtrl(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ppu->control;
 }
 
-inline void WriteCtrl(NES *nes, u8 value)
+inline void WritePPUCtrl(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->control = value;
@@ -454,13 +454,13 @@ inline void WriteCtrl(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadMask(NES *nes)
+inline u8 ReadPPUMask(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ppu->mask;
 }
 
-inline void WriteMask(NES *nes, u8 value)
+inline void WritePPUMask(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->mask = value;
@@ -469,7 +469,7 @@ inline void WriteMask(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadStatus(NES *nes)
+inline u8 ReadPPUStatus(NES *nes)
 {
     PPU *ppu = &nes->ppu;
 
@@ -494,18 +494,18 @@ inline u8 ReadStatus(NES *nes)
     return status;
 }
 
-inline void WriteStatus(NES *nes, u8 value)
+inline void WritePPUStatus(NES *nes, u8 value)
 {
     // This register is read only
 }
 
-inline u8 ReadOamAddr(NES *nes)
+inline u8 ReadPPUOamAddr(NES *nes)
 {
     // This register is write only
     return 0;
 }
 
-inline void WriteOamAddr(NES *nes, u8 value)
+inline void WritePPUOamAddr(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->oamAddress = value;
@@ -514,13 +514,13 @@ inline void WriteOamAddr(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadOamData(NES *nes)
+inline u8 ReadPPUOamData(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ReadPPUU8(nes, ppu->oamAddress);
 }
 
-inline void WriteOamData(NES *nes, u8 value)
+inline void WritePPUOamData(NES *nes, u8 value)
 {
     // TODO: write here to oamAddress: WriteU8(oamAddress, value); ??
     PPU *ppu = &nes->ppu;
@@ -532,13 +532,13 @@ inline void WriteOamData(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadScroll(NES *nes)
+inline u8 ReadPPUScroll(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ppu->scroll;
 }
 
-inline void WriteScroll(NES *nes, u8 value)
+inline void WritePPUScroll(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->scroll = value;
@@ -564,13 +564,13 @@ inline void WriteScroll(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadVramAddr(NES *nes)
+inline u8 ReadPPUVramAddr(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ppu->address;
 }
 
-inline void WriteVramAddr(NES *nes, u8 value)
+inline void WritePPUVramAddr(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->address = value;
@@ -597,7 +597,7 @@ inline void WriteVramAddr(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadVramData(NES *nes)
+inline u8 ReadPPUVramData(NES *nes)
 {
     PPU *ppu = &nes->ppu;
 
@@ -628,7 +628,7 @@ inline u8 ReadVramData(NES *nes)
     return value;
 }
 
-inline void WriteVramData(NES *nes, u8 value)
+inline void WritePPUVramData(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->data = value;
@@ -649,7 +649,7 @@ inline void WriteVramData(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline void WriteDMA(NES *nes, u8 value)
+inline void WritePPUDMA(NES *nes, u8 value)
 {
     CPU *cpu = &nes->cpu;
     PPU *ppu = &nes->ppu;
