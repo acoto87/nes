@@ -2,10 +2,17 @@
 
 #include <types.h>
 
-// CPU_FREQ / 240 = 1789773 = 7457.38
+// (CPU_FREQ / 240) = (1789773 / 240) = 7457.38
 // Frequency of FrameCounter
 // from: http://wiki.nesdev.com/w/index.php/APU#Frame_Counter_.28.244017.29
 #define FRAME_COUNTER_RATE 7457.38f
+
+#define APU_SAMPLES_PER_SECOND 48000
+
+// (CPU_FREQ / 48000) = (1789773 / 48000) = 37.28
+#define APU_CYCLES_PER_SAMPLE 37
+
+#define APU_BYTES_PER_SAMPLE (sizeof(f32)*2)
 
 global u8 lengthTable[32]
 {
@@ -24,80 +31,8 @@ global u8 dutyTable[4][8]
 global f32 pulseTable[31];
 global f32 tndTable[203];
 
-inline u8 ReadAPUStatus(NES *nes)
-{
-    APU *apu = &nes->apu;
+#pragma region Pulse
 
-    u8 result = 0;
-
-    if (apu->pulse1.enabled && apu->pulse1.lengthValue)
-    {
-        result |= 1;
-    }
-
-    if (apu->pulse2.enabled && apu->pulse2.lengthValue)
-    {
-        result |= 2;
-    }
-
-    /*if (apu->triangle.lengthValue)
-    {
-        result |= 4;
-    }
-
-    if (apu->noise.lengthValue)
-    {
-        result |= 8;
-    }
-
-    if (apu->dmc.lengthValue)
-    {
-        result |= 16;
-    }*/
-
-    return result;
-}
-
-inline void WriteAPUStatus(NES *nes, u8 value)
-{
-    APU *apu = &nes->apu;
-
-    apu->pulse1.enabled = (value & 1);
-    if (!apu->pulse1.enabled)
-    {
-        apu->pulse1.lengthValue = 0;
-    }
-
-    apu->pulse2.enabled = (value & 2) >> 1;
-    if (!apu->pulse2.enabled)
-    {
-        apu->pulse2.lengthValue = 0;
-    }
-
-    /*apu->triangle.enabled = (value & 4) >> 1;
-    if (!apu->triangle.enabled)
-    {
-        apu->triangle.lengthValue = 0;
-    }
-
-    apu->noise.enabled = (value & 8) >> 1;
-    if (!apu->noise.enabled)
-    {
-        apu->noise.lengthValue = 0;
-    }
-
-    apu->dmc.enabled = (value & 16) >> 1;
-    if (!apu->dmc.enabled)
-    {
-        apu->dmc.lengthValue = 0;
-    }
-    else if (!apu->dmc.lengthValue)
-    {
-        RestartDmc(&apu->dmc);
-    }*/
-}
-
-// Pulse 1
 inline void WriteAPUPulseEnvelope(NES *nes, APU::Pulse *pulse, u8 value)
 {
     pulse->dutyMode = (value >> 6) & 3;
@@ -125,10 +60,102 @@ inline void WriteAPUPulseTimer(NES *nes, APU::Pulse *pulse, u8 value)
 
 inline void WriteAPUPulseLength(NES *nes, APU::Pulse *pulse, u8 value)
 {
-    pulse->lengthValue = lengthTable[value >> 3];
-    pulse->timerPeriod = (pulse->timerPeriod & 0x00FF) | ((u16)(value & 7) << 8);
-    pulse->envelopeStart = TRUE;
-    pulse->dutyValue = 0;
+    if (pulse->enabled)
+    {
+        pulse->lengthValue = lengthTable[value >> 3];
+        pulse->timerPeriod = (pulse->timerPeriod & 0x00FF) | ((u16)(value & 7) << 8);
+        pulse->envelopeStart = TRUE;
+        pulse->dutyValue = 0;
+    }
+}
+
+#pragma endregion
+
+inline u8 ReadAPUStatus(NES *nes)
+{
+    APU *apu = &nes->apu;
+
+    u8 result = 0;
+
+    if (apu->pulse1.enabled && apu->pulse1.lengthValue)
+    {
+        result |= 1;
+    }
+
+    if (apu->pulse2.enabled && apu->pulse2.lengthValue)
+    {
+        result |= 2;
+    }
+
+    /*if (apu->triangle.lengthValue)
+    {
+    result |= 4;
+    }
+
+    if (apu->noise.lengthValue)
+    {
+    result |= 8;
+    }
+
+    if (apu->dmc.lengthValue)
+    {
+    result |= 16;
+    }*/
+
+    if (apu->frameIRQ)
+    {
+        result |= 0x40;
+    }
+
+    if (apu->dmcIRQ)
+    {
+        result |= 0x80;
+    }
+
+    apu->frameIRQ = FALSE;
+
+    return result;
+}
+
+inline void WriteAPUStatus(NES *nes, u8 value)
+{
+    APU *apu = &nes->apu;
+
+    apu->pulse1.enabled = (value & 1);
+    if (!apu->pulse1.enabled)
+    {
+        apu->pulse1.lengthValue = 0;
+    }
+
+    apu->pulse2.enabled = (value & 2) >> 1;
+    if (!apu->pulse2.enabled)
+    {
+        apu->pulse2.lengthValue = 0;
+    }
+
+    /*apu->triangle.enabled = (value & 4) >> 1;
+    if (!apu->triangle.enabled)
+    {
+    apu->triangle.lengthValue = 0;
+    }
+
+    apu->noise.enabled = (value & 8) >> 1;
+    if (!apu->noise.enabled)
+    {
+    apu->noise.lengthValue = 0;
+    }
+
+    apu->dmc.enabled = (value & 16) >> 1;
+    if (!apu->dmc.enabled)
+    {
+    apu->dmc.lengthValue = 0;
+    }
+    else if (!apu->dmc.lengthValue)
+    {
+    RestartDmc(&apu->dmc);
+    }*/
+
+    apu->dmcIRQ = FALSE;
 }
 
 void ResetAPU(NES *nes);

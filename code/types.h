@@ -10,6 +10,8 @@
 #define PPU_SCREEN_WIDTH 256
 #define PPU_SCREEN_HEIGHT 240
 
+#define APU_BUFFER_LENGTH 4096
+
 struct Memory
 {
     b32 created;
@@ -332,16 +334,20 @@ struct APU
         u8 constantVolume;
     } pulse1, pulse2;
 
-    f32 channel;
-    f64 sampleRate;
     u64 cycles;
-    u8 framePeriod;
+    u8 frameMode;
     u8 frameValue;
-    b32 frameIRQ;
+    s32 frameCounter;
+    
+    s32 sampleRate;
+    s32 sampleCounter;
 
-    // 48000 samples per second / 60 frames per second = 800 samples
-    s32 bufferPos;
-    f32 buffer[4096];
+    b32 frameIRQ;
+    b32 dmcIRQ;
+
+    s32 lastBufferIndex;
+    s32 bufferIndex;
+    f32 buffer[APU_BUFFER_LENGTH];
 };
 
 struct Controller
