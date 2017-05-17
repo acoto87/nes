@@ -263,19 +263,19 @@ internal void DeleteTextures(Device *dev)
 
 internal void SDLAudioCallback(void* userdata, u8* buffer, s32 len)
 {
-    f32 *sampleOut = (f32*)buffer;
-    for (s32 i = 0; i < len / APU_BYTES_PER_SAMPLE; i++)
+    memset(buffer, 0, len);
+
+    if (nes)
     {
-        f32 sampleValue = 0;
+        APU *apu = &nes->apu;
 
-        if (nes)
+        f32 *sampleOut = (f32*)buffer;
+        for (s32 i = 0; i < len / APU_BYTES_PER_SAMPLE; i++)
         {
-            APU *apu = &nes->apu;
-            sampleValue = apu->buffer[i];
+            f32 sampleValue = apu->buffer[i];
+            sampleOut[2 * i + 0] = sampleValue;
+            sampleOut[2 * i + 1] = sampleValue;
         }
-
-        sampleOut[2 * i + 0] = sampleValue;
-        sampleOut[2 * i + 1] = sampleValue;
     }
 
     /*local s32 samplesPerSecond = 48000;
@@ -388,8 +388,8 @@ int CALLBACK WinMain(
     want.freq = APU_SAMPLES_PER_SECOND;
     want.format = AUDIO_F32;
     want.channels = 2;
-    want.samples = 4096;
-    want.callback =SDLAudioCallback;
+    want.samples = 2048;
+    want.callback = NULL;// SDLAudioCallback;
 
     dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
     if (dev)
@@ -512,6 +512,8 @@ int CALLBACK WinMain(
                 cycles = 1;
             }
 
+            apu->bufferIndex = 0;
+
             while (cycles > 0)
             {
                 if (!debugging)
@@ -555,30 +557,7 @@ int CALLBACK WinMain(
                 }
             }
 
-            /*if (apu->bufferIndex != apu->lastBufferIndex)
-            {
-                f32 *bufferCopy;
-                s32 bufferCopyLength;
-                if (apu->bufferIndex > apu->lastBufferIndex)
-                {
-                    bufferCopyLength = apu->bufferIndex - apu->lastBufferIndex;
-                    bufferCopy = (f32*)Allocate(bufferCopyLength);
-                    memcpy(bufferCopy, apu->buffer + apu->lastBufferIndex, bufferCopyLength);
-                }
-                else
-                {
-                    bufferCopyLength = APU_BUFFER_LENGTH - apu->lastBufferIndex;
-                    bufferCopyLength += apu->bufferIndex;
-                    bufferCopy = (f32*)Allocate(bufferCopyLength);
-                    memcpy(bufferCopy, apu->buffer + apu->lastBufferIndex, APU_BUFFER_LENGTH - apu->lastBufferIndex);
-                    memcpy(bufferCopy + (APU_BUFFER_LENGTH - apu->lastBufferIndex), apu->buffer, apu->bufferIndex);
-                }
-
-                SDL_QueueAudio(dev, bufferCopy, bufferCopyLength * APU_BYTES_PER_SAMPLE);
-                apu->lastBufferIndex = apu->bufferIndex;
-
-                Free(bufferCopy);
-            }*/
+            SDL_QueueAudio(dev, apu->buffer, apu->bufferIndex * APU_BYTES_PER_SAMPLE);
         }
 
         LARGE_INTEGER e = Win32GetWallClock();
@@ -891,7 +870,8 @@ int CALLBACK WinMain(
             nk_end(ctx);
         }
 
-        struct nk_rect screenRect = debugMode ? nk_rect(890, 10, 300, 300)
+        struct nk_rect screenRect = debugMode 
+            ? nk_rect(890, 10, 300, 300)
             : nk_rect(310, 10, 880, 780);
 
         if (nk_begin(ctx, "SCREEN", screenRect, flags))
@@ -1858,7 +1838,7 @@ int CALLBACK WinMain(
                 {
                     nk_layout_row_dynamic(ctx, 25, 3);
 
-                    nk_label(ctx, DebugText("CYCLES:%lld", apu->bufferIndex), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CYCLES:%lld", apu->cycles), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("FRAME MODE:%02X", apu->frameMode), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("SAMPLE RATE:%04X", apu->sampleRate), NK_TEXT_LEFT);
 
@@ -1883,8 +1863,8 @@ int CALLBACK WinMain(
 
                     nk_label(ctx, DebugText("ENVELOPE LOOP:%02X", pulse->envelopeLoop), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("SWEEP NEGATE:%02X", pulse->sweepNegate), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CHANNEL:%02X", pulse->channel), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("LEN VALUE:%02X", pulse->lengthValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CHANNEL:%02X", pulse->channel), NK_TEXT_LEFT);
 
                     nk_label(ctx, DebugText("ENVELOPE PERIOD:%02X", pulse->envelopePeriod), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("SWEEP SHIFT:%02X", pulse->sweepShift), NK_TEXT_LEFT);
@@ -1900,7 +1880,11 @@ int CALLBACK WinMain(
                     nk_label(ctx, DebugText("SWEEP VALUE:%02X", pulse->sweepValue), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", pulse->constantVolume), NK_TEXT_LEFT);
 
-                    nk_layout_row_dynamic(ctx, 200, 1);
+                    local f32 rectHeight = 100;
+                    local nk_color lineColor = nk_rgb(255, 0, 0);
+                    local f32 lineThickness = 1.0f;
+
+                    nk_layout_row_dynamic(ctx, rectHeight, 1);
 
                     state = nk_widget(&space, ctx);
                     if (state)
@@ -1910,32 +1894,55 @@ int CALLBACK WinMain(
                             // update_your_widget_by_user_input(...);
                         }
 
-                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
+                        s32 pointCount = apu->bufferIndex / 2;
+                        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
 
-                        local nk_color lineColor = nk_rgb(255, 0, 0);
-                        local f32 lineThickness = 1.0f;
+                        f32 horizontalSpacing = space.w / pointCount;
 
-                        f32 p = space.w / (APU_BUFFER_LENGTH / 2);
-
-                        struct nk_vec2 from, to;
-
-                        from = nk_vec2(0, 200 - apu->buffer[0]);
-
-                        for (s32 i = 1; i < APU_BUFFER_LENGTH / 2; i++)
+                        for (s32 i = 0; i < pointCount; i++)
                         {
-                            to = nk_vec2(p * i, 200 - apu->buffer[i * 2]);
-
-                            nk_stroke_line(canvas, space.x + from.x, space.y + from.y, space.x + to.x, space.y + to.y, lineThickness, lineColor);
-
-                            from = to;
+                            f32 x = horizontalSpacing * i;
+                            f32 y = rectHeight - apu->buffer[i * 2];
+                            *(points + i) = nk_vec2(space.x + x, space.y + y);
                         }
+
+                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
+                        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
+
+                        Free(points);
+                    }
+
+                    state = nk_widget(&space, ctx);
+                    if (state)
+                    {
+                        if (state != NK_WIDGET_ROM)
+                        {
+                            // update_your_widget_by_user_input(...);
+                        }
+
+                        s32 pointCount = apu->bufferIndex / 2;
+                        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
+
+                        f32 horizontalSpacing = space.w / pointCount;
+
+                        for (s32 i = 0; i < pointCount; i++)
+                        {
+                            f32 x = horizontalSpacing * i;
+                            f32 y = rectHeight - apu->buffer[i * 2 + 1];
+                            *(points + i) = nk_vec2(space.x + x, space.y + y);
+                        }
+
+                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
+                        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
+
+                        Free(points);
                     }
                 }
                 else if (option == BUFFER)
                 {
                     nk_layout_row_dynamic(ctx, 20, 1);
 
-                    for (s32 i = 0; i < 256; ++i)
+                    for (s32 i = 0; i < APU_BUFFER_LENGTH / 16; ++i)
                     {
                         memset(debugBuffer, 0, sizeof(debugBuffer));
 

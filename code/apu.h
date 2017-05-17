@@ -77,12 +77,12 @@ inline u8 ReadAPUStatus(NES *nes)
 
     u8 result = 0;
 
-    if (apu->pulse1.enabled && apu->pulse1.lengthValue)
+    if (apu->pulse1.lengthValue > 0)
     {
         result |= 1;
     }
 
-    if (apu->pulse2.enabled && apu->pulse2.lengthValue)
+    if (apu->pulse2.lengthValue > 0)
     {
         result |= 2;
     }

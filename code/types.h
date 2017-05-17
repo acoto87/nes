@@ -10,7 +10,7 @@
 #define PPU_SCREEN_WIDTH 256
 #define PPU_SCREEN_HEIGHT 240
 
-#define APU_BUFFER_LENGTH 4096
+#define APU_BUFFER_LENGTH 2048
 
 struct Memory
 {
@@ -345,7 +345,6 @@ struct APU
     b32 frameIRQ;
     b32 dmcIRQ;
 
-    s32 lastBufferIndex;
     s32 bufferIndex;
     f32 buffer[APU_BUFFER_LENGTH];
 };
