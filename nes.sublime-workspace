@@ -4,17 +4,126 @@
 		"selected_items":
 		[
 			[
-				"candidate",
-				"candidate_cost"
+				"pulse",
+				"pulse1"
 			],
 			[
-				"Q",
-				"QDOC_LIB_PATH"
+				"square",
+				"square1Enabled"
+			],
+			[
+				"squ",
+				"square1Enabled"
+			],
+			[
+				"squa",
+				"square2Enabled"
 			]
 		]
 	},
 	"buffers":
 	[
+		{
+			"file": "src/sdl_opengl2.cpp",
+			"settings":
+			{
+				"buffer_size": 83445,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/controller.cpp",
+			"settings":
+			{
+				"buffer_size": 289,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/controller.h",
+			"settings":
+			{
+				"buffer_size": 1415,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/wave_writer.h",
+			"settings":
+			{
+				"buffer_size": 8096,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/types.h",
+			"settings":
+			{
+				"buffer_size": 10439,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/apu.h",
+			"settings":
+			{
+				"buffer_size": 3450,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/cpu.h",
+			"settings":
+			{
+				"buffer_size": 28004,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/apu.cpp",
+			"settings":
+			{
+				"buffer_size": 9755,
+				"encoding": "UTF-8 with BOM",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/nes-fogleman/nes/nes/apu.go",
+			"settings":
+			{
+				"buffer_size": 18389,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/nes-fogleman/nes/ui/audio.go",
+			"settings":
+			{
+				"buffer_size": 1026,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/nes-fogleman/nes/nes/console.go",
+			"settings":
+			{
+				"buffer_size": 3461,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/NES APU Sound Hardware Reference",
+			"settings":
+			{
+				"buffer_size": 26380,
+				"line_ending": "Windows"
+			}
+		}
 	],
 	"build_system": "Packages/C++/C++ Single File.sublime-build",
 	"build_system_choices":
@@ -39,104 +148,70 @@
 	"build_varint": "",
 	"command_palette":
 	{
-		"height": 219.0,
+		"height": 392.0,
 		"last_filter": "hex",
 		"selected_items":
 		[
 			[
 				"hex",
-				"Hex Viewer: Toggle Hex View"
-			],
-			[
-				"install",
-				"Package Control: Install Package"
-			],
-			[
-				"sublime",
-				"Preferences: SublimeGDB Settings – Default"
-			],
-			[
-				"gdb",
-				"SublimeGDB: Start Debugging"
-			],
-			[
-				"Install Package",
-				"Package Control: Install Package"
-			],
-			[
-				"install package",
-				"Package Control: Install Package"
-			],
-			[
-				"nes-",
-				"nes-build"
-			],
-			[
-				"Install",
-				"Package Control: Install Package"
-			],
-			[
-				"install pa	",
-				"Package Control: Install Package"
-			],
-			[
-				"sshtml",
-				"Set Syntax: HTML"
-			],
-			[
-				"ssxaml",
-				"Set Syntax: XAML"
-			],
-			[
-				"sssql",
-				"Set Syntax: SQL"
-			],
-			[
-				"ssHtml",
-				"Set Syntax: HTML"
-			],
-			[
-				"ssC",
-				"Set Syntax: C#"
-			],
-			[
-				"ssjson",
-				"Set Syntax: JSON"
-			],
-			[
-				"ssxml",
-				"Set Syntax: XML"
-			],
-			[
-				"ssphp",
-				"Set Syntax: PHP"
-			],
-			[
-				"ssc",
-				"Set Syntax: C#"
-			],
-			[
-				"vb",
-				"Set Syntax: VB.NET"
+				"HexViewer: Toggle Endianness (Big|Little)"
 			],
 			[
 				"instal",
 				"Package Control: Install Package"
 			],
 			[
-				"Package Control: ",
+				"install",
 				"Package Control: Install Package"
+			],
+			[
+				"install ",
+				"Package Control: Install Package"
+			],
+			[
+				"ssc",
+				"Set Syntax: C++"
+			],
+			[
+				"sshtml",
+				"Set Syntax: HTML"
+			],
+			[
+				"idn",
+				"Indent XML"
+			],
+			[
+				"iden",
+				"Indent XML"
+			],
+			[
+				"ssxml",
+				"Set Syntax: XML"
+			],
+			[
+				"indent",
+				"Indent XML"
+			],
+			[
+				"ident",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"sssql",
+				"Set Syntax: SQL"
+			],
+			[
+				"mark",
+				"Set Syntax: Markdown"
 			]
 		],
-		"width": 432.0
+		"width": 412.0
 	},
 	"console":
 	{
-		"height": 126.0,
+		"height": 150.0,
 		"history":
 		[
-			"import urllib.request,os,hashlib; h = '261dd1222b4693ce6d4f85f9c827ac06' + '6d5ab8ebdd020086947172a8a1356bb6'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)",
-			"import urllib.request,os,hashlib; h = '2915d1851351e5ee549c20394736b442' + '8bc59f460fa1548d1514676163dafc88'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)"
 		]
 	},
 	"distraction_free":
@@ -150,151 +225,148 @@
 	},
 	"expanded_folders":
 	[
-		"/D/Work/vW/nes",
-		"/D/Work/vW/nes/code",
-		"/D/Work/vW/nes/misc"
+		"/D/Work/nes/sublime",
+		"/D/Work/nes/sublime/src"
 	],
 	"file_history":
 	[
-		"/C/Users/Alejandro/Desktop/correo para Wilmer",
-		"/D/Work/vW/nes/build/nestestlog",
-		"/D/Work/vW/nes/misc/nintendulator0970src/src/NES.cpp",
-		"/D/Work/vW/nes-brianwill/nes/nes/memory.go",
-		"/D/Work/vW/nes-brianwill/nes/util/roms.go",
-		"/D/Work/vW/nes-brianwill/nes/nes/console.go",
-		"/D/Work/vW/nes-brianwill/nes/nes/nes_types.go",
-		"/D/Work/vW/nes-fogleman/nes/nes/cartridge.go",
-		"/D/Work/vW/nes-fogleman/nes/util/roms.go",
-		"/D/Work/vW/nes-fogleman/nes/nes/console.go",
-		"/D/Work/vW/nes-fogleman/nes/nes/ines.go",
-		"/D/Work/vW/nes/build/BOMBMAN.NES",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/HexViewer/hex_viewer.sublime-settings",
-		"/D/Work/vW/nes/build/nestest.nes",
-		"/D/Work/vW/nes/code/nes.cpp",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/SublimeGDB/SublimeGDB.sublime-settings",
-		"/D/Work/vW/Handmade Hero/handmade/code/build.bat",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/SublimeGDB.sublime-settings",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/Default.sublime-commands",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/nes-build.sublime-build",
-		"/D/Work/vW/nes/build.bat",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/Default (Windows).sublime-keymap",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/Default/Default (Windows).sublime-keymap",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/User/Preferences.sublime-settings",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/Default/Preferences.sublime-settings",
-		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/Default/Default.sublime-commands",
-		"/D/Work/vW/Handmade Hero/handmade/code/win32_handmade.cpp",
-		"/D/Work/vW/nes/misc/shell.bat",
-		"/C/Users/Alejandro/Downloads/nestest.nes",
-		"/D/Work/vW/Handmade Hero/handmade/misc/emacs_keybindings.txt",
-		"/D/Work/vW/Dagon/examples/config.lua",
-		"/D/Work/vW/Dagon/readme.md",
-		"/F/Software/Media/TechSmith Camtasia Studio 8.0.3.994/Instrucciones.txt",
-		"/C/ProgramData/Blizzard Entertainment/Battle.net/offline",
-		"/D/Android/sdk/android-sdk/platform-tools/log.txt",
-		"/D/Work/vW/dolphin/Source/Core/Core/PowerPC/PowerPC.cpp",
-		"/D/Work/vW/(working) Space Explorer/(Android) (Unity 5.3.5f1) SpaceExplorer/Builds/Android/AndroidManifest.xml",
-		"/E/__BACKUP__/random_test.js",
-		"/E/__BACKUP__/random_text.py",
-		"/D/Work/vW/(working) Space Explorer/(Standalone) (Unity 5.3.5f1) SpaceExplorer/Assets/Scripts/LevelUp/GameLevelUpAssets.cs",
-		"/D/Work/vW/(working) Space Explorer/(Android) (Unity 5.3.5f1) SpaceExplorer/Assets/Plugins/Soomla/Store/AndroidImpl/SoomlaStoreAndroid.cs",
-		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Views/Explorer.xaml",
-		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MaterialDesignInXamlToolkit/MaterialDesignThemes.Wpf/Themes/MaterialDesignTheme.Menu.xaml",
-		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Views/Explorer.xaml.vb",
-		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Views/Groups/GroupView.xaml",
-		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Views/Groups/GroupView.xaml.vb",
-		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MaterialDesignInXamlToolkit/MaterialDesignThemes.Wpf/Themes/MaterialDesignTheme.Shadows.xaml",
-		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MahApps.Metro/MahApps.Metro/Styles/Controls.DataGrid.xaml",
-		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MahApps.Metro/MahApps.Metro/Styles/Controls.TabControl.xaml",
-		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Core/Objects/ObjectContext.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Infrastructure/DbEntityEntry`.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Internal/EntityEntries/InternalEntityEntry.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/DbSet.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/DbSet`.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Infrastructure/DbQuery.cs",
-		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/bin/Debug/QDoc.exe.config",
-		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/bin/Debug/QDoc.exe.Config",
-		"/C/Users/Alejandro/Downloads/QDoc.exe.Config",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Files/FileManager/WSLocalFileManager.vb",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Files/FileManager/Tools/WSSecurity.vb",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Users/WSLoginView.xaml.vb",
-		"/D/Work/vW/Karel/(working) QSuite v8/wpftoolkit-117060/Main/Source/ExtendedWPFToolkitSolution/Src/Xceed.Wpf.Toolkit/AutoSelectTextBox/Implementation/AutoSelectTextBox.cs",
-		"/D/Work/vW/Karel/(working) QSuite v8/WPF Autocomplete Textbox User Control/C#/WPFAutoCompleteTextbox/AutoCompleteEntry.cs",
-		"/D/Work/vW/Karel/(working) QSuite v8/WPF Autocomplete Textbox User Control/C#/WPFAutoCompleteTextbox/AutoCompleteTextBox.xaml",
-		"/D/Work/vW/Karel/(working) QSuite v8/WPF Autocomplete Textbox User Control/C#/WPFAutoCompleteTextbox/AutoCompleteTextBox.xaml.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/QueryableExtensions.cs",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Users/WSLoginView.xaml",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Users/WSUsersView.xaml",
-		"/D/Work/vW/Entity Framework/entityframework/src/Common/IEnumerableExtensions.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/Common/DatabaseName.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/Common/TypeExtensions.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Infrastructure/IDbAsyncQueryProvider.cs",
-		"/D/Work/vW/Entity Framework/entityframework/src/EntityFramework/Infrastructure/IDbAsyncEnumeratorExtensions.cs",
-		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess/Generals/QPContext.vb",
-		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess/Views/ExplorerView.xaml",
-		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess/Views/ExplorerView.xaml.vb",
-		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MaterialDesignInXamlToolkit/MaterialDesignThemes.Wpf/TreeHelper.cs",
-		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MahApps.Metro/MahApps.Metro/Styles/Controls.TreeView.xaml",
-		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Application.xaml",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Validators/WSEmailValidationRule.vb",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Licenses/WSLicenseManager.vb",
-		"/D/Work/vW/Karel/(working) QSuite v8/Design Stuff/MahApps.Metro/MahApps.Metro/Converters/TreeViewMarginConverter.cs",
-		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess.Common/Data/Group.vb",
-		"/D/Work/vW/Karel/(working) QSuite v8/QSuite8/QProcess.Common/Data/Partials/Group.partial.vb",
-		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Datos/Models/Group.partial.vb",
-		"/D/Work/vW/Karel/(working) QDoc/QDoc/QDoc/Datos/Repositories/GroupRepository.vb",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationContext.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Design/Styles/Common.xaml",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Design/Converters/ValidationResultsToSeverityConverter.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/EntityBase.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/IValidationRule.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/IValidationContext.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationRule.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidableObject.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationService.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/Validator.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationRulesManager.cs",
-		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/Extensions/GeneralExtensions.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationResultCollection.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/ValidationResult.cs",
-		"/D/Work/vW/Karel/(working) QSuite v8/FluentValidation/src/FluentValidation/IValidator.cs",
-		"/D/Work/vW/Karel/(working) QSuite v8/FluentValidation/src/FluentValidation/ValidationContext.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Design/Converters/FlatErrorContentConverter.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Validation/IValidable.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Design/Styles/Vitacoder/TextBoxLabelStyles.xaml",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Resources/WSResources.xaml",
-		"/D/Work/vW/(done) InHand/InHand/InHand.UI/Common/Resources/CommonStyles.xaml",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/FlowDocumentToHtml.xslt",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Validators/WSStringRangeValidationRule.vb",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/InHandModel.Context.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/Entities.Partials/InHandModelContainer.partial.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/EntityExtensions.cs",
-		"/D/Work/vW/(done) InHand/InHand/InHand.Core/Data/InHand.Data.Partials.cs",
-		"/D/Work/vW/(working) Space Explorer/(PC) (Unity 5.3.5f1) SpaceExplorer/Builds/PC/SpaceExplorer_Data/output_log.txt",
-		"/D/Work/vW/Karel/(working) WSGenerals/WSGenerals/WSGenerals/Migrations/Core/MigrationManager.vb",
-		"/D/Work/vW/Handmade Hero/tinyobjloader/test.cc",
-		"/D/Work/vW/Handmade Hero/tinyobjloader/tiny_obj_loader.cc",
-		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/System/Data/QueryManager.cs",
-		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/System/Data/FilteredDataSource.cs",
-		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/System/Data/Virtualization/VirtualizingCollection.cs",
-		"/D/Work/vW/(done) InHand/InHand/NETFrameworkExtensions/System/Data/Virtualization/VirtualizedDataSource.cs",
-		"/C/Users/Alejandro/Downloads/dataJul-14-2016 (2).csv",
-		"/C/Users/Alejandro/Downloads/dataJul-14-2016 (2).sql",
-		"/C/Users/Alejandro/Downloads/group_names.txt",
-		"/D/Work/vW/Karel/(working) QSuite v8/roles-names",
-		"/D/Work/vW/Karel/(working) QSuite v8/roles.sql",
-		"/D/Work/vW/Karel/(working) QSuite v8/dbo.Roles.Table.sql",
-		"/C/Users/Alejandro/Downloads/dataJul-14-2016 (1).csv"
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo.Web/Views/Documents/Index.vbhtml",
+		"/C/Users/Alejandro/Desktop/New folder (2)/main.cpp",
+		"/D/Work/nes/sublime/src/nuklear_sdl_gl2.h",
+		"/D/Work/nes/sublime/src/nuklear.h",
+		"/D/Work/nes/sublime/nes_audio.wav",
+		"/D/Work/nes/sublime/src/Wave_Writer.hpp",
+		"/D/Work/nes/sublime/src/Wave_Writer.cpp",
+		"/D/Work/nes/sublime/nes.sublime-project",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Web/Views/Shared/_MainLayout.vbhtml",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Nes_Oscs.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/demo.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Nes_Oscs.h",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Nes_Apu.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Nes_Apu.h",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Simple_Apu.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Simple_Apu.h",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Sound_Queue.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Sound_Queue.h",
+		"/D/Work/nes/sublime/build.bat",
+		"/D/Work/nes/sublime/out.wav",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Wave_Writer.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Wave_Writer.hpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/usage.txt",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Blip_Buffer.h",
+		"/D/Work/nes/sublime/src/types.h",
+		"/D/Work/nes/sublime/src/utils.h",
+		"/D/Work/nes/sublime/src/gui.h",
+		"/D/Work/nes/sublime/src/gui.cpp",
+		"/D/Work/nes/vs/code/nuklear.h",
+		"/D/Work/nuklear/doc/build.sh",
+		"/D/Work/nes/sublime/src/sdl_opengl2.cpp",
+		"/D/Wilsoft/email de actualización del servidor aws",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Web/Generals/QDocContext.vb",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Common/Generals/QDocFunctionsBase.vb",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo.Common/Generals/QCeoFunctionsBase.vb",
+		"/C/Program Files (x86)/OpenSSH/etc/sshd_config",
+		"/C/Program Files (x86)/OpenSSH/etc/ssh_config",
+		"/D/Wilsoft/WilsoftT2Large.rdp",
+		"/D/Work/2d-extras/Assets/Tilemap/Tiles/Random Tile/Scripts/RandomTile.cs",
+		"/C/Program Files (x86)/OpenSSH/docs/readme.txt",
+		"/C/Program Files (x86)/OpenSSH/docs/quickstart.txt",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QSuite8.sln",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo.Common/QCeo.Common.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Web/QDoc.Web.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QLicense.Web/QLicense.Web.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QGage.Web/QGage.Web.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/WSGenerals.Web/WSGenerals.Web.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QProcess.Web/Views/Executions/Edit.vbhtml",
+		"/D/Wilsoft/(working) QSuite v8/QDocEmailTemplates",
+		"/C/inetpub/wwwroot/QDocWeb8/Web.config",
+		"/D/Wilsoft/pdfjs-1.7.225-dist/web/viewer.html",
+		"/D/Wilsoft/pdfjs-1.7.225-dist/web/viewer.js",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QAction/build-release.bat",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QAction.Tasks/build-release.bat",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo/build-release.bat",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo.Tasks/build-release.bat",
+		"/C/Users/Alejandro/Desktop/fixConfigurationTable.sql",
+		"/D/Wilsoft/(working) QSuite v7/(working) QDoc/QDoc/build.bat",
+		"/D/Work/(working) Platformer/CharacterController2D/Assets/demo/scripts/DemoScene.cs",
+		"/D/Work/(working) Platformer/CharacterController2D/Assets/CharacterController2D/CharacterController2D.cs",
+		"/D/Work/(working) Platformer/CharacterController2D/Assets/demo/scripts/SmoothFollow.cs",
+		"/C/Users/Alejandro/Desktop/q.sql",
+		"/D/Work/nes/build.bat",
+		"/D/Work/nes/src/sdl_opengl2.cpp",
+		"/D/Work/nes/src/oam.h",
+		"/D/Work/nes/src/nes.cpp",
+		"/D/Work/nes/src/gui.cpp",
+		"/D/Work/nes/src/gui.h",
+		"/D/Work/nes/src/controller.cpp",
+		"/D/Work/nes/src/controller.h",
+		"/D/Work/nes/src/apu.cpp",
+		"/D/Work/nes/src/apu.h",
+		"/D/Work/nes/src/ppu.cpp",
+		"/D/Work/nes/src/ppu.h",
+		"/D/Work/nes/src/memory.h",
+		"/D/Work/nes/src/cpu.h",
+		"/D/Work/nes/src/cpu.cpp",
+		"/D/Work/nes/src/cartridge.h",
+		"/D/Work/nes/src/types.h",
+		"/D/Work/nes/src/utils.h",
+		"/D/Work/nes/src/mapper3.h",
+		"/D/Work/nes/src/mapper2.h",
+		"/D/Work/nes/src/mapper1.h",
+		"/D/Work/nes/src/mapper0.h",
+		"/D/Work/nes/src/nes.h",
+		"/D/Work/nes/src/utils.cpp",
+		"/D/Work/handmadehero/code/handmade.cpp",
+		"/D/Work/handmadehero/code/handmade_audio.h",
+		"/D/Work/handmadehero/code/handmade_audio.cpp",
+		"/D/Work/nes/shell.bat",
+		"/C/Program Files/mingw-w64/x86_64-7.2.0-win32-seh-rt_v5-rev1/mingw-w64.bat",
+		"/D/Work/handmadehero/code/build.bat",
+		"/D/Work/nes/src/cartridge.cpp",
+		"/C/Program Files (x86)/Microsoft Visual Studio/2017/Community/Common7/Tools/VsDevCmd.bat",
+		"/D/Work/handmadehero/misc/shell.bat",
+		"/D/Work/nes/sdl_opengl2.obj",
+		"/D/Work/handmadehero/misc/msdev.bat",
+		"/D/Work/handmadehero/misc/emacs.bat",
+		"/D/Work/handmadehero/misc/4ed.bat",
+		"/D/Work/handmadehero/ctime/ctime.c",
+		"/D/Work/handmadehero/ctime/build.bat",
+		"/D/Work/handmadehero/code/todo_check.bat",
+		"/D/Work/handmadehero/code/static_check.bat",
+		"/D/Work/handmadehero/code/todo.txt",
+		"/D/Work/handmadehero/misc/4coder_casey.cpp",
+		"/D/Work/handmadehero/code/handmade_hero.ctm",
+		"/C/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/ucrt/stdio.h",
+		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/ColumnChart/ColumnPiece.cs",
+		"/C/Program Files (x86)/Microsoft Visual Studio/2017/Community/VB/Snippets/1033/WPF/DependencyProperty ReadOnly.snippet",
+		"/C/Program Files (x86)/Microsoft Visual Studio/2017/Community/VB/Snippets/1033/WPF/DependencyProperty.snippet",
+		"/C/Program Files (x86)/Microsoft Visual Studio/2017/Community/VB/Snippets/1033/WPF/DependencyProperty Attached.snippet",
+		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/BarChart/ClusteredBarChart.cs",
+		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Themes/Generic.xaml",
+		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/BarChart/BarPiece.cs",
+		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/Doughnut/DoughnutChart.cs",
+		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/ColumnChart/ClusteredColumnChart.cs",
+		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/PieChart/PieChart.cs",
+		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/PieChart/PiePiece.cs",
+		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/ChartBase.cs",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QAction.Web/Files/Reports/Templates/tmpReportTracking - Copy.xlsx/xl/charts/chart1.xml",
+		"/D/Personal/ansiedad/Descubre las causas de la ansiedad en ti",
+		"/C/Users/Alejandro/Desktop/fix_carsdate.sql",
+		"/D/Wilsoft/(working) QSuite v7/(working) QAction/QAction/QAction/Data/Models/CAR.partial.vb",
+		"/D/Wilsoft/(working) QSuite v7/(working) QAction/QAction/QAction/bin/Debug/QAction.exe.config",
+		"/C/Windows/System32/drivers/etc/hosts",
+		"/D/Work/(working) Platformer/CharacterController2D/README.md",
+		"/D/Wilsoft/(working) QSuite v7/(working) QDoc/QDoc/QDoc/bin/Debug/QDoc.exe.Config"
 	],
 	"find":
 	{
-		"height": 34.0
+		"height": 26.0
 	},
 	"find_in_files":
 	{
-		"height": 90.0,
+		"height": 0.0,
 		"where_history":
 		[
-			""
 		]
 	},
 	"find_state":
@@ -302,134 +374,57 @@
 		"case_sensitive": false,
 		"find_history":
 		[
-			"LoadNESFile",
-			"iNESFileMagic",
-			"iNESFileHeader",
-			"OpenFileiNES",
-			"ctrl+shift+b",
-			"Win32ResizeDIBSection",
-			"WinMain",
-			"I/Unity",
-			"ShowLeaderboardUI can only be called after authentication.",
-			"I/Unity",
-			"Unity",
-			"GetInternalSetWithCheck",
-			"AsNoTracking",
-			"_stateEntry",
-			"State",
-			"_internalEntityEntry",
-			"void Attach",
-			"Attach",
-			"UserPermission_PropertyChanged",
-			"LoadTreeView",
-			"ResetGroupContext",
-			"templateRoot",
-			"AttemptLogin",
-			"CommonAsNoTracking",
-			"CommonInclude",
-			"Include",
-			"Validation.Errors",
-			"RunRules",
-			"LocalTo",
-			"Converter",
-			"TView",
-			"([A-Z])([A-Z]+)",
-			"\",",
-			"Admin",
-			"\",\"",
-			"|\"",
-			"ExecutionsPg",
-			"\\n",
-			"Admin",
-			"currentFormat",
-			"MailExchange",
-			".wxd",
-			"D",
-			" D",
-			"Converting file:",
-			"\\n",
-			"\\r\\n",
-			"207",
-			"<td class=\"centered percent5\">.*</td>",
-			"<td>.*</td>",
-			"<tr>",
-			"<tbody>",
-			".wld\"",
-			".wld",
-			"Doc",
-			".wxd",
-			"Converting file: ",
-			"logoff",
-			"log_off",
-			"LoadUserPermissions",
-			"ChangeCulture",
-			"SendTestEmailSubject",
-			"current-user-holder",
-			"CGeneral.Current.CurrentUser",
-			"Transferir",
-			"GetInternalSetWithCheck",
-			"Remove",
-			"_sortDefinitions",
-			"Find",
-			"LocalTo",
-			"SelectedUser",
-			"GetMetadataBoolValue",
-			"CSharp",
-			"http://www.InHand.com",
-			"UI",
-			"PART_Popup",
-			"Activate with root item ",
-			"ConvertFromVisio",
-			"Background",
-			"DynamicResource",
-			"WindowChrome",
-			"Window",
-			"titleBar",
-			"PART_TitleBar",
-			"Paginator",
-			"CalculatePropertyAccessibility",
-			"#if",
-			"root",
-			"cgi.force_redirect",
-			"Estado",
-			"GetCloseReminders",
-			"SendRemin",
-			"VirtualPrinter",
-			"Time",
-			"Timeout",
-			"MailExchange",
-			"Mail(",
-			"Creating Hub",
-			"UploadDocument",
-			"Copying to dir",
-			"OpenGroup",
-			"Opened",
-			"_displayingSearch",
-			"_curSortCol",
-			"_displayingSearch",
-			"DisplayingSearch",
-			"SelectedGroup",
-			"DisplayingSearch",
-			"RightClickSelectedGroup",
-			"DoDragDrop",
-			"DragDrop",
-			"TextBoxLabel",
-			"Fuente",
-			"Delete",
-			"Groups",
-			"diagnostics",
-			"Configuration",
-			"rastreo",
-			"EntityTrack",
-			"public class EntityTrack",
-			"EntityTrack",
-			"(1)(1)",
-			"No se pudo generar",
-			"Conviertiendo fichero ",
-			".wld",
-			"1048",
-			"OpenXpsDocument",
-			"Collect"
+			"enabled",
+			"NK_KEY_MAX",
+			"MAX",
+			"NK_KEY_LEFT",
+			"NK_KEY_",
+			"nk_input_is_key_pressed",
+			"keys",
+			"NK_KEY_A",
+			"NK_KEY_UP",
+			"NK_KEY_SCROLL_UP",
+			"NK_KEY_SPACE",
+			"KEY_A",
+			"keyboard",
+			"Role",
+			"APU_BYTES_PER_SAMPLE",
+			"sampleRate",
+			"step",
+			"screen",
+			"NK_COMMAND_IMAGE",
+			"nk_tooltip_begin",
+			"Tooltip",
+			"nk_tooltip_position",
+			"nk_draw_list_push_command",
+			"nk_draw_list_push_image",
+			"nk_draw_list_add_image",
+			"NK_COMMAND_IMAGE",
+			"draw_image",
+			"viewThumbnail",
+			"viewThumbnails",
+			"pdfThumbnailViewer",
+			"pdfThumbnail",
+			"pdfThumbnailViewer",
+			"#include",
+			"ColumnHeight",
+			"ColumnPiece",
+			"FadingListViewStyle",
+			"ColumnChartChartAreaStyle",
+			"NumberStyle",
+			"ChartBackground",
+			"Slice",
+			"ClusteredBarChartPlotterAreaStyle",
+			"BarChartChartAreaStyle",
+			"BaseChartStyle",
+			"BarChartPlotterAreaStyle",
+			"BasePlotterAreaStyle",
+			"BarChartPlotterAreaStyle",
+			"ClusteredBarChartPlotterAreaStyle",
+			"ClusteredBarChart",
+			"BarChartChartAreaStyle",
+			"ClusteredBarChart",
+			"BarChartChartAreaStyle"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -437,25 +432,6 @@
 		"regex": false,
 		"replace_history":
 		[
-			"$1\\L$2",
-			"",
-			"|",
-			"",
-			"\",\\n",
-			".wld",
-			".wxd\",",
-			"\"D",
-			"D",
-			"",
-			",\\n",
-			",\\r\\n",
-			"",
-			".wld\",",
-			".wld\"",
-			"\"Doc",
-			".wld",
-			"",
-			"DisplayingSearch"
 		],
 		"reverse": false,
 		"show_context": true,
@@ -466,18 +442,377 @@
 	"groups":
 	[
 		{
+			"selected": 7,
 			"sheets":
 			[
+				{
+					"buffer": 0,
+					"file": "src/sdl_opengl2.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 83445,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								77330,
+								77337
+							]
+						],
+						"settings":
+						{
+							"rulers":
+							[
+							],
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 13428.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "src/controller.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 289,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 8,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "src/controller.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1415,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								274,
+								274
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 7,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "src/wave_writer.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 8096,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2280,
+								2294
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 432.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 9,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "src/types.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 10439,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								9364,
+								9364
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 5390.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "src/apu.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3450,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								401,
+								401
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 2160.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "src/cpu.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 28004,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 972.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
+					"type": "text"
+				},
+				{
+					"buffer": 7,
+					"file": "src/apu.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 9755,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								7800,
+								7800
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 5660.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 8,
+					"file": "/D/Work/nes/misc/nes-fogleman/nes/nes/apu.go",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 18389,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2831,
+								2831
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Go/Go.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 1890.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 9,
+					"file": "/D/Work/nes/misc/nes-fogleman/nes/ui/audio.go",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1026,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Go/Go.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 32.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 10,
+					"file": "/D/Work/nes/misc/nes-fogleman/nes/nes/console.go",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3461,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1503,
+								1503
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Go/Go.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 1296.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 10,
+					"type": "text"
+				},
+				{
+					"buffer": 11,
+					"file": "/D/Work/nes/misc/NES APU Sound Hardware Reference",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 26380,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 11,
+					"type": "text"
+				}
 			]
 		}
 	],
 	"incremental_find":
 	{
-		"height": 23.0
+		"height": 26.0
 	},
 	"input":
 	{
-		"height": 31.0
+		"height": 0.0
 	},
 	"layout":
 	{
@@ -504,7 +839,7 @@
 	"menu_visible": true,
 	"output.exec":
 	{
-		"height": 67.0
+		"height": 164.0
 	},
 	"output.find_results":
 	{
@@ -512,13 +847,13 @@
 	},
 	"output.hex_viewer_inspector":
 	{
-		"height": 135.0
+		"height": 148.0
 	},
-	"pinned_build_system": "Packages/User/nes-build.sublime-build",
+	"pinned_build_system": "",
 	"project": "nes.sublime-project",
 	"replace":
 	{
-		"height": 62.0
+		"height": 48.0
 	},
 	"save_all_on_build": true,
 	"select_file":
@@ -556,7 +891,7 @@
 	"show_open_files": true,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 213.0,
+	"side_bar_width": 225.0,
 	"status_bar_visible": true,
 	"template_settings":
 	{
