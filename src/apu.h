@@ -27,12 +27,23 @@ global u8 dutyTable[4][8]
     { 1, 0, 0, 1, 1, 1, 1, 1 }
 };
 
+global u8 triangleTable[32]
+{
+    15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,  0, 
+     0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15
+};
+
+global u16 noiseTable[16]
+{
+    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
+};
+
 global f32 pulseTable[31];
 global f32 tndTable[203];
 
 #pragma region Pulse
 
-inline void WriteAPUPulseEnvelope(NES *nes, APU::Pulse *pulse, u8 value)
+inline void WriteAPUPulseEnvelope(APU::Pulse *pulse, u8 value)
 {
     pulse->dutyMode = (value >> 6) & 3;
     pulse->lengthEnabled = !((value >> 5) & 1);
@@ -43,7 +54,7 @@ inline void WriteAPUPulseEnvelope(NES *nes, APU::Pulse *pulse, u8 value)
     pulse->envelopeStart = TRUE;
 }
 
-inline void WriteAPUPulseSweep(NES *nes, APU::Pulse *pulse, u8 value)
+inline void WriteAPUPulseSweep(APU::Pulse *pulse, u8 value)
 {
     pulse->sweepEnabled = (value >> 7) & 1;
     pulse->sweepPeriod = ((value >> 4) & 7) + 1;
@@ -52,12 +63,12 @@ inline void WriteAPUPulseSweep(NES *nes, APU::Pulse *pulse, u8 value)
     pulse->sweepReload = TRUE;
 }
 
-inline void WriteAPUPulseTimer(NES *nes, APU::Pulse *pulse, u8 value)
+inline void WriteAPUPulseTimer(APU::Pulse *pulse, u8 value)
 {
     pulse->timerPeriod = (pulse->timerPeriod & 0xFF00) | (u16)value;
 }
 
-inline void WriteAPUPulseLength(NES *nes, APU::Pulse *pulse, u8 value)
+inline void WriteAPUPulseLength(APU::Pulse *pulse, u8 value)
 {
     if (pulse->enabled)
     {
@@ -66,6 +77,59 @@ inline void WriteAPUPulseLength(NES *nes, APU::Pulse *pulse, u8 value)
         pulse->envelopeStart = TRUE;
         pulse->dutyValue = 0;
     }
+}
+
+#pragma endregion
+
+#pragma region triangle
+
+inline void WriteAPUTriangleLinear(APU::Triangle *triangle, u8 value)
+{
+    triangle->linearEnabled = !((value >> 7) & 1);
+    triangle->lengthEnabled = !((value >> 7) & 1);
+    triangle->linearPeriod = value & 0x7F;
+}
+
+inline void WriteAPUTriangleTimer(APU::Triangle *triangle, u8 value)
+{
+    triangle->timerPeriod = (triangle->timerPeriod & 0xFF00) | (u16)value;
+}
+
+inline void WriteAPUTriangleLength(APU::Triangle *triangle, u8 value)
+{
+    if (triangle->enabled)
+    {
+        triangle->lengthValue = lengthTable[value >> 3];
+        triangle->timerPeriod = (triangle->timerPeriod & 0x00FF) | ((u16)(value & 7) << 8);
+        triangle->timerValue = triangle->timerPeriod;
+        triangle->linearReload = TRUE;
+    }
+}
+
+#pragma endregion
+
+#pragma region Noise
+
+inline void WriteAPUNoiseEnvelope(APU::Noise *noise, u8 value)
+{
+    noise->lengthEnabled = !((value >> 5) & 1);
+    noise->constantVolume = value & 15;
+    noise->envelopeLoop = (value >> 5) & 1;
+    noise->envelopeEnabled = !((value >> 4) & 1);
+    noise->envelopePeriod = value & 15;
+    noise->envelopeStart = TRUE;
+}
+
+inline void WriteAPUNoisePeriod(APU::Noise *noise, u8 value)
+{
+    noise->timerMode = (value >> 7) & 1;
+    noise->timerPeriod = noiseTable[value & 0x0F];
+}
+
+inline void WriteAPUNoiseLength(APU::Noise *noise, u8 value)
+{
+    noise->lengthValue = lengthTable[value >> 3];
+    noise->envelopeStart = TRUE;    
 }
 
 #pragma endregion
@@ -86,17 +150,17 @@ inline u8 ReadAPUStatus(NES *nes)
         result |= 2;
     }
 
-    /*if (apu->triangle.lengthValue)
+    if (apu->triangle.lengthValue)
     {
-    result |= 4;
+        result |= 4;
     }
 
-    if (apu->noise.lengthValue)
+    if (apu->noise.lengthValue > 0)
     {
-    result |= 8;
+        result |= 8;
     }
 
-    if (apu->dmc.lengthValue)
+    /*if (apu->dmc.lengthValue)
     {
     result |= 16;
     }*/
@@ -132,18 +196,19 @@ inline void WriteAPUStatus(NES *nes, u8 value)
         apu->pulse2.lengthValue = 0;
     }
 
-    /*apu->triangle.enabled = (value & 4) >> 1;
+    apu->triangle.enabled = (value & 4) >> 1;
     if (!apu->triangle.enabled)
     {
-    apu->triangle.lengthValue = 0;
+        apu->triangle.lengthValue = 0;
     }
 
     apu->noise.enabled = (value & 8) >> 1;
     if (!apu->noise.enabled)
     {
-    apu->noise.lengthValue = 0;
+        apu->noise.lengthValue = 0;
     }
 
+    /*
     apu->dmc.enabled = (value & 16) >> 1;
     if (!apu->dmc.enabled)
     {

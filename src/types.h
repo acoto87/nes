@@ -334,6 +334,51 @@ struct APU
         u8 constantVolume;
     } pulse1, pulse2;
 
+    struct Triangle
+    {
+        b32 globalEnabled;
+
+        b32 enabled;
+
+        b32 linearEnabled;
+        u8 linearPeriod;
+        u8 linearValue;
+        b32 linearReload;
+
+        b32 lengthEnabled;
+        u8 lengthValue;
+
+        u16 timerPeriod;
+        u16 timerValue;
+
+        u8 tableIndex;
+    } triangle;
+
+    struct Noise
+    {
+        b32 globalEnabled;
+
+        b32 enabled;
+
+        b32 lengthEnabled;
+        u8 lengthValue;
+
+        b32 timerMode;
+        u16 timerPeriod;
+        u16 timerValue;
+
+        u16 shiftRegister;
+
+        b32 envelopeEnabled;
+        b32 envelopeLoop;
+        b32 envelopeStart;
+        u8 envelopePeriod;
+        u8 envelopeValue;
+        u8 envelopeVolume;
+
+        u8 constantVolume;
+    } noise;
+
     u64 cycles;
     u8 frameMode;
     u8 frameValue;

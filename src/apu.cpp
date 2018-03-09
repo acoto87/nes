@@ -128,21 +128,160 @@ internal u8 GetPulseOutput(APU::Pulse *pulse)
         return 0;
     }
 
-    if (pulse->constantVolume) 
+    if (pulse->envelopeEnabled) 
     {
-        return pulse->envelopePeriod;
+        return pulse->envelopeVolume;
     }
 
-    return pulse->envelopeValue;
+    return pulse->constantVolume;
 }
 
 #pragma endregion
 
 #pragma region Triangle
 
+internal void StepTriangleTimer(APU::Triangle *triangle)
+{
+    if (!triangle->timerValue)
+    {
+        triangle->timerValue = triangle->timerPeriod;
+
+        if (triangle->lengthValue > 0 && triangle->linearValue > 0)
+        {
+            triangle->tableIndex = (triangle->tableIndex + 1) % 32;
+        }
+    }
+    else
+    {
+        triangle->timerValue--;
+    }
+}
+
+internal void StepTriangleLength(APU::Triangle *triangle)
+{
+    if (triangle->lengthEnabled && triangle->lengthValue > 0)
+    {
+        triangle->lengthValue--;
+    }
+}
+
+internal void StepTriangleCounter(APU::Triangle *triangle)
+{
+    if (triangle->linearReload)
+    {
+        triangle->linearValue = triangle->linearPeriod;
+    }
+    else if(triangle->linearValue > 0)
+    {
+        triangle->linearValue--;   
+    }
+
+    if (triangle->linearEnabled)
+    {
+        triangle->linearReload = FALSE;
+    }
+}
+
+internal u8 GetTriangleOutput(APU::Triangle *triangle)
+{
+    if (!triangle->globalEnabled)
+    {
+        return 0;
+    }
+
+    if (!triangle->enabled)
+    {
+        return 0;
+    }
+
+    return triangleTable[triangle->tableIndex];
+}
+
 #pragma endregion
 
 #pragma region Noise
+
+internal void StepNoiseEnvelope(APU::Noise *noise)
+{
+    if (noise->envelopeStart)
+    {
+        noise->envelopeVolume = 15;
+        noise->envelopeValue = noise->envelopePeriod;
+        noise->envelopeStart = FALSE;
+    }
+    else if (noise->envelopeValue > 0)
+    {
+        noise->envelopeValue--;
+    }
+    else
+    {
+        if (noise->envelopeVolume > 0)
+        {
+            noise->envelopeVolume--;
+        }
+        else if (noise->envelopeLoop)
+        {
+            noise->envelopeVolume = 15;
+        }
+
+        noise->envelopeValue = noise->envelopePeriod;
+    }
+}
+
+internal void StepNoiseTimer(APU::Noise *noise)
+{
+    if (!noise->timerValue)
+    {
+        noise->timerValue = noise->timerPeriod;
+
+        u16 feedbackBit1 = noise->shiftRegister & 1;
+        u16 feedbackBit2 = noise->timerMode ? ((noise->shiftRegister >> 6) & 1) : ((noise->shiftRegister >> 1) & 1);
+        u16 feedback = (feedbackBit1 ^ feedbackBit2) << 14;
+        noise->shiftRegister = feedback | (noise->shiftRegister >> 1);
+    }
+    else
+    {
+        noise->timerValue--;
+    }
+}
+
+internal void StepNoiseLength(APU::Noise *noise)
+{
+    if (noise->lengthEnabled && noise->lengthValue > 0)
+    {
+        noise->lengthValue--;
+    }
+}
+
+internal u8 GetNoiseOutput(APU::Noise *noise)
+{
+    if (!noise->globalEnabled)
+    {
+        return 0;
+    }
+
+    if (!noise->enabled)
+    {
+        return 0;
+    }
+
+    if (!noise->lengthValue)
+    {
+        return 0;
+    }
+
+    if (noise->shiftRegister & 1) 
+    {
+        return 0;
+    }
+
+    if (noise->envelopeEnabled) 
+    {
+        return noise->envelopeVolume;
+    }
+
+    return noise->constantVolume;
+}
 
 #pragma endregion
 
@@ -154,8 +293,8 @@ internal void StepAPUEnvelope(APU *apu)
 {
     StepPulseEvenlope(&apu->pulse1);
     StepPulseEvenlope(&apu->pulse2);
-    // StepTriangleEnvelope(&apu->triangle);
-    // StepNoiseEnvelope(&apu->noise);
+    StepTriangleCounter(&apu->triangle);
+    StepNoiseEnvelope(&apu->noise);
 }
 
 internal void StepAPUSweep(APU *apu)
@@ -170,19 +309,19 @@ internal void StepAPUTimer(APU *apu)
     {
         StepPulseTimer(&apu->pulse1);
         StepPulseTimer(&apu->pulse2);
-        // StepNoiseTimer(&apu->noise);
+        StepNoiseTimer(&apu->noise);
         // StepDmcTimer(&apu->dmc);
     }
 
-    // StepTriangleTimer(&apu->triangle);
+    StepTriangleTimer(&apu->triangle);
 }
 
 internal void StepAPULength(APU *apu)
 {
     StepPulseLength(&apu->pulse1);
     StepPulseLength(&apu->pulse2);
-    // StepTriangleLength(&apu->triangle);
-    // StepNoiseLength(&apu->noise);
+    StepTriangleLength(&apu->triangle);
+    StepNoiseLength(&apu->noise);
 }
 
 // mode 0:    mode 1:       function
@@ -313,12 +452,12 @@ internal f32 GetOutput(APU *apu)
 {
     u8 p1 = GetPulseOutput(&apu->pulse1);
     u8 p2 = GetPulseOutput(&apu->pulse2);
-    /*f32 t = GetTriangleOutput(&apu->triangle);
-    f32 n = GetNoiseOutput(&apu->noise);
-    f32 d = GetDmcOutput(&apu->dmc);*/
+    u8 t = GetTriangleOutput(&apu->triangle);
+    u8 n = GetNoiseOutput(&apu->noise);
+    u8 d = 0; //GetDmcOutput(&apu->dmc);
 
     f32 pulseOut = pulseTable[p1 + p2];
-    f32 tndOut = 0; // tndTable[3 * t + 2 * n + d];
+    f32 tndOut = tndTable[3 * t + 2 * n + d];
     return pulseOut + tndOut;
 }
 
@@ -390,14 +529,22 @@ void ResetAPU(NES *nes)
     apu->pulse1.globalEnabled = TRUE;
     apu->pulse1.enabled = FALSE;
     apu->pulse1.lengthValue = 0;
+    apu->pulse1.channel = 1;
 
     apu->pulse2.globalEnabled = TRUE;
     apu->pulse2.enabled = FALSE;
     apu->pulse2.lengthValue = 0;
-
-    apu->pulse1.channel = 1;
     apu->pulse2.channel = 2;
-    // apu->noise.shiftRegister = 1
+    
+    apu->triangle.globalEnabled = TRUE;
+    apu->triangle.enabled = FALSE;
+    apu->triangle.lengthValue = 0;
+    apu->triangle.linearValue = 0;
+
+    apu->noise.globalEnabled = TRUE;
+    apu->noise.enabled = FALSE;
+    apu->noise.lengthValue = 0;
+    apu->noise.shiftRegister = 1;
 
     apu->bufferIndex = 0;
     apu->sampleRate = APU_CYCLES_PER_SAMPLE;

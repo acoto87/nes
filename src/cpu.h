@@ -629,99 +629,99 @@ inline void WriteCPUU8(NES *nes, u16 address, u8 value)
         {
             case 0x4000:
             {
-                WriteAPUPulseEnvelope(nes, &nes->apu.pulse1, value);
+                WriteAPUPulseEnvelope(&nes->apu.pulse1, value);
                 break;
             }
 
             case 0x4001:
             {
-                WriteAPUPulseSweep(nes, &nes->apu.pulse1, value);
+                WriteAPUPulseSweep(&nes->apu.pulse1, value);
                 break;
             }
 
             case 0x4002:
             {
-                WriteAPUPulseTimer(nes, &nes->apu.pulse1, value);
+                WriteAPUPulseTimer(&nes->apu.pulse1, value);
                 break;
             }
 
             case 0x4003:
             {
-                WriteAPUPulseLength(nes, &nes->apu.pulse1, value);
+                WriteAPUPulseLength(&nes->apu.pulse1, value);
                 break;
             }
 
             case 0x4004:
             {
-                WriteAPUPulseEnvelope(nes, &nes->apu.pulse2, value);
+                WriteAPUPulseEnvelope(&nes->apu.pulse2, value);
                 break;
             }
 
             case 0x4005:
             {
-                WriteAPUPulseSweep(nes, &nes->apu.pulse2, value);
+                WriteAPUPulseSweep(&nes->apu.pulse2, value);
                 break;
             }
 
             case 0x4006:
             {
-                WriteAPUPulseTimer(nes, &nes->apu.pulse2, value);
+                WriteAPUPulseTimer(&nes->apu.pulse2, value);
                 break;
             }
 
             case 0x4007:
             {
-                WriteAPUPulseLength(nes, &nes->apu.pulse2, value);
+                WriteAPUPulseLength(&nes->apu.pulse2, value);
                 break;
             }
 
-            //case 0x4008:
-            //{
-            //    WriteAPUTriangleControl(nes, value);
-            //    break;
-            //}
+            case 0x4008:
+            {
+               WriteAPUTriangleLinear(&nes->apu.triangle, value);
+               break;
+            }
 
-            //case 0x4009:
-            //{
-            //    // unused
-            //    break;
-            //}
+            case 0x4009:
+            {
+               // unused
+               break;
+            }
 
-            //case 0x400A:
-            //{
-            //    WriteAPUTriangleTimerLow(nes, value);
-            //    break;
-            //}
+            case 0x400A:
+            {
+               WriteAPUTriangleTimer(&nes->apu.triangle, value);
+               break;
+            }
 
-            //case 0x400A:
-            //{
-            //    WriteAPUTriangleTimerHigh(nes, value);
-            //    break;
-            //}
+            case 0x400B:
+            {
+               WriteAPUTriangleLength(&nes->apu.triangle, value);
+               break;
+            }
 
-            //case 0x400C:
-            //{
-            //    WriteAPUNoiseControl(nes, value);
-            //    break;
-            //}
+            case 0x400C:
+            {
+               WriteAPUNoiseEnvelope(&nes->apu.noise, value);
+               break;
+            }
 
-            //case 0x400D:
-            //{
-            //    // unused
-            //    break;
-            //}
+            case 0x400D:
+            {
+               // unused
+               break;
+            }
 
-            //case 0x400E:
-            //{
-            //    WriteAPUNoisePeriod(nes, value);
-            //    break;
-            //}
+            case 0x400E:
+            {
+               WriteAPUNoisePeriod(&nes->apu.noise, value);
+               break;
+            }
 
-            //case 0x400F:
-            //{
-            //    WriteAPUNoiseLength(nes, value);
-            //    break;
-            //}
+            case 0x400F:
+            {
+               WriteAPUNoiseLength(&nes->apu.noise, value);
+               break;
+            }
 
             //case 0x4010:
             //{
