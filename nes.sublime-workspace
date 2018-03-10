@@ -4,6 +4,14 @@
 		"selected_items":
 		[
 			[
+				"StepTriangle",
+				"StepTriangleCounter"
+			],
+			[
+				"triangl",
+				"Triangle"
+			],
+			[
 				"feedback",
 				"feedbackBit1"
 			],
@@ -31,7 +39,7 @@
 			"file": "src/sdl_opengl2.cpp",
 			"settings":
 			{
-				"buffer_size": 86080,
+				"buffer_size": 89022,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -65,7 +73,7 @@
 			"file": "src/types.h",
 			"settings":
 			{
-				"buffer_size": 10877,
+				"buffer_size": 11226,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -74,7 +82,7 @@
 			"file": "src/apu.h",
 			"settings":
 			{
-				"buffer_size": 4203,
+				"buffer_size": 5160,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -83,7 +91,7 @@
 			"file": "src/apu.cpp",
 			"settings":
 			{
-				"buffer_size": 11061,
+				"buffer_size": 12563,
 				"encoding": "UTF-8 with BOM",
 				"line_ending": "Windows"
 			}
@@ -92,7 +100,7 @@
 			"file": "src/cpu.h",
 			"settings":
 			{
-				"buffer_size": 27953,
+				"buffer_size": 27943,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -102,14 +110,6 @@
 			"settings":
 			{
 				"buffer_size": 18389,
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "/D/Work/nes/misc/nes-fogleman/nes/ui/audio.go",
-			"settings":
-			{
-				"buffer_size": 1026,
 				"line_ending": "Windows"
 			}
 		},
@@ -239,6 +239,7 @@
 	],
 	"file_history":
 	[
+		"/D/Work/nes/misc/nes-fogleman/nes/ui/audio.go",
 		"/D/Work/nes/sublime/src/memory.h",
 		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/SyntaxFold/syntax_fold.sublime-settings",
 		"/D/Wilsoft/(working) QSuite v7/(working) QDoc/QDoc/QDoc/bin/Debug/TEMP/tempReport368e52d1-a383-46cf-adbb-ecba7e6f6635 - Copy.xlsx/xl/worksheets/sheet1.xml",
@@ -365,8 +366,7 @@
 		"/D/Personal/ansiedad/Descubre las causas de la ansiedad en ti",
 		"/C/Users/Alejandro/Desktop/fix_carsdate.sql",
 		"/D/Wilsoft/(working) QSuite v7/(working) QAction/QAction/QAction/Data/Models/CAR.partial.vb",
-		"/D/Wilsoft/(working) QSuite v7/(working) QAction/QAction/QAction/bin/Debug/QAction.exe.config",
-		"/C/Windows/System32/drivers/etc/hosts"
+		"/D/Wilsoft/(working) QSuite v7/(working) QAction/QAction/QAction/bin/Debug/QAction.exe.config"
 	],
 	"find":
 	{
@@ -384,6 +384,11 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"counterReload",
+			"stepCounter",
+			"Length Counter",
+			"DAC",
+			".\n",
 			"pulse",
 			".",
 			"enabled",
@@ -466,15 +471,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 86080,
+						"buffer_size": 89022,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								80963,
-								80963
+								82518,
+								82518
 							]
 						],
 						"settings":
@@ -487,10 +492,10 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 35754.0,
+						"translation.y": 35808.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
+					"stack_index": 5,
 					"type": "text"
 				},
 				{
@@ -518,7 +523,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 9,
+					"stack_index": 8,
 					"type": "text"
 				},
 				{
@@ -548,7 +553,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 8,
+					"stack_index": 7,
 					"type": "text"
 				},
 				{
@@ -578,7 +583,7 @@
 						"translation.y": 432.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 10,
+					"stack_index": 9,
 					"type": "text"
 				},
 				{
@@ -587,15 +592,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 10877,
+						"buffer_size": 11226,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								9379,
-								9735
+								9450,
+								9450
 							]
 						],
 						"settings":
@@ -605,7 +610,7 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 5678.0,
+						"translation.y": 5912.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 3,
@@ -617,15 +622,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 4203,
+						"buffer_size": 5160,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								2009,
-								2009
+								2329,
+								2329
 							]
 						],
 						"settings":
@@ -635,7 +640,7 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 1224.0,
+						"translation.y": 1476.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 2,
@@ -647,15 +652,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 11061,
+						"buffer_size": 12563,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								10070,
-								10070
+								3910,
+								3910
 							]
 						],
 						"settings":
@@ -665,7 +670,7 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 8052.0,
+						"translation.y": 3230.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
@@ -677,15 +682,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 27953,
+						"buffer_size": 27943,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								24071,
-								24071
+								23705,
+								23705
 							]
 						],
 						"settings":
@@ -695,10 +700,10 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 12366.0,
+						"translation.y": 11888.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 5,
+					"stack_index": 6,
 					"type": "text"
 				},
 				{
@@ -714,8 +719,8 @@
 						"selection":
 						[
 							[
-								519,
-								623
+								12324,
+								12337
 							]
 						],
 						"settings":
@@ -724,43 +729,14 @@
 							"translate_tabs_to_spaces": false
 						},
 						"translation.x": 0.0,
-						"translation.y": 0.0,
+						"translation.y": 10232.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 6,
+					"stack_index": 1,
 					"type": "text"
 				},
 				{
 					"buffer": 9,
-					"file": "/D/Work/nes/misc/nes-fogleman/nes/ui/audio.go",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 1026,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								0,
-								0
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Go/Go.sublime-syntax",
-							"translate_tabs_to_spaces": false
-						},
-						"translation.x": 0.0,
-						"translation.y": 32.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 7,
-					"type": "text"
-				},
-				{
-					"buffer": 10,
 					"file": "/D/Work/nes/misc/nes-fogleman/nes/nes/console.go",
 					"semi_transient": false,
 					"settings":
@@ -785,11 +761,11 @@
 						"translation.y": 1296.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 11,
+					"stack_index": 10,
 					"type": "text"
 				},
 				{
-					"buffer": 11,
+					"buffer": 10,
 					"file": "/D/Work/nes/misc/NES APU Sound Hardware Reference",
 					"semi_transient": false,
 					"settings":
@@ -801,8 +777,8 @@
 						"selection":
 						[
 							[
-								17265,
-								17265
+								7247,
+								7247
 							]
 						],
 						"settings":
@@ -812,7 +788,7 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 8882.0,
+						"translation.y": 11528.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 4,
@@ -868,7 +844,7 @@
 	"project": "nes.sublime-project",
 	"replace":
 	{
-		"height": 72.0
+		"height": 48.0
 	},
 	"save_all_on_build": true,
 	"select_file":

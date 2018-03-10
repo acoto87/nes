@@ -285,7 +285,85 @@ internal u8 GetNoiseOutput(APU::Noise *noise)
 
 #pragma endregion
 
-#pragma region Dmc
+#pragma region DMC
+
+internal void StepDMCReader(NES *nes, APU::DMC *dmc)
+{
+    if (dmc->currentLength > 0 && dmc->bitCount == 0)
+    {
+        // the CPU stall for 4 cycles here
+        nes->cpu.waitCycles += 4;
+
+        dmc->shiftRegister = ReadCPUU8(nes, dmc->currentAddress);
+        dmc->bitCount = 8;
+
+        dmc->currentAddress++;
+        if (dmc->currentAddress == 0)
+        {
+            dmc->currentAddress = 0x8000;
+        }
+
+        dmc->currentLength = 0;
+        if (dmc->currentLength == 0)
+        {
+            if (dmc->loop)
+            {
+                RestartDMC(dmc);
+            }
+            else
+            {
+                nes->apu.dmcIRQ = TRUE;
+            }
+        }
+    }
+}
+
+internal void StepDMCShifter(APU::DMC *dmc)
+{
+    if (dmc->bitCount > 0)
+    {
+        if (dmc->shiftRegister & 1)
+        {
+            if (dmc->value <= 125)
+            {
+                dmc->value += 2;
+            }
+        }
+        else
+        {
+            if (dmc->value >= 2)
+            {
+                dmc->value -= 2;
+            }
+        }
+
+        dmc->shiftRegister >> 1;
+        dmc->bitCount--;
+    }
+}
+
+internal void StepDMCTimer(NES *nes, APU::DMC *dmc)
+{
+    if (dmc->enabled)
+    {
+        StepDMCReader(nes, dmc);
+
+        if (!dmc->timerValue)
+        {
+            dmc->timerValue = dmc->timerPeriod;
+            StepDMCShifter(dmc);
+        }
+        else
+        {
+            dmc->timerValue--;
+        }
+    }
+}
+
+internal u8 GetDMCOutput(APU::DMC *dmc)
+{
+    return dmc->value;
+}
 
 #pragma endregion
 
@@ -303,14 +381,14 @@ internal void StepAPUSweep(APU *apu)
     StepPulseSweep(&apu->pulse2);
 }
 
-internal void StepAPUTimer(APU *apu)
+internal void StepAPUTimer(NES *nes, APU *apu)
 {
     if (!(apu->cycles & 1))
     {
         StepPulseTimer(&apu->pulse1);
         StepPulseTimer(&apu->pulse2);
         StepNoiseTimer(&apu->noise);
-        // StepDmcTimer(&apu->dmc);
+        StepDMCTimer(nes, &apu->dmc);
     }
 
     StepTriangleTimer(&apu->triangle);
@@ -454,7 +532,7 @@ internal f32 GetOutput(APU *apu)
     u8 p2 = GetPulseOutput(&apu->pulse2);
     u8 t = GetTriangleOutput(&apu->triangle);
     u8 n = GetNoiseOutput(&apu->noise);
-    u8 d = 0; //GetDmcOutput(&apu->dmc);
+    u8 d = GetDMCOutput(&apu->dmc);
 
     f32 pulseOut = pulseTable[p1 + p2];
     f32 tndOut = tndTable[3 * t + 2 * n + d];
@@ -465,7 +543,7 @@ void StepAPU(NES *nes)
 {
     APU *apu = &nes->apu;
 
-    StepAPUTimer(apu);
+    StepAPUTimer(nes, apu);
 
     apu->frameCounter++;
 
@@ -545,6 +623,10 @@ void ResetAPU(NES *nes)
     apu->noise.enabled = FALSE;
     apu->noise.lengthValue = 0;
     apu->noise.shiftRegister = 1;
+
+    apu->dmc.globalEnabled = TRUE;
+    apu->dmc.enabled = FALSE;
+    apu->dmc.value = 0;
 
     apu->bufferIndex = 0;
     apu->sampleRate = APU_CYCLES_PER_SAMPLE;

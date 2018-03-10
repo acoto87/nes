@@ -379,6 +379,29 @@ struct APU
         u8 constantVolume;
     } noise;
 
+    struct DMC
+    {
+        b32 globalEnabled;
+
+        b32 enabled;
+
+        u16 sampleAddress;
+        u16 sampleLength;
+        u16 currentAddress;
+        u16 currentLength;
+
+        u8 timerPeriod;
+        u8 timerValue;
+
+        u8 shiftRegister;
+        u8 bitCount;
+
+        u8 value;
+
+        b32 loop;
+        b32 irq;
+    } dmc;
+
     u64 cycles;
     u8 frameMode;
     u8 frameValue;

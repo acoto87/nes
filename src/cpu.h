@@ -723,29 +723,29 @@ inline void WriteCPUU8(NES *nes, u16 address, u8 value)
                break;
             }
 
-            //case 0x4010:
-            //{
-            //    WriteAPUDMCControl(nes, value);
-            //    break;
-            //}
+            case 0x4010:
+            {
+               WriteAPUDMCControl(&nes->apu.dmc, value);
+               break;
+            }
 
-            //case 0x4011:
-            //{
-            //    WriteAPUDMCValue(nes, value);
-            //    break;
-            //}
+            case 0x4011:
+            {
+               WriteAPUDMCValue(&nes->apu.dmc, value);
+               break;
+            }
 
-            //case 0x4012:
-            //{
-            //    WriteAPUDMCAddress(nes, value);
-            //    break;
-            //}
+            case 0x4012:
+            {
+               WriteAPUDMCAddress(&nes->apu.dmc, value);
+               break;
+            }
 
-            //case 0x4013:
-            //{
-            //    WriteAPUDMCLength(nes, value);
-            //    break;
-            //}
+            case 0x4013:
+            {
+               WriteAPUDMCLength(&nes->apu.dmc, value);
+               break;
+            }
             
             case 0x4014:
             {

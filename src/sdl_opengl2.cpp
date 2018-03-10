@@ -1889,7 +1889,7 @@ int CALLBACK WinMain(
                 struct nk_rect space;
                 enum nk_widget_layout_states state;
 
-                enum options { GENERAL, SQUARE1, SQUARE2, TRIANGLE, NOISE, BUFFER };
+                enum options { GENERAL, SQUARE1, SQUARE2, TRIANGLE, NOISE, DMC, BUFFER };
                 static s32 option = GENERAL;
 
                 local const float ratio[] = { 100, 100, 100, 100, 100 };
@@ -1900,6 +1900,7 @@ int CALLBACK WinMain(
                 option = nk_option_label(ctx, "SQUARE 2", option == SQUARE2) ? SQUARE2 : option;
                 option = nk_option_label(ctx, "TRIANGLE", option == TRIANGLE) ? TRIANGLE : option;
                 option = nk_option_label(ctx, "NOISE", option == NOISE) ? NOISE : option;
+                option = nk_option_label(ctx, "DMC", option == DMC) ? DMC : option;
                 option = nk_option_label(ctx, "BUFFER", option == BUFFER) ? BUFFER : option;
 
                 if (option == GENERAL)
@@ -1908,6 +1909,7 @@ int CALLBACK WinMain(
                     local s32 square2Enabled = TRUE;
                     local s32 triangleEnabled = TRUE;
                     local s32 noiseEnabled = TRUE;
+                    local s32 dmcEnabled = TRUE;
 
                     nk_layout_row_dynamic(ctx, 25, 3);
 
@@ -1927,11 +1929,13 @@ int CALLBACK WinMain(
                     nk_checkbox_label(ctx, "SQUARE2 ENABLED", &square2Enabled);
                     nk_checkbox_label(ctx, "TRIANGLE ENABLED", &triangleEnabled);
                     nk_checkbox_label(ctx, "NOISE ENABLED", &noiseEnabled);
+                    nk_checkbox_label(ctx, "DMC ENABLED", &dmcEnabled);
 
                     apu->pulse1.globalEnabled = square1Enabled;
                     apu->pulse2.globalEnabled = square2Enabled;
                     apu->triangle.globalEnabled = triangleEnabled;
                     apu->noise.globalEnabled = noiseEnabled;
+                    apu->dmc.globalEnabled = dmcEnabled;
                 }
                 else if (option == SQUARE1 || option == SQUARE2)
                 {
@@ -2067,6 +2071,60 @@ int CALLBACK WinMain(
                     
                     nk_label(ctx, DebugText("ENVELOPE VOLUME:%02X", noise->envelopeVolume), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", noise->constantVolume), NK_TEXT_LEFT);
+
+                    local f32 rectHeight = 200.0f;
+                    local nk_color lineColor = nk_rgb(255, 0, 0);
+                    local f32 lineThickness = 1.0f;
+
+                    nk_layout_row_dynamic(ctx, rectHeight, 1);
+
+                    state = nk_widget(&space, ctx);
+                    if (state)
+                    {
+                        if (state != NK_WIDGET_ROM)
+                        {
+                            // update_your_widget_by_user_input(...);
+                        }
+
+                        s32 pointCount = apu->bufferIndex;
+                        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
+
+                        f32 horizontalSpacing = space.w / pointCount;
+
+                        for (s32 i = 0; i < pointCount; i++)
+                        {
+                            f32 x = horizontalSpacing * i;
+                            f32 y = rectHeight - apu->buffer[i] * rectHeight / (APU_AMPLIFIER_VALUE / 2);
+                            *(points + i) = nk_vec2(space.x + x, space.y + y);
+                        }
+
+                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
+                        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
+
+                        Free(points);
+                    }
+                }
+                else if (option == DMC)
+                {
+                    APU::DMC *dmc = &apu->dmc;
+
+                    nk_layout_row_dynamic(ctx, 25, 3);
+
+                    nk_label(ctx, DebugText("SAMPLE ADDRESS:%02X", dmc->sampleAddress), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CURRENT ADDRESS:%02X", dmc->currentAddress), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", dmc->timerPeriod), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("SAMPLE LENGTH:%02X", dmc->sampleLength), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CURRENT LENGTH:%02X", dmc->currentLength), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER VALUE:%02X", dmc->timerValue), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("SHIFT REGISTER:%02X", dmc->shiftRegister), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("BIT COUNT:%02X", dmc->bitCount), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("VALUE:%02X", dmc->value), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("IRQ:%02X", dmc->irq), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("LOOP:%02X", dmc->loop), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("ENABLED:%02X", dmc->enabled), NK_TEXT_LEFT);
 
                     local f32 rectHeight = 200.0f;
                     local nk_color lineColor = nk_rgb(255, 0, 0);

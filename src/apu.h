@@ -38,6 +38,11 @@ global u16 noiseTable[16]
     4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
 };
 
+global u8 dmcTable[16]
+{
+    428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54
+};
+
 global f32 pulseTable[31];
 global f32 tndTable[203];
 
@@ -81,7 +86,7 @@ inline void WriteAPUPulseLength(APU::Pulse *pulse, u8 value)
 
 #pragma endregion
 
-#pragma region triangle
+#pragma region Triangle
 
 inline void WriteAPUTriangleLinear(APU::Triangle *triangle, u8 value)
 {
@@ -134,6 +139,40 @@ inline void WriteAPUNoiseLength(APU::Noise *noise, u8 value)
 
 #pragma endregion
 
+#pragma region DMC
+
+inline void WriteAPUDMCControl(APU::DMC *dmc, u8 value)
+{
+    dmc->irq = (value & 0x80) >> 7;
+    dmc->loop = (value & 0x40) >> 6;
+    dmc->timerPeriod = dmcTable[value & 0x0F];
+}
+
+inline void WriteAPUDMCValue(APU::DMC *dmc, u8 value)
+{
+    dmc->value = (value & 0x7F);
+}
+
+inline void WriteAPUDMCAddress(APU::DMC *dmc, u8 value)
+{
+    // Sample address = %11AAAAAA.AA000000
+    dmc->sampleAddress = 0xC000 + (u16)value * 64;
+}
+
+inline void WriteAPUDMCLength(APU::DMC *dmc, u8 value)
+{
+    // Sample length = %0000LLLL.LLLL0001
+    dmc->sampleLength = (u16)value * 16 + 1;
+}
+
+inline void RestartDMC(APU::DMC *dmc)
+{
+    dmc->currentAddress = dmc->sampleAddress;
+    dmc->currentLength = dmc->sampleLength;
+}
+
+#pragma endregion
+
 inline u8 ReadAPUStatus(NES *nes)
 {
     APU *apu = &nes->apu;
@@ -160,10 +199,10 @@ inline u8 ReadAPUStatus(NES *nes)
         result |= 8;
     }
 
-    /*if (apu->dmc.lengthValue)
+    if (apu->dmc.value > 0)
     {
-    result |= 16;
-    }*/
+        result |= 16;
+    }
 
     if (apu->frameIRQ)
     {
@@ -208,16 +247,15 @@ inline void WriteAPUStatus(NES *nes, u8 value)
         apu->noise.lengthValue = 0;
     }
 
-    /*
     apu->dmc.enabled = (value & 16) >> 1;
     if (!apu->dmc.enabled)
     {
-    apu->dmc.lengthValue = 0;
+        apu->dmc.currentLength = 0;
     }
-    else if (!apu->dmc.lengthValue)
+    else if (!apu->dmc.currentLength)
     {
-    RestartDmc(&apu->dmc);
-    }*/
+        RestartDMC(&apu->dmc);
+    }
 
     apu->dmcIRQ = FALSE;
 }
