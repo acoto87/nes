@@ -566,6 +566,11 @@ int CALLBACK WinMain(
 
             // Reset the index of the audio buffer in the APU
             apu->bufferIndex = 0;
+            apu->pulse1.bufferIndex = 0;
+            apu->pulse2.bufferIndex = 0;
+            apu->triangle.bufferIndex = 0;
+            apu->noise.bufferIndex = 0;
+            apu->dmc.bufferIndex = 0;
 
             while (cycles > 0)
             {
@@ -1936,6 +1941,38 @@ int CALLBACK WinMain(
                     apu->triangle.globalEnabled = triangleEnabled;
                     apu->noise.globalEnabled = noiseEnabled;
                     apu->dmc.globalEnabled = dmcEnabled;
+
+                    local f32 rectHeight = 200.0f;
+                    local nk_color lineColor = nk_rgb(255, 0, 0);
+                    local f32 lineThickness = 1.0f;
+
+                    nk_layout_row_dynamic(ctx, rectHeight, 1);
+
+                    state = nk_widget(&space, ctx);
+                    if (state)
+                    {
+                        if (state != NK_WIDGET_ROM)
+                        {
+                            // update_your_widget_by_user_input(...);
+                        }
+
+                        s32 pointCount = apu->bufferIndex;
+                        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
+
+                        f32 horizontalSpacing = space.w / pointCount;
+
+                        for (s32 i = 0; i < pointCount; i++)
+                        {
+                            f32 x = horizontalSpacing * i;
+                            f32 y = rectHeight - apu->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
+                            *(points + i) = nk_vec2(space.x + x, space.y + y);
+                        }
+
+                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
+                        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
+
+                        Free(points);
+                    }
                 }
                 else if (option == SQUARE1 || option == SQUARE2)
                 {
@@ -1981,7 +2018,7 @@ int CALLBACK WinMain(
                             // update_your_widget_by_user_input(...);
                         }
 
-                        s32 pointCount = apu->bufferIndex;
+                        s32 pointCount = pulse->bufferIndex;
                         struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
 
                         f32 horizontalSpacing = space.w / pointCount;
@@ -1989,7 +2026,7 @@ int CALLBACK WinMain(
                         for (s32 i = 0; i < pointCount; i++)
                         {
                             f32 x = horizontalSpacing * i;
-                            f32 y = rectHeight - apu->buffer[i] * rectHeight / (APU_AMPLIFIER_VALUE / 2);
+                            f32 y = rectHeight - pulse->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
                             *(points + i) = nk_vec2(space.x + x, space.y + y);
                         }
 
@@ -2033,7 +2070,7 @@ int CALLBACK WinMain(
                             // update_your_widget_by_user_input(...);
                         }
 
-                        s32 pointCount = apu->bufferIndex;
+                        s32 pointCount = triangle->bufferIndex;
                         struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
 
                         f32 horizontalSpacing = space.w / pointCount;
@@ -2041,7 +2078,7 @@ int CALLBACK WinMain(
                         for (s32 i = 0; i < pointCount; i++)
                         {
                             f32 x = horizontalSpacing * i;
-                            f32 y = rectHeight - apu->buffer[i] * rectHeight / (APU_AMPLIFIER_VALUE / 2);
+                            f32 y = rectHeight - triangle->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
                             *(points + i) = nk_vec2(space.x + x, space.y + y);
                         }
 
@@ -2086,7 +2123,7 @@ int CALLBACK WinMain(
                             // update_your_widget_by_user_input(...);
                         }
 
-                        s32 pointCount = apu->bufferIndex;
+                        s32 pointCount = noise->bufferIndex;
                         struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
 
                         f32 horizontalSpacing = space.w / pointCount;
@@ -2094,7 +2131,7 @@ int CALLBACK WinMain(
                         for (s32 i = 0; i < pointCount; i++)
                         {
                             f32 x = horizontalSpacing * i;
-                            f32 y = rectHeight - apu->buffer[i] * rectHeight / (APU_AMPLIFIER_VALUE / 2);
+                            f32 y = rectHeight - noise->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
                             *(points + i) = nk_vec2(space.x + x, space.y + y);
                         }
 
@@ -2140,7 +2177,7 @@ int CALLBACK WinMain(
                             // update_your_widget_by_user_input(...);
                         }
 
-                        s32 pointCount = apu->bufferIndex;
+                        s32 pointCount = dmc->bufferIndex;
                         struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
 
                         f32 horizontalSpacing = space.w / pointCount;
@@ -2148,7 +2185,7 @@ int CALLBACK WinMain(
                         for (s32 i = 0; i < pointCount; i++)
                         {
                             f32 x = horizontalSpacing * i;
-                            f32 y = rectHeight - apu->buffer[i] * rectHeight / (APU_AMPLIFIER_VALUE / 2);
+                            f32 y = rectHeight - dmc->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
                             *(points + i) = nk_vec2(space.x + x, space.y + y);
                         }
 

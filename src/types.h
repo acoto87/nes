@@ -8,7 +8,7 @@
 #define PPU_SCREEN_WIDTH 256
 #define PPU_SCREEN_HEIGHT 240
 
-#define APU_BUFFER_LENGTH 2048
+#define APU_BUFFER_LENGTH 1024
 
 struct Memory
 {
@@ -332,6 +332,9 @@ struct APU
         u8 envelopeVolume;
         
         u8 constantVolume;
+
+        s32 bufferIndex;
+        s16 buffer[APU_BUFFER_LENGTH];
     } pulse1, pulse2;
 
     struct Triangle
@@ -352,6 +355,9 @@ struct APU
         u16 timerValue;
 
         u8 tableIndex;
+
+        s32 bufferIndex;
+        s16 buffer[APU_BUFFER_LENGTH];
     } triangle;
 
     struct Noise
@@ -377,6 +383,9 @@ struct APU
         u8 envelopeVolume;
 
         u8 constantVolume;
+
+        s32 bufferIndex;
+        s16 buffer[APU_BUFFER_LENGTH];
     } noise;
 
     struct DMC
@@ -400,6 +409,9 @@ struct APU
 
         b32 loop;
         b32 irq;
+
+        s32 bufferIndex;
+        s16 buffer[APU_BUFFER_LENGTH];
     } dmc;
 
     u64 cycles;

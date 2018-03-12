@@ -534,6 +534,21 @@ internal f32 GetOutput(APU *apu)
     u8 n = GetNoiseOutput(&apu->noise);
     u8 d = GetDMCOutput(&apu->dmc);
 
+    apu->pulse1.buffer[apu->pulse1.bufferIndex] = (s16)(pulseTable[p1] * APU_AMPLIFIER_VALUE);
+    apu->pulse1.bufferIndex = (apu->pulse1.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
+    apu->pulse2.buffer[apu->pulse2.bufferIndex] = (s16)(pulseTable[p2] * APU_AMPLIFIER_VALUE);
+    apu->pulse2.bufferIndex = (apu->pulse2.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
+    apu->triangle.buffer[apu->triangle.bufferIndex] = (s16)(tndTable[3 * t] * APU_AMPLIFIER_VALUE);
+    apu->triangle.bufferIndex = (apu->triangle.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
+    apu->noise.buffer[apu->noise.bufferIndex] = (s16)(tndTable[2 * n] * APU_AMPLIFIER_VALUE);
+    apu->noise.bufferIndex = (apu->noise.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
+    apu->dmc.buffer[apu->dmc.bufferIndex] = (s16)(tndTable[d] * APU_AMPLIFIER_VALUE);
+    apu->dmc.bufferIndex = (apu->dmc.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
     f32 pulseOut = pulseTable[p1 + p2];
     f32 tndOut = tndTable[3 * t + 2 * n + d];
     return pulseOut + tndOut;
