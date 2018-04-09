@@ -1,0 +1,1128 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"APU",
+				"APU_SAMPLES_PER_SECOND"
+			],
+			[
+				"cycle",
+				"cycle1"
+			],
+			[
+				"pusl",
+				"pulse1"
+			],
+			[
+				"samp",
+				"sampleLength"
+			],
+			[
+				"StepTriangle",
+				"StepTriangleCounter"
+			],
+			[
+				"triangl",
+				"Triangle"
+			],
+			[
+				"feedback",
+				"feedbackBit1"
+			],
+			[
+				"pulse",
+				"pulse1"
+			],
+			[
+				"square",
+				"square1Enabled"
+			],
+			[
+				"squ",
+				"square1Enabled"
+			],
+			[
+				"squa",
+				"square2Enabled"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "src/sdl_opengl2.cpp",
+			"settings":
+			{
+				"buffer_size": 93339,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/cpu.cpp",
+			"settings":
+			{
+				"buffer_size": 31321,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/controller.cpp",
+			"settings":
+			{
+				"buffer_size": 289,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/controller.h",
+			"settings":
+			{
+				"buffer_size": 1415,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/wave_writer.h",
+			"settings":
+			{
+				"buffer_size": 8096,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/types.h",
+			"settings":
+			{
+				"buffer_size": 11810,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/apu.h",
+			"settings":
+			{
+				"buffer_size": 6598,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/apu.cpp",
+			"settings":
+			{
+				"buffer_size": 15689,
+				"encoding": "UTF-8 with BOM",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/ppu.h",
+			"settings":
+			{
+				"buffer_size": 22921,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/cpu.h",
+			"settings":
+			{
+				"buffer_size": 28042,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/mapper3.h",
+			"settings":
+			{
+				"buffer_size": 1315,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/nes-test-roms/apu_test/source/3-irq_flag.s",
+			"settings":
+			{
+				"buffer_size": 929,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/nes-fogleman/nes/nes/apu.go",
+			"settings":
+			{
+				"buffer_size": 18389,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/6502 Microprocessor.txt",
+			"settings":
+			{
+				"buffer_size": 82295,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/NES APU Sound Hardware Reference",
+			"settings":
+			{
+				"buffer_size": 26380,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/2A03 technical reference",
+			"settings":
+			{
+				"buffer_size": 50467,
+				"encoding": "UTF-8",
+				"line_ending": "Windows",
+				"name": "**************************"
+			}
+		}
+	],
+	"build_system": "Packages/C++/C++ Single File.sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					""
+				],
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					"Run"
+				]
+			],
+			[
+				"Packages/C++/C++ Single File.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 392.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"inst",
+				"Package Control: Install Package"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"hex",
+				"HexViewer: Toggle Endianness (Big|Little)"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"install ",
+				"Package Control: Install Package"
+			],
+			[
+				"ssc",
+				"Set Syntax: C++"
+			],
+			[
+				"sshtml",
+				"Set Syntax: HTML"
+			],
+			[
+				"idn",
+				"Indent XML"
+			],
+			[
+				"iden",
+				"Indent XML"
+			],
+			[
+				"ssxml",
+				"Set Syntax: XML"
+			],
+			[
+				"indent",
+				"Indent XML"
+			],
+			[
+				"ident",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"sssql",
+				"Set Syntax: SQL"
+			],
+			[
+				"mark",
+				"Set Syntax: Markdown"
+			]
+		],
+		"width": 412.0
+	},
+	"console":
+	{
+		"height": 150.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/D/Work/nes/sublime",
+		"/D/Work/nes/sublime/src"
+	],
+	"file_history":
+	[
+		"/C/inetpub/wwwroot/QActionWeb8/Scripts/qaction.generals.js",
+		"/D/Work/bitwise/notes/streams.md",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/delay.s",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/apu_shell.inc",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/macros.inc",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/neshw.inc",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/test_main_chans.s",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/shell.inc",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/sync_apu.s",
+		"/D/Work/nes/misc/nintendulator0970src/src/APU.cpp",
+		"/D/Work/nes/misc/nintendulator0970src/src/APU.h",
+		"/D/Work/nes/misc/Mesen-master/Core/APU.h",
+		"/D/Work/nes/misc/Mesen-master/Core/APU.cpp",
+		"/D/Work/nes/misc/Mesen-master/Core/CPU.h",
+		"/D/Work/nes/misc/Mesen-master/Core/MemoryManager.h",
+		"/D/Work/nes/misc/Mesen-master/Core/MemoryManager.cpp",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/2-len_table.s",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/SublimeGDB/SublimeGDB.sublime-settings",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/1-len_ctr.s",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Common/Generals/QDocContextBase.vb",
+		"/C/Users/Alejandro/Desktop/New folder (3)/main.c",
+		"/D/Work/nes/misc/6502 Microprocessor.txt",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/readme.txt",
+		"/D/Work/nes/misc/nes-fogleman/nes/nes/console.go",
+		"/D/Work/nes/misc/nes-fogleman/nes/ui/audio.go",
+		"/D/Work/nes/sublime/src/memory.h",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/SyntaxFold/syntax_fold.sublime-settings",
+		"/D/Wilsoft/(working) QSuite v7/(working) QDoc/QDoc/QDoc/bin/Debug/TEMP/tempReport368e52d1-a383-46cf-adbb-ecba7e6f6635 - Copy.xlsx/xl/worksheets/sheet1.xml",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo.Web/Views/Documents/Index.vbhtml",
+		"/C/Users/Alejandro/Desktop/New folder (2)/main.cpp",
+		"/D/Work/nes/sublime/src/nuklear_sdl_gl2.h",
+		"/D/Work/nes/sublime/src/nuklear.h",
+		"/D/Work/nes/sublime/nes_audio.wav",
+		"/D/Work/nes/sublime/src/Wave_Writer.hpp",
+		"/D/Work/nes/sublime/src/Wave_Writer.cpp",
+		"/D/Work/nes/sublime/nes.sublime-project",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Web/Views/Shared/_MainLayout.vbhtml",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Nes_Oscs.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/demo.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Nes_Oscs.h",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Nes_Apu.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Nes_Apu.h",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Simple_Apu.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Simple_Apu.h",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Sound_Queue.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Sound_Queue.h",
+		"/D/Work/nes/sublime/build.bat",
+		"/D/Work/nes/sublime/out.wav",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Wave_Writer.cpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/Wave_Writer.hpp",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/usage.txt",
+		"/D/Work/nes/misc/Nes_Snd_Emu-0.1.7/nes_apu/Blip_Buffer.h",
+		"/D/Work/nes/sublime/src/types.h",
+		"/D/Work/nes/sublime/src/utils.h",
+		"/D/Work/nes/sublime/src/gui.h",
+		"/D/Work/nes/sublime/src/gui.cpp",
+		"/D/Work/nes/vs/code/nuklear.h",
+		"/D/Work/nuklear/doc/build.sh",
+		"/D/Work/nes/sublime/src/sdl_opengl2.cpp",
+		"/D/Wilsoft/email de actualización del servidor aws",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Web/Generals/QDocContext.vb",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Common/Generals/QDocFunctionsBase.vb",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo.Common/Generals/QCeoFunctionsBase.vb",
+		"/C/Program Files (x86)/OpenSSH/etc/sshd_config",
+		"/C/Program Files (x86)/OpenSSH/etc/ssh_config",
+		"/D/Wilsoft/WilsoftT2Large.rdp",
+		"/D/Work/2d-extras/Assets/Tilemap/Tiles/Random Tile/Scripts/RandomTile.cs",
+		"/C/Program Files (x86)/OpenSSH/docs/readme.txt",
+		"/C/Program Files (x86)/OpenSSH/docs/quickstart.txt",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QSuite8.sln",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo.Common/QCeo.Common.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Web/QDoc.Web.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QLicense.Web/QLicense.Web.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QGage.Web/QGage.Web.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/WSGenerals.Web/WSGenerals.Web.vbproj",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QProcess.Web/Views/Executions/Edit.vbhtml",
+		"/D/Wilsoft/(working) QSuite v8/QDocEmailTemplates",
+		"/C/inetpub/wwwroot/QDocWeb8/Web.config",
+		"/D/Wilsoft/pdfjs-1.7.225-dist/web/viewer.html",
+		"/D/Wilsoft/pdfjs-1.7.225-dist/web/viewer.js",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QAction/build-release.bat",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QAction.Tasks/build-release.bat",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo/build-release.bat",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QCeo.Tasks/build-release.bat",
+		"/C/Users/Alejandro/Desktop/fixConfigurationTable.sql",
+		"/D/Wilsoft/(working) QSuite v7/(working) QDoc/QDoc/build.bat",
+		"/D/Work/(working) Platformer/CharacterController2D/Assets/demo/scripts/DemoScene.cs",
+		"/D/Work/(working) Platformer/CharacterController2D/Assets/CharacterController2D/CharacterController2D.cs",
+		"/D/Work/(working) Platformer/CharacterController2D/Assets/demo/scripts/SmoothFollow.cs",
+		"/C/Users/Alejandro/Desktop/q.sql",
+		"/D/Work/nes/build.bat",
+		"/D/Work/nes/src/sdl_opengl2.cpp",
+		"/D/Work/nes/src/oam.h",
+		"/D/Work/nes/src/nes.cpp",
+		"/D/Work/nes/src/gui.cpp",
+		"/D/Work/nes/src/gui.h",
+		"/D/Work/nes/src/controller.cpp",
+		"/D/Work/nes/src/controller.h",
+		"/D/Work/nes/src/apu.cpp",
+		"/D/Work/nes/src/apu.h",
+		"/D/Work/nes/src/ppu.cpp",
+		"/D/Work/nes/src/ppu.h",
+		"/D/Work/nes/src/memory.h",
+		"/D/Work/nes/src/cpu.h",
+		"/D/Work/nes/src/cpu.cpp",
+		"/D/Work/nes/src/cartridge.h",
+		"/D/Work/nes/src/types.h",
+		"/D/Work/nes/src/utils.h",
+		"/D/Work/nes/src/mapper3.h",
+		"/D/Work/nes/src/mapper2.h",
+		"/D/Work/nes/src/mapper1.h",
+		"/D/Work/nes/src/mapper0.h",
+		"/D/Work/nes/src/nes.h",
+		"/D/Work/nes/src/utils.cpp",
+		"/D/Work/handmadehero/code/handmade.cpp",
+		"/D/Work/handmadehero/code/handmade_audio.h",
+		"/D/Work/handmadehero/code/handmade_audio.cpp",
+		"/D/Work/nes/shell.bat",
+		"/C/Program Files/mingw-w64/x86_64-7.2.0-win32-seh-rt_v5-rev1/mingw-w64.bat",
+		"/D/Work/handmadehero/code/build.bat",
+		"/D/Work/nes/src/cartridge.cpp",
+		"/C/Program Files (x86)/Microsoft Visual Studio/2017/Community/Common7/Tools/VsDevCmd.bat",
+		"/D/Work/handmadehero/misc/shell.bat",
+		"/D/Work/nes/sdl_opengl2.obj",
+		"/D/Work/handmadehero/misc/msdev.bat",
+		"/D/Work/handmadehero/misc/emacs.bat",
+		"/D/Work/handmadehero/misc/4ed.bat",
+		"/D/Work/handmadehero/ctime/ctime.c"
+	],
+	"find":
+	{
+		"height": 26.0
+	},
+	"find_in_files":
+	{
+		"height": 104.0,
+		"where_history":
+		[
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"StepPPU",
+			"Step",
+			"StepPPU",
+			"delay_",
+			"_memoryManager",
+			"sampleRate",
+			"apu->frameIRQ",
+			"apu->cycles",
+			"apu.cycle",
+			"linearReload",
+			"lengthEnabled",
+			"linearEnabled",
+			"DEX",
+			"lengthTable",
+			"restart",
+			"counterReload",
+			"stepCounter",
+			"Length Counter",
+			"DAC",
+			".\n",
+			"pulse",
+			".",
+			"enabled",
+			"table",
+			"enabled",
+			"NK_KEY_MAX",
+			"MAX",
+			"NK_KEY_LEFT",
+			"NK_KEY_",
+			"nk_input_is_key_pressed",
+			"keys",
+			"NK_KEY_A",
+			"NK_KEY_UP",
+			"NK_KEY_SCROLL_UP",
+			"NK_KEY_SPACE",
+			"KEY_A",
+			"keyboard",
+			"Role",
+			"APU_BYTES_PER_SAMPLE",
+			"sampleRate",
+			"step",
+			"screen",
+			"NK_COMMAND_IMAGE",
+			"nk_tooltip_begin",
+			"Tooltip",
+			"nk_tooltip_position",
+			"nk_draw_list_push_command",
+			"nk_draw_list_push_image",
+			"nk_draw_list_add_image",
+			"NK_COMMAND_IMAGE",
+			"draw_image",
+			"viewThumbnail",
+			"viewThumbnails",
+			"pdfThumbnailViewer",
+			"pdfThumbnail",
+			"pdfThumbnailViewer",
+			"#include",
+			"ColumnHeight",
+			"ColumnPiece",
+			"FadingListViewStyle",
+			"ColumnChartChartAreaStyle",
+			"NumberStyle",
+			"ChartBackground",
+			"Slice",
+			"ClusteredBarChartPlotterAreaStyle",
+			"BarChartChartAreaStyle",
+			"BaseChartStyle",
+			"BarChartPlotterAreaStyle",
+			"BasePlotterAreaStyle",
+			"BarChartPlotterAreaStyle",
+			"ClusteredBarChartPlotterAreaStyle",
+			"ClusteredBarChart",
+			"BarChartChartAreaStyle",
+			"ClusteredBarChart",
+			"BarChartChartAreaStyle"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"StepCPUCycles",
+			"noise"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "src/sdl_opengl2.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 93339,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								17086,
+								17086
+							]
+						],
+						"settings":
+						{
+							"rulers":
+							[
+							],
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 10049.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "src/cpu.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 31321,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								20486,
+								20486
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 20649.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "src/controller.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 289,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 15,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "src/controller.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1415,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								274,
+								274
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 14,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "src/wave_writer.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 8096,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2280,
+								2294
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 432.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 9,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "src/types.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 11810,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								11786,
+								11786
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 8058.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "src/apu.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 6598,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								6334,
+								6334
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4454.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 7,
+					"file": "src/apu.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 15689,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								13773,
+								13773
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 10690.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 8,
+					"type": "text"
+				},
+				{
+					"buffer": 8,
+					"file": "src/ppu.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 22921,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								22781,
+								22901
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 13471.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 9,
+					"file": "src/cpu.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 28042,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								28033,
+								28033
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 7226.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 10,
+					"file": "src/mapper3.h",
+					"semi_transient": true,
+					"settings":
+					{
+						"buffer_size": 1315,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 13,
+					"type": "text"
+				}
+			]
+		},
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 11,
+					"file": "/D/Work/nes/misc/nes-test-roms/apu_test/source/3-irq_flag.s",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 929,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								426,
+								426
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/R/R.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 162.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
+					"type": "text"
+				},
+				{
+					"buffer": 12,
+					"file": "/D/Work/nes/misc/nes-fogleman/nes/nes/apu.go",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 18389,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2067,
+								2067
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Go/Go.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 5210.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 10,
+					"type": "text"
+				},
+				{
+					"buffer": 13,
+					"file": "/D/Work/nes/misc/6502 Microprocessor.txt",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 82295,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								33337,
+								33340
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1268.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 12,
+					"type": "text"
+				},
+				{
+					"buffer": 14,
+					"file": "/D/Work/nes/misc/NES APU Sound Hardware Reference",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 26380,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								9364,
+								9364
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4064.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 11,
+					"type": "text"
+				},
+				{
+					"buffer": 15,
+					"file": "/D/Work/nes/misc/2A03 technical reference",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 50467,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								32315,
+								32386
+							]
+						],
+						"settings":
+						{
+							"auto_name": "**************************",
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 12696.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 7,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 26.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			],
+			[
+				1,
+				0,
+				2,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			0.698192771084,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 164.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"output.hex_viewer_inspector":
+	{
+		"height": 148.0
+	},
+	"pinned_build_system": "",
+	"project": "nes.sublime-project",
+	"replace":
+	{
+		"height": 48.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 260.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
