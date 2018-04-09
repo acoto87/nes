@@ -419,10 +419,9 @@ struct APU
     u8 frameValue;
     s32 frameCounter;
     
-    s32 sampleRate;
     s32 sampleCounter;
 
-    b32 frameIRQ;
+    b32 inhibitIRQ;
     b32 dmcIRQ;
 
     s32 bufferIndex;

@@ -4,6 +4,18 @@
 		"selected_items":
 		[
 			[
+				"APU",
+				"APU_SAMPLES_PER_SECOND"
+			],
+			[
+				"cycle",
+				"cycle1"
+			],
+			[
+				"pusl",
+				"pulse1"
+			],
+			[
 				"samp",
 				"sampleLength"
 			],
@@ -43,7 +55,16 @@
 			"file": "src/sdl_opengl2.cpp",
 			"settings":
 			{
-				"buffer_size": 91988,
+				"buffer_size": 93339,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/cpu.cpp",
+			"settings":
+			{
+				"buffer_size": 31321,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -77,7 +98,7 @@
 			"file": "src/types.h",
 			"settings":
 			{
-				"buffer_size": 11568,
+				"buffer_size": 11810,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -86,7 +107,7 @@
 			"file": "src/apu.h",
 			"settings":
 			{
-				"buffer_size": 6020,
+				"buffer_size": 6598,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -95,7 +116,7 @@
 			"file": "src/apu.cpp",
 			"settings":
 			{
-				"buffer_size": 14169,
+				"buffer_size": 15689,
 				"encoding": "UTF-8 with BOM",
 				"line_ending": "Windows"
 			}
@@ -112,7 +133,7 @@
 			"file": "src/cpu.h",
 			"settings":
 			{
-				"buffer_size": 27935,
+				"buffer_size": 28042,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -126,10 +147,26 @@
 			}
 		},
 		{
+			"file": "/D/Work/nes/misc/nes-test-roms/apu_test/source/3-irq_flag.s",
+			"settings":
+			{
+				"buffer_size": 929,
+				"line_ending": "Windows"
+			}
+		},
+		{
 			"file": "/D/Work/nes/misc/nes-fogleman/nes/nes/apu.go",
 			"settings":
 			{
 				"buffer_size": 18389,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/6502 Microprocessor.txt",
+			"settings":
+			{
+				"buffer_size": 82295,
 				"line_ending": "Windows"
 			}
 		},
@@ -139,6 +176,16 @@
 			{
 				"buffer_size": 26380,
 				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/D/Work/nes/misc/2A03 technical reference",
+			"settings":
+			{
+				"buffer_size": 50467,
+				"encoding": "UTF-8",
+				"line_ending": "Windows",
+				"name": "**************************"
 			}
 		}
 	],
@@ -166,7 +213,7 @@
 	"command_palette":
 	{
 		"height": 392.0,
-		"last_filter": "inst",
+		"last_filter": "",
 		"selected_items":
 		[
 			[
@@ -251,6 +298,29 @@
 	],
 	"file_history":
 	[
+		"/C/inetpub/wwwroot/QActionWeb8/Scripts/qaction.generals.js",
+		"/D/Work/bitwise/notes/streams.md",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/delay.s",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/apu_shell.inc",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/macros.inc",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/neshw.inc",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/test_main_chans.s",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/shell.inc",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/common/sync_apu.s",
+		"/D/Work/nes/misc/nintendulator0970src/src/APU.cpp",
+		"/D/Work/nes/misc/nintendulator0970src/src/APU.h",
+		"/D/Work/nes/misc/Mesen-master/Core/APU.h",
+		"/D/Work/nes/misc/Mesen-master/Core/APU.cpp",
+		"/D/Work/nes/misc/Mesen-master/Core/CPU.h",
+		"/D/Work/nes/misc/Mesen-master/Core/MemoryManager.h",
+		"/D/Work/nes/misc/Mesen-master/Core/MemoryManager.cpp",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/2-len_table.s",
+		"/C/Users/Alejandro/AppData/Roaming/Sublime Text 3/Packages/SublimeGDB/SublimeGDB.sublime-settings",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/source/1-len_ctr.s",
+		"/D/Wilsoft/(working) QSuite v8/QSuite8/QDoc.Common/Generals/QDocContextBase.vb",
+		"/C/Users/Alejandro/Desktop/New folder (3)/main.c",
+		"/D/Work/nes/misc/6502 Microprocessor.txt",
+		"/D/Work/nes/misc/nes-test-roms/apu_test/readme.txt",
 		"/D/Work/nes/misc/nes-fogleman/nes/nes/console.go",
 		"/D/Work/nes/misc/nes-fogleman/nes/ui/audio.go",
 		"/D/Work/nes/sublime/src/memory.h",
@@ -355,40 +425,18 @@
 		"/D/Work/handmadehero/misc/msdev.bat",
 		"/D/Work/handmadehero/misc/emacs.bat",
 		"/D/Work/handmadehero/misc/4ed.bat",
-		"/D/Work/handmadehero/ctime/ctime.c",
-		"/D/Work/handmadehero/ctime/build.bat",
-		"/D/Work/handmadehero/code/todo_check.bat",
-		"/D/Work/handmadehero/code/static_check.bat",
-		"/D/Work/handmadehero/code/todo.txt",
-		"/D/Work/handmadehero/misc/4coder_casey.cpp",
-		"/D/Work/handmadehero/code/handmade_hero.ctm",
-		"/C/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/ucrt/stdio.h",
-		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/ColumnChart/ColumnPiece.cs",
-		"/C/Program Files (x86)/Microsoft Visual Studio/2017/Community/VB/Snippets/1033/WPF/DependencyProperty ReadOnly.snippet",
-		"/C/Program Files (x86)/Microsoft Visual Studio/2017/Community/VB/Snippets/1033/WPF/DependencyProperty.snippet",
-		"/C/Program Files (x86)/Microsoft Visual Studio/2017/Community/VB/Snippets/1033/WPF/DependencyProperty Attached.snippet",
-		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/BarChart/ClusteredBarChart.cs",
-		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Themes/Generic.xaml",
-		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/BarChart/BarPiece.cs",
-		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/Doughnut/DoughnutChart.cs",
-		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/ColumnChart/ClusteredColumnChart.cs",
-		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/PieChart/PieChart.cs",
-		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/PieChart/PiePiece.cs",
-		"/D/Wilsoft/De.TorstenMandelkow.MetroChart/De.TorstenMandelkow.MetroChart/Core/ChartBase.cs",
-		"/D/Wilsoft/(working) QSuite v8/QSuite8/QAction.Web/Files/Reports/Templates/tmpReportTracking - Copy.xlsx/xl/charts/chart1.xml",
-		"/D/Personal/ansiedad/Descubre las causas de la ansiedad en ti",
-		"/C/Users/Alejandro/Desktop/fix_carsdate.sql",
-		"/D/Wilsoft/(working) QSuite v7/(working) QAction/QAction/QAction/Data/Models/CAR.partial.vb"
+		"/D/Work/handmadehero/ctime/ctime.c"
 	],
 	"find":
 	{
-		"height": 40.0
+		"height": 26.0
 	},
 	"find_in_files":
 	{
-		"height": 0.0,
+		"height": 104.0,
 		"where_history":
 		[
+			""
 		]
 	},
 	"find_state":
@@ -396,6 +444,20 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"StepPPU",
+			"Step",
+			"StepPPU",
+			"delay_",
+			"_memoryManager",
+			"sampleRate",
+			"apu->frameIRQ",
+			"apu->cycles",
+			"apu.cycle",
+			"linearReload",
+			"lengthEnabled",
+			"linearEnabled",
+			"DEX",
+			"lengthTable",
 			"restart",
 			"counterReload",
 			"stepCounter",
@@ -464,6 +526,7 @@
 		"regex": false,
 		"replace_history":
 		[
+			"StepCPUCycles",
 			"noise"
 		],
 		"reverse": false,
@@ -475,7 +538,7 @@
 	"groups":
 	[
 		{
-			"selected": 9,
+			"selected": 0,
 			"sheets":
 			[
 				{
@@ -484,15 +547,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 91988,
+						"buffer_size": 93339,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								77868,
-								77868
+								17086,
+								17086
 							]
 						],
 						"settings":
@@ -505,14 +568,44 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 34231.0,
+						"translation.y": 10049.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 3,
+					"stack_index": 0,
 					"type": "text"
 				},
 				{
 					"buffer": 1,
+					"file": "src/cpu.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 31321,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								20486,
+								20486
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 20649.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
 					"file": "src/controller.cpp",
 					"semi_transient": false,
 					"settings":
@@ -536,11 +629,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 10,
+					"stack_index": 15,
 					"type": "text"
 				},
 				{
-					"buffer": 2,
+					"buffer": 3,
 					"file": "src/controller.h",
 					"semi_transient": false,
 					"settings":
@@ -566,11 +659,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 9,
+					"stack_index": 14,
 					"type": "text"
 				},
 				{
-					"buffer": 3,
+					"buffer": 4,
 					"file": "src/wave_writer.h",
 					"semi_transient": false,
 					"settings":
@@ -596,54 +689,24 @@
 						"translation.y": 432.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 11,
-					"type": "text"
-				},
-				{
-					"buffer": 4,
-					"file": "src/types.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 11568,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								10128,
-								10428
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 6722.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 4,
+					"stack_index": 9,
 					"type": "text"
 				},
 				{
 					"buffer": 5,
-					"file": "src/apu.h",
+					"file": "src/types.h",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 6020,
+						"buffer_size": 11810,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								5802,
-								5802
+								11786,
+								11786
 							]
 						],
 						"settings":
@@ -653,7 +716,7 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 3912.0,
+						"translation.y": 8058.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 5,
@@ -661,19 +724,19 @@
 				},
 				{
 					"buffer": 6,
-					"file": "src/apu.cpp",
+					"file": "src/apu.h",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 14169,
+						"buffer_size": 6598,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								5708,
-								5708
+								6334,
+								6334
 							]
 						],
 						"settings":
@@ -683,14 +746,44 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 4878.0,
+						"translation.y": 4454.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 6,
+					"stack_index": 4,
 					"type": "text"
 				},
 				{
 					"buffer": 7,
+					"file": "src/apu.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 15689,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								13773,
+								13773
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 10690.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 8,
+					"type": "text"
+				},
+				{
+					"buffer": 8,
 					"file": "src/ppu.h",
 					"semi_transient": false,
 					"settings":
@@ -702,8 +795,8 @@
 						"selection":
 						[
 							[
-								7462,
-								7462
+								22781,
+								22901
 							]
 						],
 						"settings":
@@ -713,27 +806,27 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 2958.0,
+						"translation.y": 13471.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 8,
+					"stack_index": 3,
 					"type": "text"
 				},
 				{
-					"buffer": 8,
+					"buffer": 9,
 					"file": "src/cpu.h",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 27935,
+						"buffer_size": 28042,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								17836,
-								17836
+								28033,
+								28033
 							]
 						],
 						"settings":
@@ -743,14 +836,14 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 9006.0,
+						"translation.y": 7226.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 1,
 					"type": "text"
 				},
 				{
-					"buffer": 9,
+					"buffer": 10,
 					"file": "src/mapper3.h",
 					"semi_transient": true,
 					"settings":
@@ -776,11 +869,46 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 0,
+					"stack_index": 13,
+					"type": "text"
+				}
+			]
+		},
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 11,
+					"file": "/D/Work/nes/misc/nes-test-roms/apu_test/source/3-irq_flag.s",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 929,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								426,
+								426
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/R/R.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 162.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
 					"type": "text"
 				},
 				{
-					"buffer": 10,
+					"buffer": 12,
 					"file": "/D/Work/nes/misc/nes-fogleman/nes/nes/apu.go",
 					"semi_transient": false,
 					"settings":
@@ -792,8 +920,8 @@
 						"selection":
 						[
 							[
-								17657,
-								17657
+								2067,
+								2067
 							]
 						],
 						"settings":
@@ -802,14 +930,44 @@
 							"translate_tabs_to_spaces": false
 						},
 						"translation.x": 0.0,
-						"translation.y": 4864.0,
+						"translation.y": 5210.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 7,
+					"stack_index": 10,
 					"type": "text"
 				},
 				{
-					"buffer": 11,
+					"buffer": 13,
+					"file": "/D/Work/nes/misc/6502 Microprocessor.txt",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 82295,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								33337,
+								33340
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1268.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 12,
+					"type": "text"
+				},
+				{
+					"buffer": 14,
 					"file": "/D/Work/nes/misc/NES APU Sound Hardware Reference",
 					"semi_transient": false,
 					"settings":
@@ -821,8 +979,8 @@
 						"selection":
 						[
 							[
-								3439,
-								3443
+								9364,
+								9364
 							]
 						],
 						"settings":
@@ -832,10 +990,39 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 11294.0,
+						"translation.y": 4064.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 2,
+					"stack_index": 11,
+					"type": "text"
+				},
+				{
+					"buffer": 15,
+					"file": "/D/Work/nes/misc/2A03 technical reference",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 50467,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								32315,
+								32386
+							]
+						],
+						"settings":
+						{
+							"auto_name": "**************************",
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 12696.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 7,
 					"type": "text"
 				}
 			]
@@ -858,11 +1045,18 @@
 				0,
 				1,
 				1
+			],
+			[
+				1,
+				0,
+				2,
+				1
 			]
 		],
 		"cols":
 		[
 			0.0,
+			0.698192771084,
 			1.0
 		],
 		"rows":
@@ -926,7 +1120,7 @@
 	"show_open_files": true,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 225.0,
+	"side_bar_width": 260.0,
 	"status_bar_visible": true,
 	"template_settings":
 	{

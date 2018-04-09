@@ -486,7 +486,7 @@ internal void StepAPUFrameCounter(NES *nes)
                 StepAPUSweep(apu);
                 StepAPULength(apu);
 
-                if (apu->frameIRQ)
+                if (!apu->inhibitIRQ)
                 {
                     if (!(nes->cpu.p & 4))
                     {
@@ -526,7 +526,7 @@ internal f32 LowPassFilter(f32 sampleValue, s32 freq)
     return newSampleValue;
 }
 
-internal f32 GetOutput(APU *apu)
+internal void SetOutput(APU *apu)
 {
     u8 p1 = GetPulseOutput(&apu->pulse1);
     u8 p2 = GetPulseOutput(&apu->pulse2);
@@ -551,17 +551,33 @@ internal f32 GetOutput(APU *apu)
 
     f32 pulseOut = pulseTable[p1 + p2];
     f32 tndOut = tndTable[3 * t + 2 * n + d];
-    return pulseOut + tndOut;
+    f32 out = pulseOut + tndOut;
+
+    // Don't know if this make sense after the change to s16 format instead of f32
+    // output = HighPassFilter(output, 90);
+    // output = HighPassFilter(output, 440);
+    // output = LowPassFilter(output, 14000);
+
+    apu->buffer[apu->bufferIndex] = (s16)(out * APU_AMPLIFIER_VALUE);
+    apu->bufferIndex = (apu->bufferIndex + 1) % APU_BUFFER_LENGTH;
 }
 
 void StepAPU(NES *nes)
 {
     APU *apu = &nes->apu;
 
+    //u64 cycle1 = apu->cycles;
+    apu->cycles++;
+    //u64 cycle2 = apu->cycles;
+
     StepAPUTimer(nes, apu);
+
+    //s32 f1 = (s32)((f32)cycle1 / FRAME_COUNTER_RATE);
+    //s32 f2 = (s32)((f32)cycle2 / FRAME_COUNTER_RATE);
 
     apu->frameCounter++;
 
+    //if (f1 != f2)
     if (apu->frameCounter >= FRAME_COUNTER_RATE)
     {
         StepAPUFrameCounter(nes);
@@ -570,37 +586,48 @@ void StepAPU(NES *nes)
 
     apu->sampleCounter++;
 
-    if (apu->sampleCounter >= apu->sampleRate)
+    //s32 s1 = (s32)((f32)cycle1 / apu->sampleRate);
+    //s32 s2 = (s32)((f32)cycle2 / apu->sampleRate);
+
+    //if (s1 != s2)
+    if (apu->sampleCounter >= APU_CYCLES_PER_SAMPLE)
     {
-        f32 output = GetOutput(apu);
-        // Don't know if this make sense after the change to s16 format instead of f32
-        // output = HighPassFilter(output, 90);
-        // output = HighPassFilter(output, 440);
-        // output = LowPassFilter(output, 14000);
-
-        apu->buffer[apu->bufferIndex] = (s16)(output * APU_AMPLIFIER_VALUE);
-        apu->bufferIndex = (apu->bufferIndex + 1) % APU_BUFFER_LENGTH;
-
+        SetOutput(apu);
         apu->sampleCounter = 0;    
     }
-
-    apu->cycles++;
 }
 
 void WriteAPUFrameCounter(NES *nes, u8 value)
 {
     APU *apu = &nes->apu;
 
-    apu->frameMode = (value & 0x80) >> 7;
+    if (value & 0xC0)
+    {
+        apu->frameMode = 1;
+        apu->inhibitIRQ = TRUE;
+    }
+    else if (value & 0x80)
+    {
+        apu->frameMode = 1;
+        apu->inhibitIRQ = FALSE;
+    }
+    else if (value & 0x40)
+    {
+        apu->frameMode = 0;
+        apu->inhibitIRQ = TRUE;
+    }
+    else
+    {
+        apu->frameMode = 0;
+        apu->inhibitIRQ = TRUE;
+    }
 
-    if (value & 0x40)
-    {
-        apu->frameIRQ = FALSE;
-    }
-    else if (!apu->frameMode)
-    {
-        apu->frameIRQ = TRUE;
-    }
+    // apu->frameMode = (value & 0x80) >> 7;
+
+    // if (!apu->frameMode)
+    // {
+    //     apu->frameIRQ = !((value & 0x40) >> 6);
+    // }
 
     apu->frameValue = 0;
 
@@ -618,6 +645,9 @@ void ResetAPU(NES *nes)
 
     apu->frameCounter = 0;
     apu->sampleCounter = 0;
+
+    apu->frameMode = 0;
+    apu->inhibitIRQ = FALSE;
 
     apu->pulse1.globalEnabled = TRUE;
     apu->pulse1.enabled = FALSE;
@@ -644,7 +674,6 @@ void ResetAPU(NES *nes)
     apu->dmc.value = 0;
 
     apu->bufferIndex = 0;
-    apu->sampleRate = APU_CYCLES_PER_SAMPLE;
     memset(apu->buffer, 0, sizeof(apu->buffer));
 
     WriteAPUFrameCounter(nes, 0);

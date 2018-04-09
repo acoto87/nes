@@ -870,4 +870,10 @@ void PowerCPU(NES *nes);
 void InitCPU(NES *nes);
 CPUStep StepCPU(NES *nes);
 
+internal void StepCPUCycles(NES *nes, s32 cycles)
+{
+    StepPPU(nes, cycles);
+    StepAPU(nes, cycles);
+}
+
 #endif

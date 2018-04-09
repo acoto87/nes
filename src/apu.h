@@ -3,7 +3,7 @@
 // (CPU_FREQ / 240) = (1789773 / 240) = 7457.38
 // Frequency of FrameCounter
 // from: http://wiki.nesdev.com/w/index.php/APU#Frame_Counter_.28.244017.29
-#define FRAME_COUNTER_RATE 7457.38f
+#define FRAME_COUNTER_RATE 7457
 
 #define APU_SAMPLES_PER_SECOND 48000
 
@@ -46,7 +46,9 @@ global u8 dmcTable[16]
 global f32 pulseTable[31];
 global f32 tndTable[203];
 
-#pragma region Pulse
+/*************************************
+            PULSE CHANNEL
+**************************************/
 
 inline void WriteAPUPulseEnvelope(APU::Pulse *pulse, u8 value)
 {
@@ -84,9 +86,9 @@ inline void WriteAPUPulseLength(APU::Pulse *pulse, u8 value)
     }
 }
 
-#pragma endregion
-
-#pragma region Triangle
+/*************************************
+            TRIANGLE CHANNEL
+**************************************/
 
 inline void WriteAPUTriangleLinear(APU::Triangle *triangle, u8 value)
 {
@@ -111,9 +113,9 @@ inline void WriteAPUTriangleLength(APU::Triangle *triangle, u8 value)
     }
 }
 
-#pragma endregion
-
-#pragma region Noise
+/*************************************
+            NOISE CHANNEL
+**************************************/
 
 inline void WriteAPUNoiseEnvelope(APU::Noise *noise, u8 value)
 {
@@ -133,13 +135,16 @@ inline void WriteAPUNoisePeriod(APU::Noise *noise, u8 value)
 
 inline void WriteAPUNoiseLength(APU::Noise *noise, u8 value)
 {
-    noise->lengthValue = lengthTable[value >> 3];
-    noise->envelopeStart = TRUE;    
+    if (noise->enabled)
+    {
+        noise->lengthValue = lengthTable[value >> 3];
+        noise->envelopeStart = TRUE;
+    }
 }
 
-#pragma endregion
-
-#pragma region DMC
+/*************************************
+            DMC CHANNEL
+**************************************/
 
 inline void WriteAPUDMCControl(APU::DMC *dmc, u8 value)
 {
@@ -171,7 +176,9 @@ inline void RestartDMC(APU::DMC *dmc)
     dmc->currentLength = dmc->sampleLength;
 }
 
-#pragma endregion
+/*******************************************************
+            STATUS AND FRAMECOUNTER CHANNEL
+********************************************************/
 
 inline u8 ReadAPUStatus(NES *nes)
 {
@@ -204,7 +211,7 @@ inline u8 ReadAPUStatus(NES *nes)
         result |= 16;
     }
 
-    if (apu->frameIRQ)
+    if (apu->inhibitIRQ)
     {
         result |= 0x40;
     }
@@ -214,7 +221,7 @@ inline u8 ReadAPUStatus(NES *nes)
         result |= 0x80;
     }
 
-    apu->frameIRQ = FALSE;
+    apu->inhibitIRQ = FALSE;
 
     return result;
 }
@@ -265,3 +272,11 @@ void PowerAPU(NES *nes);
 void InitAPU(NES *nes);
 void StepAPU(NES *nes);
 void WriteAPUFrameCounter(NES *nes, u8 value);
+
+inline void StepAPU(NES *nes, s32 cycles)
+{
+    for (s32 i = 0; i < cycles; ++i)
+    {
+        StepAPU(nes);
+    }
+}

@@ -54,6 +54,8 @@ global b32 hitRun;
 global b32 debugging = TRUE;
 global b32 stepping;
 global u16 breakpoint;
+global u16 readTo;
+global u16 writeTo;
 global b32 coarseButtons[8];
 global b32 oneCycleAtTime;
 global b32 debugMode;
@@ -596,17 +598,6 @@ int CALLBACK WinMain(
                 }
 
                 CPUStep step = StepCPU(nes);
-
-                /*for (s32 i = 0; i < 3 * step.cycles; i++)
-                {
-                    StepPPU(nes);
-                }*/
-
-                for (s32 i = 0; i < step.cycles; i++)
-                {
-                    StepAPU(nes);
-                }
-
                 cycles -= step.cycles;
 
                 if (debugging)
@@ -1920,9 +1911,9 @@ int CALLBACK WinMain(
 
                     nk_label(ctx, DebugText("CYCLES:%lld", apu->cycles), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("FRAME MODE:%02X", apu->frameMode), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SAMPLE RATE:%04X", apu->sampleRate), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SAMPLE RATE:%04X", APU_SAMPLES_PER_SECOND), NK_TEXT_LEFT);
 
-                    nk_label(ctx, DebugText("FRAME IRQ:%02X", apu->frameIRQ), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("FRAME IRQ:%02X", !apu->inhibitIRQ), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("FRAME VALUE:%02X", apu->frameValue), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("SAMPLE COUNTER:%02X", apu->sampleCounter), NK_TEXT_LEFT);
 
@@ -2046,7 +2037,7 @@ int CALLBACK WinMain(
                     nk_label(ctx, DebugText("LEN ENABLED:%02X", triangle->lengthEnabled), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("TIMER PERIOD:%02X", triangle->timerPeriod), NK_TEXT_LEFT);
 
-                    nk_label(ctx, DebugText("COUNTER PERIOD:%02X", triangle->linearEnabled), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("COUNTER PERIOD:%02X", triangle->linearPeriod), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("LEN VALUE:%02X", triangle->lengthValue), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("TIMER VALUE:%02X", triangle->timerValue), NK_TEXT_LEFT);
 
@@ -2054,7 +2045,7 @@ int CALLBACK WinMain(
                     nk_label(ctx, DebugText("TABLE INDEX:%02X", triangle->timerValue), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("ENABLED:%02X", triangle->enabled), NK_TEXT_LEFT);
                     
-                    nk_label(ctx, DebugText("COUNTER RELOAD:%02X", triangle->linearValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("COUNTER RELOAD:%02X", triangle->linearReload), NK_TEXT_LEFT);
 
                     local f32 rectHeight = 200.0f;
                     local nk_color lineColor = nk_rgb(255, 0, 0);
