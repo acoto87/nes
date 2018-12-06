@@ -4,7 +4,14 @@ A Nintendo Entertainment System emulator written in C.
 
 This is an implementation of the NES console developed and manufactured by Nintendo.
 
+NES currently implements the first three mappers, which convers a good percentage of the games:
 
+* NROM (Mapper 000)
+* MMC1 / SxROM (Mapper 001)
+* UxROM (Mapper 002)
+* CNROM (Mapper 003)
+
+It also has an integrated debugger, you can set breakpoints and run step by step the code of the game. It has a register and memory viewers, and also palettes, sprites and nametables viewer.
 
 ## Libraries used
 
@@ -13,4 +20,7 @@ This is an implementation of the NES console developed and manufactured by Ninte
 
 ## Screenshots
 
-
+![](https://github.com/acoto87/nes/blob/master/pics/castlevania.gif)
+![](https://github.com/acoto87/nes/blob/master/pics/Capture15.PNG)
+![](https://github.com/acoto87/nes/blob/master/pics/Capture16.PNG)
+![](https://github.com/acoto87/nes/blob/master/pics/Capture20.PNG)
