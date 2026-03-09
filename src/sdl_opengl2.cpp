@@ -4,23 +4,20 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
-#include <windows.h>
-#include <varargs.h>
-#include <commdlg.h>
+#include <stdarg.h>
 
 #include "utils.h"
 #include "types.h"
 #include "cartridge.h"
 #include "nes.cpp"
 
-#include <SDL2-2.0.5\include\SDL.h>
-#undef main
-
-#include <glew32\include\glew.h>
-#include <SDL2-2.0.5\include\SDL_opengl.h>
-#include <SDL2-2.0.5\include\SDL_syswm.h>
-#include <SDL2-2.0.5\include\SDL_audio.h>
+#define SDL_MAIN_HANDLED
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
+#include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_opengl_glext.h>
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -61,6 +58,16 @@ global b32 oneCycleAtTime;
 global b32 debugMode;
 
 global NES *nes;
+global char loadedFilePath[1024];
+global char saveFilePath[1024];
+
+global PFNGLGENBUFFERSPROC GLGenBuffers;
+global PFNGLDELETEBUFFERSPROC GLDeleteBuffers;
+global PFNGLBINDBUFFERPROC GLBindBuffer;
+global PFNGLGENVERTEXARRAYSPROC GLGenVertexArrays;
+global PFNGLDELETEVERTEXARRAYSPROC GLDeleteVertexArrays;
+global PFNGLBINDVERTEXARRAYPROC GLBindVertexArray;
+global PFNGLGENERATEMIPMAPPROC GLGenerateMipmap;
 
 struct Device {
     struct nk_buffer cmds;
@@ -119,17 +126,169 @@ struct Device {
 //     u8 data[ONE_MINUTE_OF_SOUND];
 // };
 
-internal inline LARGE_INTEGER Win32GetWallClock(void)
+internal inline u64 GetWallClock(void)
 {
-    LARGE_INTEGER result;
-    QueryPerformanceCounter(&result);
+    return SDL_GetPerformanceCounter();
+}
+
+internal inline f32 GetSecondsElapsed(u64 start, u64 end)
+{
+    f32 result = ((f32)(end - start) / (f32)globalPerfCountFrequency);
     return result;
 }
 
-internal inline f32 Win32GetSecondsElapsed(LARGE_INTEGER start, LARGE_INTEGER end)
+internal void* LoadGLProc(const char *name)
 {
-    f32 result = ((f32)(end.QuadPart - start.QuadPart) / (f32)globalPerfCountFrequency);
-    return result;
+    void *proc = SDL_GL_GetProcAddress(name);
+    ASSERT(proc);
+    return proc;
+}
+
+internal void LoadGLFunctions(void)
+{
+    GLGenBuffers = (PFNGLGENBUFFERSPROC)LoadGLProc("glGenBuffers");
+    GLDeleteBuffers = (PFNGLDELETEBUFFERSPROC)LoadGLProc("glDeleteBuffers");
+    GLBindBuffer = (PFNGLBINDBUFFERPROC)LoadGLProc("glBindBuffer");
+    GLGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)LoadGLProc("glGenVertexArrays");
+    GLDeleteVertexArrays = (PFNGLDELETEVERTEXARRAYSPROC)LoadGLProc("glDeleteVertexArrays");
+    GLBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)LoadGLProc("glBindVertexArray");
+    GLGenerateMipmap = (PFNGLGENERATEMIPMAPPROC)LoadGLProc("glGenerateMipmap");
+}
+
+internal void CopyString(char *dest, size_t destSize, const char *src)
+{
+    if (!destSize)
+    {
+        return;
+    }
+
+    if (!src)
+    {
+        dest[0] = 0;
+        return;
+    }
+
+    strncpy(dest, src, destSize - 1);
+    dest[destSize - 1] = 0;
+}
+
+internal b32 EndsWith(const char *text, const char *suffix)
+{
+    size_t textLen = strlen(text);
+    size_t suffixLen = strlen(suffix);
+    if (textLen < suffixLen)
+    {
+        return FALSE;
+    }
+
+    return strcmp(text + textLen - suffixLen, suffix) == 0;
+}
+
+internal const char* GetFilenamePart(const char *path)
+{
+    const char *slash = strrchr(path, '/');
+    const char *backslash = strrchr(path, '\\');
+    const char *name = path;
+
+    if (slash && (!backslash || slash > backslash))
+    {
+        name = slash + 1;
+    }
+    else if (backslash)
+    {
+        name = backslash + 1;
+    }
+
+    return name;
+}
+
+internal void UpdateWindowTitle(SDL_Window *win, const char *path)
+{
+    char windowTitle[256] = "Nes emulator";
+    if (path && path[0])
+    {
+        snprintf(windowTitle, sizeof(windowTitle), "Nes emulator: %s", GetFilenamePart(path));
+    }
+
+    SDL_SetWindowTitle(win, windowTitle);
+}
+
+internal void BuildSavePath(const char *sourcePath, char *dest, size_t destSize)
+{
+    const char *extension = strrchr(sourcePath, '.');
+    size_t prefixLength = extension ? (size_t)(extension - sourcePath) : strlen(sourcePath);
+
+    if (prefixLength >= destSize)
+    {
+        prefixLength = destSize - 1;
+    }
+
+    memcpy(dest, sourcePath, prefixLength);
+    dest[prefixLength] = 0;
+    strncat(dest, ".nsave", destSize - strlen(dest) - 1);
+}
+
+internal b32 LoadFileIntoApp(SDL_Window *win, const char *path)
+{
+    if (!path || !path[0])
+    {
+        return FALSE;
+    }
+
+    if (EndsWith(path, ".nes"))
+    {
+        Cartridge cartridge = {};
+        if (!LoadNesRom((char*)path, &cartridge))
+        {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
+            return FALSE;
+        }
+
+        if (nes)
+        {
+            Destroy(nes);
+        }
+
+        nes = CreateNES(cartridge);
+        if (!nes)
+        {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Unsupported mapper", "This ROM uses a mapper that is not implemented yet.", win);
+            return FALSE;
+        }
+
+        CopyString(loadedFilePath, sizeof(loadedFilePath), path);
+        BuildSavePath(path, saveFilePath, sizeof(saveFilePath));
+        UpdateWindowTitle(win, path);
+        return TRUE;
+    }
+
+    if (EndsWith(path, ".nsave"))
+    {
+        NES *loaded = LoadNesSave((char*)path);
+        if (!loaded)
+        {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
+            return FALSE;
+        }
+
+        if (nes)
+        {
+            Destroy(nes);
+        }
+
+        nes = loaded;
+        CopyString(loadedFilePath, sizeof(loadedFilePath), path);
+        CopyString(saveFilePath, sizeof(saveFilePath), path);
+        if (nes->cartridge.path[0])
+        {
+            CopyString(loadedFilePath, sizeof(loadedFilePath), nes->cartridge.path);
+        }
+        UpdateWindowTitle(win, loadedFilePath);
+        return TRUE;
+    }
+
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Only .nes and .nsave files are supported.", win);
+    return FALSE;
 }
 
 internal inline char* DebugText(const char *fmt, ...)
@@ -202,13 +361,13 @@ internal void InitDevice(struct Device *dev)
         size_t vt = offsetof(struct nk_sdl_vertex, uv);
         size_t vc = offsetof(struct nk_sdl_vertex, col);
 
-        glGenBuffers(1, &dev->vbo);
-        glGenBuffers(1, &dev->ebo);
-        glGenVertexArrays(1, &dev->vao);
+        GLGenBuffers(1, &dev->vbo);
+        GLGenBuffers(1, &dev->ebo);
+        GLGenVertexArrays(1, &dev->vao);
 
-        glBindVertexArray(dev->vao);
-        glBindBuffer(GL_ARRAY_BUFFER, dev->vbo);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dev->ebo);
+        GLBindVertexArray(dev->vao);
+        GLBindBuffer(GL_ARRAY_BUFFER, dev->vbo);
+        GLBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dev->ebo);
 
         /*glEnableVertexAttribArray((GLuint)dev->attrib_pos);
         glEnableVertexAttribArray((GLuint)dev->attrib_uv);
@@ -220,9 +379,9 @@ internal void InitDevice(struct Device *dev)
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    GLBindBuffer(GL_ARRAY_BUFFER, 0);
+    GLBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    GLBindVertexArray(0);
 }
 
 internal struct nk_image InitTexture(GLuint tex, GLsizei width, GLsizei height)
@@ -233,7 +392,7 @@ internal struct nk_image InitTexture(GLuint tex, GLsizei width, GLsizei height)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glGenerateMipmap(GL_TEXTURE_2D);
+    GLGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return nk_image_id((s32)tex);
@@ -308,6 +467,21 @@ internal void DeleteTextures(Device *dev)
 
     glDeleteTextures(NUM_TEXTURES, textures);
     glDisable(GL_TEXTURE_2D);
+
+    if (dev->vbo)
+    {
+        GLDeleteBuffers(1, &dev->vbo);
+    }
+
+    if (dev->ebo)
+    {
+        GLDeleteBuffers(1, &dev->ebo);
+    }
+
+    if (dev->vao)
+    {
+        GLDeleteVertexArrays(1, &dev->vao);
+    }
 }
 
 internal void SDLAudioCallback(void* userdata, u8* buffer, s32 len)
@@ -349,35 +523,24 @@ internal void SDLAudioCallback(void* userdata, u8* buffer, s32 len)
     }*/
 }
 
-int CALLBACK WinMain(
-    HINSTANCE instance,
-    HINSTANCE prevInstance,
-    LPSTR     cmdLine,
-    int       cmdShow)
+int main(int argc, char **argv)
 {
     /* Platform */
     SDL_Window *win;
-    SDL_SysWMinfo wmInfo;
     SDL_GLContext glContext;
-    HWND winHwnd = NULL;
     int win_width, win_height;
     b32 running, quit = FALSE;
     f32 dt = 0;
 
-    LARGE_INTEGER initialCounter;
-    LARGE_INTEGER perfCountFrequencyResult;
+    u64 initialCounter;
 
     /* GUI */
     struct nk_context *ctx;
     struct Device device;
     SDL_GameController *controller = NULL;
 
-    initialCounter = Win32GetWallClock();
-
-    QueryPerformanceFrequency(&perfCountFrequencyResult);
-    globalPerfCountFrequency = perfCountFrequencyResult.QuadPart;
-
-    char windowTitle[256] = "Nes emulator";
+    initialCounter = GetWallClock();
+    globalPerfCountFrequency = SDL_GetPerformanceFrequency();
 
     /* SDL setup */
     SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0");
@@ -387,22 +550,12 @@ int CALLBACK WinMain(
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-    win = SDL_CreateWindow(windowTitle,
+    win = SDL_CreateWindow("Nes emulator",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
     glContext = SDL_GL_CreateContext(win);
     SDL_GetWindowSize(win, &win_width, &win_height);
-
-    glewExperimental = GL_TRUE;
-    glewInit();
-
-    // initialize info structure with SDL version info
-    SDL_VERSION(&wmInfo.version);
-
-    if (SDL_GetWindowWMInfo(win, &wmInfo))
-    {
-        winHwnd = wmInfo.info.win.window;
-    }
+    LoadGLFunctions();
 
     s32 numJoysticks = SDL_NumJoysticks();
     if (numJoysticks > 0)
@@ -421,10 +574,13 @@ int CALLBACK WinMain(
     {
         struct nk_font_atlas *atlas;
         nk_sdl_font_stash_begin(&atlas);
-        struct nk_font *future = nk_font_atlas_add_from_file(atlas, "D://Work/nes/sublime/fonts/consola.ttf", 14, 0);
+        struct nk_font *future = nk_font_atlas_add_from_file(atlas, "fonts/consola.ttf", 14, 0);
         nk_sdl_font_stash_end();
         /*nk_style_load_all_cursors(ctx, atlas->cursors);*/
-        nk_style_set_font(ctx, &future->handle);
+        if (future)
+        {
+            nk_style_set_font(ctx, &future->handle);
+        }
     }
 
     InitDevice(&device);
@@ -432,6 +588,7 @@ int CALLBACK WinMain(
 
     SDL_AudioSpec want, have;
     SDL_AudioDeviceID dev;
+    SDL_AudioStream *audioStream = NULL;
 
     SDL_memset(&want, 0, sizeof(want));
     want.freq = APU_SAMPLES_PER_SECOND;
@@ -443,18 +600,33 @@ int CALLBACK WinMain(
     dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
     if (dev)
     {
-        if (have.format != want.format) {
-            SDL_Log("We didn't get Single32 audio format.");
+        audioStream = SDL_NewAudioStream(
+            want.format, want.channels, want.freq,
+            have.format, have.channels, have.freq);
+
+        if (!audioStream)
+        {
+            SDL_Log("Failed to create SDL audio stream: %s", SDL_GetError());
         }
+
+        if (have.format != want.format || have.channels != want.channels || have.freq != want.freq)
+        {
+            SDL_Log("Audio device format changed: freq=%d channels=%d format=0x%X", have.freq, have.channels, have.format);
+        }
+
         SDL_PauseAudioDevice(dev, 0);
+    }
+    else
+    {
+        SDL_Log("Failed to open SDL audio device: %s", SDL_GetError());
     }
 
     // DEBUG: cleanup
     shl_wave_file wave_file;
     shl_wave_init( &wave_file, 48000, "nes_audio.wav", 0, 0);
 
-    LARGE_INTEGER startCounter = Win32GetWallClock();
-    dt = Win32GetSecondsElapsed(initialCounter, startCounter);
+    u64 startCounter = GetWallClock();
+    dt = GetSecondsElapsed(initialCounter, startCounter);
     running = TRUE;
 
     /*
@@ -470,6 +642,11 @@ int CALLBACK WinMain(
     // nes->cpu.pc = 0xC000;
     f32 d1 = 0, d2 = 0;
 
+    if (argc > 1)
+    {
+        LoadFileIntoApp(win, argv[1]);
+    }
+
     while (running)
     {
         /* Input */
@@ -482,6 +659,14 @@ int CALLBACK WinMain(
                 quit = TRUE;
                 break;
             }
+
+            if (evt.type == SDL_DROPFILE)
+            {
+                LoadFileIntoApp(win, evt.drop.file);
+                SDL_free(evt.drop.file);
+                continue;
+            }
+
             nk_sdl_handle_event(&evt);
         }
         nk_input_end(ctx);
@@ -491,22 +676,23 @@ int CALLBACK WinMain(
             break;
         }
 
-        LARGE_INTEGER s = Win32GetWallClock();
+        u64 s = GetWallClock();
 
         if (nes)
         {
             CPU *cpu = &nes->cpu;
             PPU *ppu = &nes->ppu;
             APU *apu = &nes->apu;
+            const Uint8 *keyboard = SDL_GetKeyboardState(NULL);
 
             SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down || coarseButtons[1]);
             SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down || coarseButtons[3]);
             SetButton(nes, 0, BUTTON_LEFT, ctx->input.keyboard.keys[NK_KEY_LEFT].down || coarseButtons[0]);
             SetButton(nes, 0, BUTTON_RIGHT, ctx->input.keyboard.keys[NK_KEY_RIGHT].down || coarseButtons[2]);
-            SetButton(nes, 0, BUTTON_SELECT, ctx->input.keyboard.keys[NK_KEY_SPACE].down || coarseButtons[4]);
+            SetButton(nes, 0, BUTTON_SELECT, keyboard[SDL_SCANCODE_SPACE] || coarseButtons[4]);
             SetButton(nes, 0, BUTTON_START, ctx->input.keyboard.keys[NK_KEY_ENTER].down || coarseButtons[5]);
-            SetButton(nes, 0, BUTTON_B, ctx->input.keyboard.keys[NK_KEY_S].down || coarseButtons[6]);
-            SetButton(nes, 0, BUTTON_A, ctx->input.keyboard.keys[NK_KEY_A].down || coarseButtons[7]);
+            SetButton(nes, 0, BUTTON_B, keyboard[SDL_SCANCODE_S] || coarseButtons[6]);
+            SetButton(nes, 0, BUTTON_A, keyboard[SDL_SCANCODE_A] || coarseButtons[7]);
 
             if (controller)
             {
@@ -554,7 +740,7 @@ int CALLBACK WinMain(
             // Frame
             // I'm targeting 60fps, so run the amount of cpu cycles for 0.0167 seconds
             //
-            // This could be calculated with the frequency of the PPU, and run based on 
+            // This could be calculated with the frequency of the PPU, and run based on
             // the amount of cycles that we want the PPU to run in 0.0167 seconds. For now
             // i'm using the CPU frequency.
             s32 cycles = 0.0167 * CPU_FREQ;
@@ -609,13 +795,41 @@ int CALLBACK WinMain(
             // DEBUG: cleanup
             shl_wave_write( &wave_file, apu->buffer, apu->bufferIndex, 1 );
 
-            SDL_QueueAudio(dev, apu->buffer, apu->bufferIndex * APU_BYTES_PER_SAMPLE);
+            if (dev)
+            {
+                s32 bytesToQueue = apu->bufferIndex * APU_BYTES_PER_SAMPLE;
+
+                if (audioStream)
+                {
+                    if (SDL_AudioStreamPut(audioStream, apu->buffer, bytesToQueue) == 0)
+                    {
+                        s32 convertedBytes = SDL_AudioStreamAvailable(audioStream);
+                        if (convertedBytes > 0)
+                        {
+                            u8 *convertedBuffer = (u8*)SDL_malloc(convertedBytes);
+                            if (convertedBuffer)
+                            {
+                                s32 readBytes = SDL_AudioStreamGet(audioStream, convertedBuffer, convertedBytes);
+                                if (readBytes > 0)
+                                {
+                                    SDL_QueueAudio(dev, convertedBuffer, readBytes);
+                                }
+                                SDL_free(convertedBuffer);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    SDL_QueueAudio(dev, apu->buffer, bytesToQueue);
+                }
+            }
         }
 
-        LARGE_INTEGER e = Win32GetWallClock();
-        d1 = Win32GetSecondsElapsed(s, e);
+        u64 e = GetWallClock();
+        d1 = GetSecondsElapsed(s, e);
 
-        s = Win32GetWallClock();
+        s = GetWallClock();
 
         /* GUI */
         nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
@@ -629,8 +843,8 @@ int CALLBACK WinMain(
 
             nk_layout_row_dynamic(ctx, 20, 2);
 
-            LARGE_INTEGER fpsCounter = Win32GetWallClock();
-            f32 fpsdt = Win32GetSecondsElapsed(initialCounter, fpsCounter);
+            u64 fpsCounter = GetWallClock();
+            f32 fpsdt = GetSecondsElapsed(initialCounter, fpsCounter);
             if (fpsdt > 1)
             {
                 initialCounter = fpsCounter;
@@ -662,98 +876,10 @@ int CALLBACK WinMain(
                 debugging = TRUE;
                 stepping = FALSE;
 
-                OPENFILENAME openFileName;
-                openFileName.lStructSize = sizeof(OPENFILENAME);
-                openFileName.hInstance = NULL;
-                openFileName.lpstrFilter = "Nes files (*.nes)\0*.nes\0Nes save files (*.nsave)\0*.nsave\0\0";
-                openFileName.lpstrCustomFilter = NULL;
-                openFileName.nMaxCustFilter = 0;
-                openFileName.nFilterIndex = 1;
-                openFileName.lpstrFile = (char*)Allocate(256);
-                openFileName.nMaxFile = 256;
-                openFileName.lpstrFileTitle = NULL;
-                openFileName.nMaxFileTitle = 0;
-                openFileName.lpstrInitialDir = NULL;
-                openFileName.lpstrTitle = NULL;
-                openFileName.Flags = 0;
-                openFileName.nFileOffset = 0;
-                openFileName.nFileExtension = 0;
-                openFileName.lpstrDefExt = "nes";
-                openFileName.lCustData = NULL;
-                openFileName.lpfnHook = NULL;
-                openFileName.lpTemplateName = NULL;
-
-                if (winHwnd)
-                {
-                    openFileName.hwndOwner = winHwnd;
-                }
-
-                if (GetOpenFileName(&openFileName))
-                {
-                    char *rom = openFileName.lpstrFile;
-
-                    s32 extlen = 0;
-                    char ext[10] = "";
-
-                    s32 len = strlen(rom);
-                    for (s32 i = len - 1; i >= 0 && rom[i] != '.'; --i, ++extlen)
-                    {
-                    }
-
-                    for (s32 i = len - 1, j = extlen - 1; i >= 0 && j >= 0 && rom[i] != '.'; --i, --j)
-                    {
-                        ext[j] = rom[i];
-                    }
-
-                    if (strcmp(ext, "nes") == 0)
-                    {
-                        Cartridge cartridge = {};
-                        if (LoadNesRom(rom, &cartridge))
-                        {
-                            if (nes)
-                            {
-                                Destroy(nes);
-                            }
-
-                            nes = CreateNES(cartridge);
-
-                            memset(windowTitle, 0, 256);
-                            strcpy(windowTitle, "Nes emulator: ");
-                            strcat(windowTitle + 13, rom);
-                            SDL_SetWindowTitle(win, windowTitle);
-                        }
-                        else
-                        {
-                            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
-                        }
-                    }
-                    else if (strcmp(ext, "nsave") == 0)
-                    {
-                        if (nes)
-                        {
-                            Destroy(nes);
-                        }
-
-                        nes = LoadNesSave(rom);
-
-                        if (nes)
-                        {
-                            memset(windowTitle, 0, 256);
-                            strcpy(windowTitle, "Nes emulator: ");
-                            strcat(windowTitle + 13, rom);
-                            SDL_SetWindowTitle(win, windowTitle);
-                        }
-                        else
-                        {
-                            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
-                        }
-                    }
-                    else
-                    {
-                        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
-                    }
-
-                }
+                SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
+                    "Open ROM",
+                    "Open a ROM by passing a file path on the command line or by dragging a .nes/.nsave file onto the window.",
+                    win);
             }
 
             if (nk_button_label(ctx, "Save"))
@@ -762,37 +888,16 @@ int CALLBACK WinMain(
                 {
                     debugging = TRUE;
                     stepping = FALSE;
-
-                    OPENFILENAME saveFileName;
-                    saveFileName.lStructSize = sizeof(OPENFILENAME);
-                    saveFileName.hInstance = NULL;
-                    saveFileName.lpstrFilter = "Nes save files (*.nsave)\0*.nsave\0\0";
-                    saveFileName.lpstrCustomFilter = NULL;
-                    saveFileName.nMaxCustFilter = 0;
-                    saveFileName.nFilterIndex = 1;
-                    saveFileName.lpstrFile = (char*)Allocate(256);
-                    saveFileName.nMaxFile = 256;
-                    saveFileName.lpstrFileTitle = NULL;
-                    saveFileName.nMaxFileTitle = 0;
-                    saveFileName.lpstrInitialDir = NULL;
-                    saveFileName.lpstrTitle = NULL;
-                    saveFileName.Flags = 0;
-                    saveFileName.nFileOffset = 0;
-                    saveFileName.nFileExtension = 0;
-                    saveFileName.lpstrDefExt = "nsave";
-                    saveFileName.lCustData = NULL;
-                    saveFileName.lpfnHook = NULL;
-                    saveFileName.lpTemplateName = NULL;
-
-                    if (winHwnd)
+                    if (saveFilePath[0])
                     {
-                        saveFileName.hwndOwner = winHwnd;
+                        Save(nes, saveFilePath);
                     }
-
-                    if (GetSaveFileName(&saveFileName))
+                    else
                     {
-                        char *file = saveFileName.lpstrFile;
-                        Save(nes, file);
+                        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
+                            "Save State",
+                            "Load a ROM first so the emulator can derive a save-state path.",
+                            win);
                     }
                 }
             }
@@ -864,7 +969,7 @@ int CALLBACK WinMain(
         {
             if (nk_begin(ctx, "CONTROLLER 0", nk_rect(310, 190, 250, 120), flags) && nes)
             {
-                s32 buttons[8] = 
+                s32 buttons[8] =
                 {
                     GetButton(nes, 0, BUTTON_LEFT),
                     GetButton(nes, 0, BUTTON_UP),
@@ -932,7 +1037,7 @@ int CALLBACK WinMain(
             nk_end(ctx);
         }
 
-        struct nk_rect screenRect = debugMode 
+        struct nk_rect screenRect = debugMode
             ? nk_rect(890, 10, 300, 300)
             : nk_rect(310, 10, 880, 780);
 
@@ -1370,7 +1475,7 @@ int CALLBACK WinMain(
 
                                 if (nk_input_is_mouse_hovering_rect(input, space))
                                 {
-                                    if (nk_tooltip_begin(ctx, 200, NK_TOOLTIP_POS_BOTTOM, 0))
+                                    if (nk_tooltip_begin(ctx, 200))
                                     {
                                         f32 mouseX = input->mouse.pos.x - space.x;
                                         f32 mouseY = input->mouse.pos.y - space.y;
@@ -1447,7 +1552,7 @@ int CALLBACK WinMain(
 
                                     if (nk_input_is_mouse_hovering_rect(input, space))
                                     {
-                                        if (nk_tooltip_begin(ctx, 200, NK_TOOLTIP_POS_UP, 150))
+                                        if (nk_tooltip_begin(ctx, 200))
                                         {
                                             nk_layout_row_static(ctx, 32, 32, 1);
 
@@ -1550,7 +1655,7 @@ int CALLBACK WinMain(
 
                                 if (nk_input_is_mouse_hovering_rect(input, space))
                                 {
-                                    if (nk_tooltip_begin(ctx, 200, NK_TOOLTIP_POS_UP, 150))
+                                    if (nk_tooltip_begin(ctx, 200))
                                     {
                                         nk_layout_row_static(ctx, 64, 32, 1);
 
@@ -1654,7 +1759,7 @@ int CALLBACK WinMain(
 
                                 if (nk_input_is_mouse_hovering_rect(input, space))
                                 {
-                                    if (nk_tooltip_begin(ctx, 200, NK_TOOLTIP_POS_UP, 150))
+                                    if (nk_tooltip_begin(ctx, 200))
                                     {
                                         nk_layout_row_static(ctx, 64, 32, 1);
 
@@ -1719,7 +1824,7 @@ int CALLBACK WinMain(
                                 u16 attributeIndex = attributeY * 8 + attributeX;
                                 u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
 
-                                // lookupValue is a number between 0 and 15, 
+                                // lookupValue is a number between 0 and 15,
                                 // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
                                 // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
                                 // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
@@ -1803,7 +1908,7 @@ int CALLBACK WinMain(
                                 u16 attributeIndex = attributeY * 8 + attributeX;
                                 u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
 
-                                // lookupValue is a number between 0 and 15, 
+                                // lookupValue is a number between 0 and 15,
                                 // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
                                 // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
                                 // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
@@ -2044,7 +2149,7 @@ int CALLBACK WinMain(
                     nk_label(ctx, DebugText("COUNTER VALUE:%02X", triangle->linearValue), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("TABLE INDEX:%02X", triangle->timerValue), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("ENABLED:%02X", triangle->enabled), NK_TEXT_LEFT);
-                    
+
                     nk_label(ctx, DebugText("COUNTER RELOAD:%02X", triangle->linearReload), NK_TEXT_LEFT);
 
                     local f32 rectHeight = 200.0f;
@@ -2096,7 +2201,7 @@ int CALLBACK WinMain(
                     nk_label(ctx, DebugText("ENVELOPE PERIOD:%02X", noise->envelopePeriod), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("TIMER VALUE:%02X", noise->timerValue), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("ENABLED:%02X", noise->enabled), NK_TEXT_LEFT);
-                    
+
                     nk_label(ctx, DebugText("ENVELOPE VOLUME:%02X", noise->envelopeVolume), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", noise->constantVolume), NK_TEXT_LEFT);
 
@@ -2230,19 +2335,19 @@ int CALLBACK WinMain(
             SDL_GL_SwapWindow(win);
         }
 
-        e = Win32GetWallClock();
-        d2 = Win32GetSecondsElapsed(s, e);
+        e = GetWallClock();
+        d2 = GetSecondsElapsed(s, e);
 
-        LARGE_INTEGER endCounter = Win32GetWallClock();
-        f32 secondsElapsed = Win32GetSecondsElapsed(startCounter, endCounter);
+        u64 endCounter = GetWallClock();
+        f32 secondsElapsed = GetSecondsElapsed(startCounter, endCounter);
 
         while (secondsElapsed < 0.0167)
         {
-            endCounter = Win32GetWallClock();
-            secondsElapsed = Win32GetSecondsElapsed(startCounter, endCounter);
+            endCounter = GetWallClock();
+            secondsElapsed = GetSecondsElapsed(startCounter, endCounter);
         }
 
-        dt = Win32GetSecondsElapsed(startCounter, endCounter);
+        dt = GetSecondsElapsed(startCounter, endCounter);
         startCounter = endCounter;
     }
 
@@ -2252,6 +2357,11 @@ int CALLBACK WinMain(
     if (dev)
     {
         SDL_CloseAudioDevice(dev);
+    }
+
+    if (audioStream)
+    {
+        SDL_FreeAudioStream(audioStream);
     }
 
     if (controller)

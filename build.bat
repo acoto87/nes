@@ -1,13 +1,19 @@
 @echo off
+setlocal
 
-SET LibsDir=D:\Work\libs\
-SET CommonCompilerFlags=-Od -MTd -nologo -fp:fast -fp:except- -Gm- -GR- -EHa- -Zo -Oi -FC -Z7 -I %LibsDir% /w
-SET CommonLinkerFlags= -incremental:no -opt:ref -out:nes.exe -pdb:nes.pdb -libpath:%LibsDir%glew32\lib -libpath:%LibsDir%SDL2-2.0.5\lib\x64 user32.lib gdi32.lib opengl32.lib comdlg32.lib glew32.lib SDL2.lib
+set "ROOT=%~dp0"
+set "BUILD_DIR=%ROOT%build"
+set "SDL_ROOT=%ROOT%external\SDL2\x86_64-w64-mingw32"
+set "SDL_INCLUDE=%SDL_ROOT%\include"
+set "SDL_LIB=%SDL_ROOT%\lib"
+set "SDL_BIN=%SDL_ROOT%\bin"
 
-IF NOT EXIST build mkdir build
-pushd build
+if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 
-REM 64-bit build
-REM Optimization switches /wO2
-cl %CommonCompilerFlags% ..\src\sdl_opengl2.cpp /link %CommonLinkerFlags%
-popd
+g++ -std=gnu++17 -O0 -g -Wall -Wno-narrowing -I"%SDL_INCLUDE%" "%ROOT%src\sdl_opengl2.cpp" -L"%SDL_LIB%" -lSDL2 -lopengl32 -o "%BUILD_DIR%\nes.exe"
+if errorlevel 1 exit /b %errorlevel%
+
+copy /Y "%SDL_BIN%\SDL2.dll" "%BUILD_DIR%\SDL2.dll" >nul
+if errorlevel 1 exit /b %errorlevel%
+
+echo Built "%BUILD_DIR%\nes.exe"

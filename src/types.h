@@ -3,6 +3,7 @@
 #define TYPES_H
 
 #define MAX_TITLE_LENGTH 128
+#define MAX_PATH_LENGTH 1024
 #define TRAINER_SIZE 512
 
 #define PPU_SCREEN_WIDTH 256
@@ -35,7 +36,7 @@ struct CartridgeHeader
     // Size of CHR ROM in 8 KB units (Value 0 means the board uses CHR RAM). Number of 8kB VROM banks.
     u8 chrROMSize;
 
-    // Flags 6        
+    // Flags 6
     // bit 0        1 for vertical mirroring, 0 for horizontal mirroring.
     // bit 1        1 for battery - backed RAM at $6000 - $7FFF.
     // bit 2        1 for a 512 - byte trainer at $7000 - $71FF.
@@ -50,7 +51,7 @@ struct CartridgeHeader
     u8 flags7;
 
     // Size of PRG RAM in 8 KB units (Value 0 infers 8 KB for compatibility; see PRG RAM circuit)
-    // Number of 8kB RAM banks. 
+    // Number of 8kB RAM banks.
     // For compatibility with the previous versions of the.NES format, assume 1x8kB RAM page when this byte is zero.
     u8 prgRAMSize;
 
@@ -70,6 +71,7 @@ struct Cartridge
     b32 hasBatteryPack;
     u8 mapper;
     u8 prgRAMSize;
+    char path[MAX_PATH_LENGTH];
 
     u8 title[MAX_TITLE_LENGTH];
 
@@ -87,7 +89,7 @@ struct Cartridge
 
 enum CPUAddressingMode
 {
-    AM_NON = 0,     // None            
+    AM_NON = 0,     // None
 
     AM_IMM = 1,     // Immediate                #$00
 
@@ -103,7 +105,7 @@ enum CPUAddressingMode
     AM_IZX = 9,     // Pre-Indexed-Indirect     ($00, X)
     AM_IZY = 10,    // Post-Indexed-Indirect    ($00), Y
 
-    AM_IMP = 11,     // Implied                  
+    AM_IMP = 11,     // Implied
     AM_ACC = 12,     // Accumulator
 
     AM_REL = 13     // Relative                 $0000
@@ -156,40 +158,40 @@ enum CPUInstructionSet
     CPU_INY, //  Increment Index Y by One
 
     CPU_JMP, //  Jump to New Location
-    CPU_JSR, //  Jump to New Location Saving Return Address 
+    CPU_JSR, //  Jump to New Location Saving Return Address
 
-    CPU_LDA, //  Load Accumulator with Memory 
-    CPU_LDX, //  Load Index X with Memory 
-    CPU_LDY, //  Load Index Y with Memory 
-    CPU_LSR, //  Shift Right One Bit(Memory or Accumulator) 
+    CPU_LDA, //  Load Accumulator with Memory
+    CPU_LDX, //  Load Index X with Memory
+    CPU_LDY, //  Load Index Y with Memory
+    CPU_LSR, //  Shift Right One Bit(Memory or Accumulator)
 
-    CPU_NOP, //  No Operation 
+    CPU_NOP, //  No Operation
 
-    CPU_ORA, //  "OR" Memory with Accumulator 
+    CPU_ORA, //  "OR" Memory with Accumulator
 
-    CPU_PHA, //  Push Accumulator on Stack 
-    CPU_PHP, //  Push Processor Status on Stack 
-    CPU_PLA, //  Pull Accumulator from Stack 
-    CPU_PLP, //  Pull Processor Status from Stack 
+    CPU_PHA, //  Push Accumulator on Stack
+    CPU_PHP, //  Push Processor Status on Stack
+    CPU_PLA, //  Pull Accumulator from Stack
+    CPU_PLP, //  Pull Processor Status from Stack
 
-    CPU_ROL, //  Rotate One Bit Left(Memory or Accumulator) 
-    CPU_ROR, //  Rotate One Bit Right(Memory or Accumulator) 
-    CPU_RTI, //  Return from Interrupt 
-    CPU_RTS, //  Return from Subroutine 
+    CPU_ROL, //  Rotate One Bit Left(Memory or Accumulator)
+    CPU_ROR, //  Rotate One Bit Right(Memory or Accumulator)
+    CPU_RTI, //  Return from Interrupt
+    CPU_RTS, //  Return from Subroutine
 
-    CPU_SBC, //  Subtract Memory from Accumulator with Borrow 
-    CPU_SEC, //  Set Carry Flag 
-    CPU_SED, //  Set Decimal Mode 
-    CPU_SEI, //  Set Interrupt Disable Status 
-    CPU_STA, //  Store Accumulator in Memory 
-    CPU_STX, //  Store Index X in Memory 
-    CPU_STY, //  Store Index Y in Memory 
+    CPU_SBC, //  Subtract Memory from Accumulator with Borrow
+    CPU_SEC, //  Set Carry Flag
+    CPU_SED, //  Set Decimal Mode
+    CPU_SEI, //  Set Interrupt Disable Status
+    CPU_STA, //  Store Accumulator in Memory
+    CPU_STX, //  Store Index X in Memory
+    CPU_STY, //  Store Index Y in Memory
 
-    CPU_TAX, //  Transfer Accumulator to Index X 
-    CPU_TAY, //  Transfer Accumulator to Index Y 
-    CPU_TSX, //  Transfer Stack Pointer to Index X 
-    CPU_TXA, //  Transfer Index X to Accumulator 
-    CPU_TXS, //  Transfer Index X to Stack Pointer 
+    CPU_TAX, //  Transfer Accumulator to Index X
+    CPU_TAY, //  Transfer Accumulator to Index Y
+    CPU_TSX, //  Transfer Stack Pointer to Index X
+    CPU_TXA, //  Transfer Index X to Accumulator
+    CPU_TXS, //  Transfer Index X to Stack Pointer
     CPU_TYA, //  Transfer Index Y to Accumulator
 
     CPU_SLO,
@@ -250,18 +252,18 @@ struct CPU
 
 struct PPU
 {
-    u32 cycle;                  // PPU current scanline cycles count, 
-                                // 341 total, 
-                                // (0) idle, 
-                                // (1-256) fetch background, 
-                                // (257-320) fetch sprites, 
-                                // (321-336) pre-fetch first two tiles of next scanline, 
+    u32 cycle;                  // PPU current scanline cycles count,
+                                // 341 total,
+                                // (0) idle,
+                                // (1-256) fetch background,
+                                // (257-320) fetch sprites,
+                                // (321-336) pre-fetch first two tiles of next scanline,
                                 // (337-340) dummy fetch
-    s32 scanline;               // PPU current scanline, 
-                                // 262 total, 
-                                // (-1, 261) pre-render, 
-                                // (0-239) visible, 
-                                // (240) post, 
+    s32 scanline;               // PPU current scanline,
+                                // 262 total,
+                                // (-1, 261) pre-render,
+                                // (0-239) visible,
+                                // (240) post,
                                 // (241-260) vblank
     u64 frameCount;             // PPU frame counter
     u64 totalCycles;            // PPU total cycles count
@@ -304,33 +306,33 @@ struct APU
     struct Pulse
     {
         b32 globalEnabled;
-        
+
         b32 enabled;
         u8 channel;
-        
+
         b32 lengthEnabled;
         u8 lengthValue;
-        
+
         u16 timerPeriod;
         u16 timerValue;
-        
+
         u8 dutyMode;
         u8 dutyValue;
-        
+
         b32 sweepReload;
         b32 sweepEnabled;
         b32 sweepNegate;
         u8 sweepShift;
         u8 sweepPeriod;
         u8 sweepValue;
-        
+
         b32 envelopeEnabled;
         b32 envelopeLoop;
         b32 envelopeStart;
         u8 envelopePeriod;
         u8 envelopeValue;
         u8 envelopeVolume;
-        
+
         u8 constantVolume;
 
         s32 bufferIndex;
@@ -418,7 +420,7 @@ struct APU
     u8 frameMode;
     u8 frameValue;
     s32 frameCounter;
-    
+
     s32 sampleCounter;
 
     b32 inhibitIRQ;

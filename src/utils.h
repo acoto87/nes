@@ -2,6 +2,10 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
 
 #define KILOBYTES(x) ((x) * 1024)
@@ -54,8 +58,6 @@ typedef u64 b64;
 #define TRUE  1
 #define FALSE 0
 
-#define NULL 0
-
 typedef size_t size;
 
 typedef struct Color
@@ -76,12 +78,12 @@ typedef struct Color
 
 inline void* Allocate(size size)
 {
-    return VirtualAlloc(0, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    return malloc(size);
 }
 
 inline void Free(void *address)
 {
-    VirtualFree(address, 0, MEM_RELEASE);
+    free(address);
 }
 
 struct LoadedFile

@@ -7,6 +7,7 @@
 #include "mapper1.h"
 #include "mapper2.h"
 #include "mapper3.h"
+#include "mapper66.h"
 
 #include "cpu.cpp"
 #include "ppu.cpp"
@@ -104,6 +105,8 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
     cartridge->hasBatteryPack = HAS_FLAG(header.flags6, BATTERYPACKED_MASK);
     cartridge->prgRAMSize = header.prgRAMSize;
     cartridge->mapper = ((header.flags6 & 0xF0) >> 4) | (header.flags7 & 0xF0);
+    memset(cartridge->path, 0, sizeof(cartridge->path));
+    strncpy(cartridge->path, filePath, sizeof(cartridge->path) - 1);
 
     cartridge->prgBanks = header.prgROMSize;
     if (cartridge->prgBanks > 0)
@@ -166,9 +169,19 @@ internal void CreateMapper(NES *nes)
             break;
         }
 
+        case 66:
+        {
+            nes->mapperInit = Mapper66Init;
+            nes->mapperReadU8 = Mapper66ReadU8;
+            nes->mapperWriteU8 = Mapper66WriteU8;
+            break;
+        }
+
         default:
         {
-            ASSERT(FALSE);
+            nes->mapperInit = NULL;
+            nes->mapperReadU8 = NULL;
+            nes->mapperWriteU8 = NULL;
             break;
         }
     }
@@ -177,8 +190,13 @@ internal void CreateMapper(NES *nes)
 void InitMapper(NES *nes)
 {
     CreateMapper(nes);
-    nes->mapperInit(nes);
+    if (nes->mapperInit)
+    {
+        nes->mapperInit(nes);
+    }
 }
+
+void Destroy(NES *nes);
 
 NES* CreateNES(Cartridge cartridge)
 {
@@ -186,6 +204,7 @@ NES* CreateNES(Cartridge cartridge)
 
     if (nes)
     {
+        *nes = {};
         nes->cartridge = cartridge;
 
         InitCPU(nes);
@@ -195,6 +214,12 @@ NES* CreateNES(Cartridge cartridge)
         InitController(nes, 0);
         InitController(nes, 1);
         InitMapper(nes);
+
+        if (!nes->mapperInit)
+        {
+            Destroy(nes);
+            return NULL;
+        }
 
         if (cartridge.hasBatteryPack)
         {
@@ -236,16 +261,6 @@ void Destroy(NES *nes)
         Free(nes->cartridge.prg);
     }
 
-    if (nes->cartridge.title)
-    {
-        Free(nes->cartridge.title);
-    }
-
-    if (nes->cartridge.trainer)
-    {
-        Free(nes->cartridge.trainer);
-    }
-
     Free(nes);
 }
 
@@ -259,6 +274,10 @@ internal inline void SaveMemory(Memory *memory, FILE *file)
 void Save(NES *nes, char *filePath)
 {
     FILE *file = fopen(filePath, "wb");
+    if (!file)
+    {
+        return;
+    }
 
     // Write ram data
     SaveMemory(&nes->cpuMemory, file);
@@ -277,6 +296,7 @@ void Save(NES *nes, char *filePath)
     fwrite(&cartridge->hasBatteryPack, sizeof(b32), 1, file);
     fwrite(&cartridge->mapper, sizeof(u8), 1, file);
     fwrite(&cartridge->prgRAMSize, sizeof(u8), 1, file);
+    fwrite(cartridge->path, sizeof(char), sizeof(cartridge->path), file);
 
     fwrite(cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
 
@@ -349,8 +369,13 @@ internal inline void ReadMemory(Memory *memory, FILE *file)
 NES* LoadNesSave(char *filePath)
 {
     FILE *file = fopen(filePath, "rb");
+    if (!file)
+    {
+        return NULL;
+    }
 
     NES* nes = (NES*)Allocate(sizeof(NES));
+    *nes = {};
 
     // Read ram data
     ReadMemory(&nes->cpuMemory, file);
@@ -369,6 +394,7 @@ NES* LoadNesSave(char *filePath)
     fread(&cartridge->hasBatteryPack, sizeof(b32), 1, file);
     fread(&cartridge->mapper, sizeof(u8), 1, file);
     fread(&cartridge->prgRAMSize, sizeof(u8), 1, file);
+    fread(cartridge->path, sizeof(char), sizeof(cartridge->path), file);
 
     fread(cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
 
