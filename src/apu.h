@@ -1,4 +1,5 @@
-#pragma once
+#ifndef APU_H
+#define APU_H
 
 #include "types.h"
 
@@ -259,3 +260,5 @@ static inline void StepAPUCycles(NES *nes, s32 cycles)
         StepAPU(nes);
     }
 }
+
+#endif // APU_H

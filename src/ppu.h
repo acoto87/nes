@@ -1,4 +1,3 @@
-#pragma once
 #ifndef PPU_H
 #define PPU_H
 
@@ -16,13 +15,13 @@
 */
 
 // PPU Control Register
-#define NAMETABLE_ADDR_FLAG 0           // Name Table Address 
+#define NAMETABLE_ADDR_FLAG 0           // Name Table Address
                                         // 0 = 0x2000, 1 = 0x2400, 2 = 0x2800, 3 = 0x2C00)
 #define NAMETABLE_Y_SCROLL_FLAG 0       // bit 0 = Y scroll name table selection
 #define NAMETABLE_X_SCROLL_FLAG 1       // bit 1 = X scroll name table selection
 
-#define VERTICAL_WRITE_FLAG 2           // Vertical Write 
-                                        // 0 = PPU memory address increments by 1 
+#define VERTICAL_WRITE_FLAG 2           // Vertical Write
+                                        // 0 = PPU memory address increments by 1
                                         // 1 = PPU memory address increments by 32
 
 #define SPRITE_ADDR_FLAG 3              // Sprite Pattern Table Address
@@ -34,19 +33,19 @@
 #define SPRITE_SIZE_FLAG 5              // Sprite Size
                                         // 1 = 8x16, 0 = 8x8.
 
-#define VBLANK_FLAG 7                   // VBlank Enable, 
+#define VBLANK_FLAG 7                   // VBlank Enable,
                                         // 1 = generate interrupts on VBlank, 0 = no generate interrups on VBlank
 
 // PPU Mask Register
 #define COLOR_FLAG 0                    // Indicates whether the system is in colour.
-                                        // 0 = normal color, 1 = monochrome mode (all palette entries AND with 0x30, 
+                                        // 0 = normal color, 1 = monochrome mode (all palette entries AND with 0x30,
                                         // effectively producing a monochrome display; note that colour emphasis STILL works when this is on)
 
 #define BACKGROUND_CLIP_MASK_FLAG 1     // Background Mask
                                         // 0 = don't show left 8 columns of the screen.
 
 #define SPRITE_CLIP_MASK_FLAG 2         // Sprite Mask
-                                        // 0 = don't show sprites in left 8 columns. 
+                                        // 0 = don't show sprites in left 8 columns.
 
 #define BACKGROUND_ENABLED_FLAG 3       // Screen Enable
                                         // 1 = show background, 0 = blank screen.
@@ -55,29 +54,29 @@
                                         // 1 = show sprites, 0 = hide sprites.
 
 #define BACKGROUND_FLAG 5               // Background Color
-                                        // 0 = black, 1 = blue, 2 = green, 4 = red. 
+                                        // 0 = black, 1 = blue, 2 = green, 4 = red.
                                         // Do not use any other numbers as you may damage PPU hardware.
 
 // PPU Status Register
 #define IGNORE_VBLANK_FLAG 4            // If set, indicates that writes to VRAM should be ignored.
 
 #define SCANLINE_COUNT_FLAG 5           // Scanline sprite count, if set, indicates more than 8 sprites on the current scanline.
-                                        // The PPU can handle only eight sprites on one scanline 
-                                        // and sets this bit if it starts dropping sprites. 
-                                        // Normally, this triggers when there are 9 sprites on a scanline, 
+                                        // The PPU can handle only eight sprites on one scanline
+                                        // and sets this bit if it starts dropping sprites.
+                                        // Normally, this triggers when there are 9 sprites on a scanline,
                                         // but the actual behavior is significantly more complicated
 
 #define HIT_FLAG 6                      // Sprite 0 hit flag, set when a non-transparent pixel of sprite 0 overlaps a non - transparent background pixel.
 
-#define VBLANK_FLAG 7                   // Indicates whether V-Blank is occurring. 
+#define VBLANK_FLAG 7                   // Indicates whether V-Blank is occurring.
 
 // The NES PPU operates at a speed of 21.477272 MHz / 4 = 5369318Hz.
 #define PPU_FREQ 5369318
 
 #define PPU_RAM_SIZE KILOBYTES(64)
 
-#define PPU_PATTERN_TABLE_0_OFFSET 0x0000 
-#define PPU_PATTERN_TABLE_1_OFFSET 0x1000 
+#define PPU_PATTERN_TABLE_0_OFFSET 0x0000
+#define PPU_PATTERN_TABLE_1_OFFSET 0x1000
 #define PPU_PATTERN_TABLE_SIZE 0x1000
 
 #define PPU_CYCLES_PER_SCANLINE 341
@@ -95,7 +94,7 @@
 #define PPU_HORIZONTAL_PIXELS_PER_TILE 8
 #define PPU_VERTICAL_PIXELS_PER_TILE 8
 
-#define PPU_PATTERN_BYTES_PER_TILE 16 
+#define PPU_PATTERN_BYTES_PER_TILE 16
 
 /* The palette for the background runs from VRAM $3F00 to $3F0F;
 
@@ -112,17 +111,17 @@ $3F0D-$3F0F  Background palette 3
 Addresses $3F04/$3F08/$3F0C can contain unique data,  though these values are not used by the PPU when rendering. */
 
 #define PPU_BACKGROUND_PALETTE_FIRST_ADDRESS 0x3F00
-#define PPU_BACKGROUND_PALETTE_LAST_ADDRESS 0x3F0F 
-#define PPU_BACKGROUND_PALETTE_TOTAL_SIZE (PPU_BACKGROUND_PALETTE_LAST_ADDRESS - PPU_BACKGROUND_PALETTE_FIRST_ADDRESS + 1) 
+#define PPU_BACKGROUND_PALETTE_LAST_ADDRESS 0x3F0F
+#define PPU_BACKGROUND_PALETTE_TOTAL_SIZE (PPU_BACKGROUND_PALETTE_LAST_ADDRESS - PPU_BACKGROUND_PALETTE_FIRST_ADDRESS + 1)
 
 #define PPU_BACKGROUND_PALETTE_0_FIRST_ADDRESS 0x3F00
-#define PPU_BACKGROUND_PALETTE_0_LAST_ADDRESS  0x3F03 
+#define PPU_BACKGROUND_PALETTE_0_LAST_ADDRESS  0x3F03
 
 #define PPU_BACKGROUND_PALETTE_1_FIRST_ADDRESS 0x3F04
-#define PPU_BACKGROUND_PALETTE_1_LAST_ADDRESS  0x3F07 
+#define PPU_BACKGROUND_PALETTE_1_LAST_ADDRESS  0x3F07
 
 #define PPU_BACKGROUND_PALETTE_2_FIRST_ADDRESS 0x3F08
-#define PPU_BACKGROUND_PALETTE_2_LAST_ADDRESS  0x3F0B 
+#define PPU_BACKGROUND_PALETTE_2_LAST_ADDRESS  0x3F0B
 
 #define PPU_BACKGROUND_PALETTE_3_FIRST_ADDRESS 0x3F0C
 #define PPU_BACKGROUND_PALETTE_3_LAST_ADDRESS  0x3F0F
@@ -182,9 +181,9 @@ $3F1D-$3F1F  Sprite palette 3
 #define PPU_ATTRIBUTE_BYTES_PER_ROW 8
 #define PPU_ATTRIBUTE_BYTES_PER_COLUMN 8
 
-#define PPU_NAMETABLE_BYTES_BEFORE_ATTRIBUTE_TABLE (PPU_BACKGROUND_TILES_PER_ROW * PPU_BACKGROUND_TILES_PER_COLUMN) 
+#define PPU_NAMETABLE_BYTES_BEFORE_ATTRIBUTE_TABLE (PPU_BACKGROUND_TILES_PER_ROW * PPU_BACKGROUND_TILES_PER_COLUMN)
 
-#define PPU_NUM_SYSTEM_COLOURS 64 
+#define PPU_NUM_SYSTEM_COLOURS 64
 
 #define GetPixelBit(row, x) (((row) >> (7 - (x))) & 0x1)
 #define GetPixelLowBits(row1, row2, x) (GetPixelBit(row2, x) << 0x1) | GetPixelBit(row1, x)
@@ -193,7 +192,7 @@ $3F1D-$3F1F  Sprite palette 3
 // this is a forward reference to a function in cpu.h, so WriteDMA could compile.
 u8 ReadCPUU8(NES *nes, u16 address);
 
-// palette adapted from http://nesdev.parodius.com/NESTechFAQ.htm 
+// palette adapted from http://nesdev.parodius.com/NESTechFAQ.htm
 extern Color systemPalette[PPU_NUM_SYSTEM_COLOURS];
 extern u8 attributeTableLookup[PPU_VERTICAL_TILES_PER_ATTRIBUTE_BYTE][PPU_HORIZONTAL_TILES_PER_ATTRIBUTE_BYTE];
 
@@ -223,7 +222,7 @@ static inline u8 ReadPPUU8(NES *nes, u16 address)
 
         if (ISBETWEEN(address, 0x3F10, 0x3F20))
         {
-            // setup the background mirrors for the first byte in each sub palette of the sprite palette 
+            // setup the background mirrors for the first byte in each sub palette of the sprite palette
             switch (address)
             {
                 case 0x3F10:
@@ -334,7 +333,7 @@ static inline void WritePPUU8(NES *nes, u16 address, u8 value)
 
         if (ISBETWEEN(address, 0x3F10, 0x3F20))
         {
-            // setup the background mirrors for the first byte in each sub palette of the sprite palette 
+            // setup the background mirrors for the first byte in each sub palette of the sprite palette
             switch (address)
             {
                 case 0x3F10:
@@ -409,8 +408,8 @@ static inline u8 ReadPPUStatus(NES *nes)
     ppu->status &= 0x7F;
     ppu->w = 0;
 
-    // Caution: Reading PPUSTATUS at the exact start of vertical blank will return 0 in bit 7 but clear the latch anyway, 
-    // causing the program to miss frames. 
+    // Caution: Reading PPUSTATUS at the exact start of vertical blank will return 0 in bit 7 but clear the latch anyway,
+    // causing the program to miss frames.
     if (ppu->scanline == 241)
     {
         if (ppu->cycle == 0)
@@ -595,7 +594,7 @@ static inline void WritePPUDMA(NES *nes, u8 value)
         ppu->oamAddress++;
     }
 
-    // This emulate the actual work of the CPU 
+    // This emulate the actual work of the CPU
     // transferring the bytes to the PPU
     cpu->waitCycles = 513;
     if (cpu->cycles & 0x01)
@@ -711,5 +710,4 @@ static inline void StepPPUCycles(NES *nes, s32 cycles)
     }
 }
 
-#endif // !PPU_H
-
+#endif // PPU_H

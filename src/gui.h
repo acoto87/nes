@@ -1,4 +1,3 @@
-#pragma once
 #ifndef GUI_H
 #define GUI_H
 
@@ -8,5 +7,4 @@ void InitGUI(NES *nes);
 void ResetGUI(NES *nes);
 void SetGUIPixel(GUI *gui, u32 x, u32 y, Color color);
 
-#endif
-
+#endif // GUI_H

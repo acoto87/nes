@@ -1,4 +1,3 @@
-#pragma once
 #ifndef MEMORY_H
 #define MEMORY_H
 
@@ -64,5 +63,3 @@ static inline void WriteU16(Memory *memory, u16 address, u16 value)
 }
 
 #endif // !MEMORY_H
-
-

@@ -1,4 +1,3 @@
-#pragma once
 #ifndef CPU_H
 #define CPU_H
 
@@ -12,9 +11,9 @@
 
 #define CPU_RAM_TOTAL_SIZE KILOBYTES(64)
 
-#define CPU_RESET_ADDRESS 0xFFFC 
-#define CPU_IRQ_ADDRESS 0xFFFE 
-#define CPU_NMI_ADDRESS 0xFFFA 
+#define CPU_RESET_ADDRESS 0xFFFC
+#define CPU_IRQ_ADDRESS 0xFFFE
+#define CPU_NMI_ADDRESS 0xFFFA
 
 #define CPU_STATUS_INITIAL_VALUE 0x34 // or 0x24
 #define CPU_STACK_PTR_INITIAL_VALUE 0xFF
@@ -39,11 +38,11 @@
 #define CPU_PPU_MASK_REGISTER_ADDRESS 0x2001
 #define CPU_PPU_STATUS_REGISTER_ADDRESS 0x2002
 
-// internal object attribute memory index pointer (64 attributes, 32 bits // each, byte granular access). 
-// stored value post-increments on access to port 4. 
+// internal object attribute memory index pointer (64 attributes, 32 bits // each, byte granular access).
+// stored value post-increments on access to port 4.
 #define CPU_PPU_SPRITE_ADDRESS_REGISTER_ADDRESS 0x2003
 
-// returns object attribute memory location indexed by port 3, then increments port 3. 
+// returns object attribute memory location indexed by port 3, then increments port 3.
 #define CPU_PPU_SPRITE_DATA_REGISTER_ADDRESS 0x2004
 
 // scroll offset port
@@ -182,4 +181,4 @@ static inline void StepCPUCycles(NES *nes, s32 cycles)
     StepAPUCycles(nes, cycles);
 }
 
-#endif
+#endif // CPU_H

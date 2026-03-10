@@ -1,8 +1,5 @@
 #include <string.h>
-
 #include "apu.h"
-
-#pragma region Pulse
 
 internal void StepPulseEvenlope(APUPulse *pulse)
 {
@@ -138,10 +135,6 @@ internal u8 GetPulseOutput(APUPulse *pulse)
     return pulse->constantVolume;
 }
 
-#pragma endregion
-
-#pragma region Triangle
-
 internal void StepTriangleTimer(APUTriangle *triangle)
 {
     if (!triangle->timerValue)
@@ -198,10 +191,6 @@ internal u8 GetTriangleOutput(APUTriangle *triangle)
 
     return triangleTable[triangle->tableIndex];
 }
-
-#pragma endregion
-
-#pragma region Noise
 
 internal void StepNoiseEnvelope(APUNoise *noise)
 {
@@ -285,10 +274,6 @@ internal u8 GetNoiseOutput(APUNoise *noise)
     return noise->constantVolume;
 }
 
-#pragma endregion
-
-#pragma region DMC
-
 internal void StepDMCReader(NES *nes, APUDMC *dmc)
 {
     if (dmc->currentLength > 0 && dmc->bitCount == 0)
@@ -339,7 +324,7 @@ internal void StepDMCShifter(APUDMC *dmc)
             }
         }
 
-        dmc->shiftRegister >> 1; // BUG: Is this a bug? Should it be dmc->shiftRegister >>= 1; ?
+        dmc->shiftRegister >> 1; // NOTE: Is this a bug? Should it be dmc->shiftRegister >>= 1; ?
         dmc->bitCount--;
     }
 }
@@ -366,8 +351,6 @@ internal u8 GetDMCOutput(APUDMC *dmc)
 {
     return dmc->value;
 }
-
-#pragma endregion
 
 internal void StepAPUEnvelope(APU *apu)
 {

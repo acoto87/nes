@@ -444,7 +444,6 @@ void StepPPU(NES *nes)
         }
         else
         {
-            // It's suppose to never reach here
             ASSERT(FALSE);
         }
     }
@@ -495,6 +494,7 @@ void StepPPU(NES *nes)
             ppu->spriteCount = 0;
         }
 
+        // NOTE: Review this part to see if it is necessary to respect the timing of the PPU cycles for the sprite evaluation process, since it is possible that some games rely on this behavior. For now, I'll just do the whole process in one cycle.
         //if (ppu->cycle >= 1 && ppu->cycle <= 64)
         //{
         //    // Cycles 1 - 64: Secondary OAM(32 - byte buffer for current sprites on scanline) is initialized to $FF -
@@ -606,7 +606,6 @@ void StepPPU(NES *nes)
         //}
         //else
         //{
-        //    // no deberia llegar aqui
         //    ASSERT(FALSE);
         //}
     }

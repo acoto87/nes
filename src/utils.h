@@ -1,4 +1,3 @@
-#pragma once
 #ifndef UTILS_H
 #define UTILS_H
 
@@ -127,4 +126,4 @@ struct LoadedBitmap
     Color *pixels;
 };
 
-#endif
+#endif // UTILS_H

@@ -1,4 +1,3 @@
-#pragma once
 #ifndef TYPES_H
 #define TYPES_H
 
@@ -503,5 +502,4 @@ struct CPUStep
     CPUInstruction *instruction;
 };
 
-#endif // !TYPES_H
-
+#endif // TYPES_H

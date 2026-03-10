@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CONTROLLER_H
+#define CONTROLLER_H
 
 #include "types.h"
 
@@ -16,7 +17,7 @@ typedef enum Buttons
 
 static inline b32 GetButton(NES *nes, s32 index, Buttons button)
 {
-    Controller *controller = &nes->controllers[index];   
+    Controller *controller = &nes->controllers[index];
 
     u32 state = controller->state;
     b32 isDown = state & (1 << button);
@@ -75,3 +76,5 @@ static inline void WriteControllerU8(NES *nes, s32 index, u8 value)
 
 void InitController(NES *nes, s32 index);
 void ResetController(NES *nes, s32 index);
+
+#endif // CONTROLLER_H

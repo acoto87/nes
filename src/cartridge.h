@@ -1,4 +1,3 @@
-#pragma once
 #ifndef CARTRIDGE_H
 #define CARTRIDGE_H
 
@@ -16,4 +15,3 @@
 #define NTSC_MASK BIT0_MASK
 
 #endif // !CARTRIDGE_H
-
