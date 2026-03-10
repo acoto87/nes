@@ -611,6 +611,392 @@ internal void RunEmulatorFrame(struct nk_context *ctx, SDL_GameController *contr
     QueueAudioBuffer(apu, dev, audioStream);
 }
 
+internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window *win, Device *device, f32 dt, f32 d1, f32 d2, u64 *initialCounter)
+{
+    if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 290, 190), flags))
+    {
+        nk_layout_row_dynamic(ctx, 20, 2);
+
+        u64 fpsCounter = SDL_GetPerformanceCounter();
+        f32 fpsdt = GetSecondsElapsed(*initialCounter, fpsCounter);
+        if (fpsdt > 1)
+        {
+            *initialCounter = fpsCounter;
+            app.ui.fps = app.ui.fpsCount;
+            app.ui.fpsCount = 0;
+        }
+
+        ++app.ui.fpsCount;
+
+        nk_label(ctx, DebugText("fps: %d", app.ui.fps), NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("dt: %.4f", dt), NK_TEXT_LEFT);
+
+        nk_checkbox_label(ctx, "debug mode", &app.ui.debugToggle);
+        debugMode = app.ui.debugToggle;
+
+        if (debugMode)
+        {
+            nk_checkbox_label(ctx, "1 cycle", &app.ui.oneCycleToggle);
+            oneCycleAtTime = app.ui.oneCycleToggle;
+
+            nk_label(ctx, DebugText("d1: %.4f", d1), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("d2: %.4f", d2), NK_TEXT_LEFT);
+        }
+
+        nk_layout_row_dynamic(ctx, 20, 2);
+
+        if (nk_button_label(ctx, "Open"))
+        {
+            debugging = TRUE;
+            stepping = FALSE;
+
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
+                "Open ROM",
+                "Open a ROM by passing a file path on the command line or by dragging a .nes/.nsave file onto the window.",
+                win);
+        }
+
+        if (nk_button_label(ctx, "Save"))
+        {
+            if (nes)
+            {
+                debugging = TRUE;
+                stepping = FALSE;
+                if (saveFilePath[0])
+                {
+                    Save(nes, saveFilePath);
+                }
+                else
+                {
+                    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
+                        "Save State",
+                        "Load a ROM first so the emulator can derive a save-state path.",
+                        win);
+                }
+            }
+        }
+
+        if (nk_button_label(ctx, "Run"))
+        {
+            hitRun = TRUE;
+            debugging = FALSE;
+            stepping = FALSE;
+        }
+
+        if (nk_button_label(ctx, "Reset"))
+        {
+            if (nes)
+            {
+                ResetNES(nes);
+                debugging = TRUE;
+            }
+        }
+
+        if (nk_button_label(ctx, "Pause"))
+        {
+            debugging = TRUE;
+            stepping = FALSE;
+        }
+
+        if (debugMode)
+        {
+            if (nk_button_label(ctx, "Step"))
+            {
+                debugging = TRUE;
+                stepping = TRUE;
+            }
+        }
+    }
+    nk_end(ctx);
+
+    if (debugMode)
+    {
+        if (nk_begin(ctx, "CPU INFO", nk_rect(310, 10, 250, 170), flags) && nes)
+        {
+            CPU *cpu = &nes->cpu;
+
+            nk_layout_row_dynamic(ctx, 20, 2);
+
+            nk_label(ctx, DebugText("%s:%02X", "A", cpu->a), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("%s:%02X", "P", cpu->p), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("%s:%02X", "X", cpu->x), NK_TEXT_LEFT);
+            nk_label(ctx, "N V   B D I Z C", NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("%s:%02X", "Y", cpu->y), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("%d %d %d %d %d %d %d %d",
+                GetBitFlag(cpu->p, NEGATIVE_FLAG) ? 1 : 0,
+                GetBitFlag(cpu->p, OVERFLOW_FLAG) ? 1 : 0,
+                GetBitFlag(cpu->p, EMPTY_FLAG) ? 1 : 0,
+                GetBitFlag(cpu->p, BREAK_FLAG) ? 1 : 0,
+                GetBitFlag(cpu->p, DECIMAL_FLAG) ? 1 : 0,
+                GetBitFlag(cpu->p, INTERRUPT_FLAG) ? 1 : 0,
+                GetBitFlag(cpu->p, ZERO_FLAG) ? 1 : 0,
+                GetBitFlag(cpu->p, CARRY_FLAG) ? 1 : 0), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("%2s:%02X", "SP", cpu->sp), NK_TEXT_LEFT);
+
+            nk_label(ctx, DebugText("%2s:%02X", "PC", cpu->pc), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("%s:%d", "CYCLES", cpu->cycles), NK_TEXT_LEFT);
+        }
+        nk_end(ctx);
+    }
+
+    if (debugMode)
+    {
+        if (nk_begin(ctx, "CONTROLLER 0", nk_rect(310, 190, 250, 120), flags) && nes)
+        {
+            s32 buttons[8] =
+            {
+                GetButton(nes, 0, BUTTON_LEFT),
+                GetButton(nes, 0, BUTTON_UP),
+                GetButton(nes, 0, BUTTON_RIGHT),
+                GetButton(nes, 0, BUTTON_DOWN),
+                GetButton(nes, 0, BUTTON_SELECT),
+                GetButton(nes, 0, BUTTON_START),
+                GetButton(nes, 0, BUTTON_B),
+                GetButton(nes, 0, BUTTON_A)
+            };
+
+            nk_layout_row_static(ctx, 20, 20, 2);
+            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+            nk_checkbox_label(ctx, "", &buttons[1]);
+
+            nk_layout_row_static(ctx, 20, 20, 9);
+            nk_checkbox_label(ctx, "", &buttons[0]);
+            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+            nk_checkbox_label(ctx, "", &buttons[2]);
+            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+            nk_checkbox_label(ctx, "", &buttons[4]);
+            nk_checkbox_label(ctx, "", &buttons[5]);
+            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+            nk_checkbox_label(ctx, "", &buttons[6]);
+            nk_checkbox_label(ctx, "", &buttons[7]);
+
+            nk_layout_row_static(ctx, 20, 20, 2);
+            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+            nk_checkbox_label(ctx, "", &buttons[3]);
+        }
+        nk_end(ctx);
+    }
+
+    if (debugMode)
+    {
+        if (nk_begin(ctx, "PPU INFO", nk_rect(570, 10, 310, 300), flags) && nes)
+        {
+            PPU *ppu = &nes->ppu;
+
+            nk_layout_row_dynamic(ctx, 20, 2);
+
+            nk_label(ctx, DebugText("CTRL (0x2000):%02X", ppu->control), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("SCANLINE:%3d", ppu->scanline), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("MASK (0x2001):%02X", ppu->mask), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("CYCLE:%3d", ppu->cycle), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("STAT (0x2002):%02X", ppu->status), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("CYCLES:%lld", ppu->totalCycles), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("SPRA (0x2003):%02X", ppu->oamAddress), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("FRAMES:%lld", ppu->frameCount), NK_TEXT_LEFT);
+
+            nk_layout_row_dynamic(ctx, 20, 1);
+            nk_label(ctx, DebugText("SPRD (0x2004):%02X", ppu->oamData), NK_TEXT_LEFT);
+
+            nk_label(ctx, DebugText("SCRR (0x2005):%02X", ppu->scroll), NK_TEXT_LEFT);
+
+            nk_label(ctx, DebugText("MEMA (0x2006):%02X", ppu->address), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("    %s:%04X  %s:%04X", "v", ppu->v, "t", ppu->t), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("    %s:%04X  %s:%01X", "x", ppu->x, "w", ppu->w), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("MEMD (0x2007):%02X", ppu->data), NK_TEXT_LEFT);
+        }
+        nk_end(ctx);
+    }
+
+    struct nk_rect screenRect = debugMode
+        ? nk_rect(890, 10, 300, 300)
+        : nk_rect(310, 10, 880, 780);
+
+    if (nk_begin(ctx, "SCREEN", screenRect, flags))
+    {
+        ctx->current->bounds = screenRect;
+
+        if (nes)
+        {
+            GUI *gui = &nes->gui;
+
+            s32 width = 256, height = 240;
+
+            if (!debugMode)
+            {
+                width *= 3;
+                height *= 3;
+            }
+
+            nk_layout_row_static(ctx, height, width, 1);
+
+            struct nk_command_buffer *canvas;
+            canvas = nk_window_get_canvas(ctx);
+
+            struct nk_rect space;
+            enum nk_widget_layout_states state;
+            state = nk_widget(&space, ctx);
+            if (state)
+            {
+                if (state != NK_WIDGET_ROM)
+                {
+                    // update_your_widget_by_user_input(...);
+                }
+
+                glBindTexture(GL_TEXTURE_2D, device->screen.handle.id);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
+                glBindTexture(GL_TEXTURE_2D, 0);
+
+                nk_draw_image(canvas, space, &device->screen, nk_rgb(255, 255, 255));
+            }
+        }
+    }
+    nk_end(ctx);
+}
+
+internal void DrawInstructionsPanel(struct nk_context *ctx, nk_flags flags)
+{
+    if (!debugMode)
+    {
+        return;
+    }
+
+    if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 210, 290, 580), flags) && nes)
+    {
+        CPU* cpu = &nes->cpu;
+        const float ratio[] = { 100, 100 };
+
+        nk_layout_row(ctx, NK_STATIC, 25, 3, ratio);
+        nk_label(ctx, "  Address: ", NK_TEXT_LEFT);
+        nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.instructionAddressText, &app.ui.instructionAddressLen, 12, nk_filter_hex);
+
+        nk_layout_row(ctx, NK_STATIC, 25, 3, ratio);
+        nk_label(ctx, "  Breakpoint: ", NK_TEXT_LEFT);
+        nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.instructionBreakpointText, &app.ui.instructionBreakpointLen, 5, nk_filter_hex);
+
+        nk_layout_row_dynamic(ctx, 20, 1);
+
+        u16 pc = cpu->pc;
+        if (app.ui.instructionAddressLen > 0)
+        {
+            app.ui.instructionAddressText[app.ui.instructionAddressLen] = 0;
+            pc = (u16)strtol(app.ui.instructionAddressText, NULL, 16);
+            if (pc < 0x8000 || pc > 0xFFFF)
+            {
+                pc = cpu->pc;
+            }
+        }
+
+        if (app.ui.instructionBreakpointLen > 0)
+        {
+            app.ui.instructionBreakpointText[app.ui.instructionBreakpointLen] = 0;
+            breakpoint = (u16)strtol(app.ui.instructionBreakpointText, NULL, 16);
+        }
+
+        for (s32 i = 0; i < 100; ++i)
+        {
+            memset(debugBuffer, 0, sizeof(debugBuffer));
+
+            u8 opcode = ReadCPUU8(nes, pc);
+            CPUInstruction *instruction = &cpuInstructions[opcode];
+            s32 col = 0;
+            b32 currentInstr = (pc == cpu->pc);
+            b32 breakpointHit = (pc == breakpoint);
+
+            col += currentInstr
+                ? (breakpointHit
+                    ? sprintf(debugBuffer, "O>%04X %02X", pc, instruction->opcode)
+                    : sprintf(debugBuffer, "> %04X %02X", pc, instruction->opcode))
+                : (breakpointHit
+                    ? sprintf(debugBuffer, "O %04X %02X", pc, instruction->opcode)
+                    : sprintf(debugBuffer, "  %04X %02X", pc, instruction->opcode));
+
+            switch (instruction->bytesCount)
+            {
+                case 2:
+                    col += sprintf(debugBuffer + col, " %02X", ReadCPUU8(nes, pc + 1));
+                    break;
+                case 3:
+                    col += sprintf(debugBuffer + col, " %02X %02X", ReadCPUU8(nes, pc + 1), ReadCPUU8(nes, pc + 2));
+                    break;
+                default:
+                    break;
+            }
+
+            memset(debugBuffer + col, ' ', 18 - col);
+            col = 18;
+            col += sprintf(debugBuffer + col, "%s", GetInstructionStr(instruction->instruction));
+
+            switch (instruction->addressingMode)
+            {
+                case AM_IMM:
+                    col += sprintf(debugBuffer + col, " #$%02X", ReadCPUU8(nes, pc + 1));
+                    break;
+                case AM_ABS:
+                {
+                    u8 lo = ReadCPUU8(nes, pc + 1);
+                    u8 hi = ReadCPUU8(nes, pc + 2);
+                    col += sprintf(debugBuffer + col, " $%04X", (hi << 8) | lo);
+                    break;
+                }
+                case AM_ABX:
+                {
+                    u8 lo = ReadCPUU8(nes, pc + 1);
+                    u8 hi = ReadCPUU8(nes, pc + 2);
+                    col += sprintf(debugBuffer + col, " $%04X, X", (hi << 8) | lo);
+                    break;
+                }
+                case AM_ABY:
+                {
+                    u8 lo = ReadCPUU8(nes, pc + 1);
+                    u8 hi = ReadCPUU8(nes, pc + 2);
+                    col += sprintf(debugBuffer + col, " $%04X, Y", (hi << 8) | lo);
+                    break;
+                }
+                case AM_ZPA:
+                    col += sprintf(debugBuffer + col, " $%02X", ReadCPUU8(nes, pc + 1));
+                    break;
+                case AM_ZPX:
+                    col += sprintf(debugBuffer + col, " $%02X, X", ReadCPUU8(nes, pc + 1));
+                    break;
+                case AM_ZPY:
+                    col += sprintf(debugBuffer + col, " $%02X, Y", ReadCPUU8(nes, pc + 1));
+                    break;
+                case AM_IND:
+                {
+                    u8 lo = ReadCPUU8(nes, pc + 1);
+                    u8 hi = ReadCPUU8(nes, pc + 2);
+                    col += sprintf(debugBuffer + col, " ($%04X)", (hi << 8) | lo);
+                    break;
+                }
+                case AM_IZX:
+                    col += sprintf(debugBuffer + col, " ($%02X, X)", ReadCPUU8(nes, pc + 1));
+                    break;
+                case AM_IZY:
+                    col += sprintf(debugBuffer + col, " ($%02X), Y", ReadCPUU8(nes, pc + 1));
+                    break;
+                case AM_REL:
+                {
+                    s8 address = (s8)ReadCPUU8(nes, pc + 1);
+                    u16 jumpAddress = pc + instruction->bytesCount + address;
+                    col += sprintf(debugBuffer + col, " $%04X", jumpAddress);
+                    break;
+                }
+                default:
+                    break;
+            }
+
+            if (instruction->instruction == CPU_RTS)
+            {
+                col += sprintf(debugBuffer + col, " -------------");
+            }
+
+            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+            pc += instruction->bytesCount;
+        }
+    }
+    nk_end(ctx);
+}
+
 int main(int argc, char **argv)
 {
     /* Platform */
@@ -777,460 +1163,9 @@ int main(int argc, char **argv)
         /* GUI */
         nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
 
-        if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 290, 190), flags))
-        {
-            nk_layout_row_dynamic(ctx, 20, 2);
+        DrawMainPanels(ctx, flags, win, &device, dt, d1, d2, &initialCounter);
 
-            u64 fpsCounter = SDL_GetPerformanceCounter();
-            f32 fpsdt = GetSecondsElapsed(initialCounter, fpsCounter);
-            if (fpsdt > 1)
-            {
-                initialCounter = fpsCounter;
-                app.ui.fps = app.ui.fpsCount;
-                app.ui.fpsCount = 0;
-            }
-
-            ++app.ui.fpsCount;
-
-            nk_label(ctx, DebugText("fps: %d", app.ui.fps), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("dt: %.4f", dt), NK_TEXT_LEFT);
-
-            nk_checkbox_label(ctx, "debug mode", &app.ui.debugToggle);
-            debugMode = app.ui.debugToggle;
-
-            if (debugMode)
-            {
-                nk_checkbox_label(ctx, "1 cycle", &app.ui.oneCycleToggle);
-                oneCycleAtTime = app.ui.oneCycleToggle;
-
-                nk_label(ctx, DebugText("d1: %.4f", d1), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("d2: %.4f", d2), NK_TEXT_LEFT);
-            }
-
-            nk_layout_row_dynamic(ctx, 20, 2);
-
-            if (nk_button_label(ctx, "Open"))
-            {
-                debugging = TRUE;
-                stepping = FALSE;
-
-                SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
-                    "Open ROM",
-                    "Open a ROM by passing a file path on the command line or by dragging a .nes/.nsave file onto the window.",
-                    win);
-            }
-
-            if (nk_button_label(ctx, "Save"))
-            {
-                if (nes)
-                {
-                    debugging = TRUE;
-                    stepping = FALSE;
-                    if (saveFilePath[0])
-                    {
-                        Save(nes, saveFilePath);
-                    }
-                    else
-                    {
-                        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
-                            "Save State",
-                            "Load a ROM first so the emulator can derive a save-state path.",
-                            win);
-                    }
-                }
-            }
-
-            if (nk_button_label(ctx, "Run"))
-            {
-                hitRun = TRUE;
-                debugging = FALSE;
-                stepping = FALSE;
-            }
-
-            if (nk_button_label(ctx, "Reset"))
-            {
-                if (nes)
-                {
-                    ResetNES(nes);
-                    debugging = TRUE;
-                }
-            }
-
-            if (nk_button_label(ctx, "Pause"))
-            {
-                debugging = TRUE;
-                stepping = FALSE;
-            }
-
-            if (debugMode)
-            {
-                if (nk_button_label(ctx, "Step"))
-                {
-                    debugging = TRUE;
-                    stepping = TRUE;
-                }
-            }
-        }
-        nk_end(ctx);
-
-        if (debugMode)
-        {
-            if (nk_begin(ctx, "CPU INFO", nk_rect(310, 10, 250, 170), flags) && nes)
-            {
-                CPU *cpu = &nes->cpu;
-
-                nk_layout_row_dynamic(ctx, 20, 2);
-
-                nk_label(ctx, DebugText("%s:%02X", "A", cpu->a), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("%s:%02X", "P", cpu->p), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("%s:%02X", "X", cpu->x), NK_TEXT_LEFT);
-                nk_label(ctx, "N V   B D I Z C", NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("%s:%02X", "Y", cpu->y), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("%d %d %d %d %d %d %d %d",
-                    GetBitFlag(cpu->p, NEGATIVE_FLAG) ? 1 : 0,
-                    GetBitFlag(cpu->p, OVERFLOW_FLAG) ? 1 : 0,
-                    GetBitFlag(cpu->p, EMPTY_FLAG) ? 1 : 0,
-                    GetBitFlag(cpu->p, BREAK_FLAG) ? 1 : 0,
-                    GetBitFlag(cpu->p, DECIMAL_FLAG) ? 1 : 0,
-                    GetBitFlag(cpu->p, INTERRUPT_FLAG) ? 1 : 0,
-                    GetBitFlag(cpu->p, ZERO_FLAG) ? 1 : 0,
-                    GetBitFlag(cpu->p, CARRY_FLAG) ? 1 : 0), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("%2s:%02X", "SP", cpu->sp), NK_TEXT_LEFT);
-
-                nk_label(ctx, DebugText("%2s:%02X", "PC", cpu->pc), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("%s:%d", "CYCLES", cpu->cycles), NK_TEXT_LEFT);
-            }
-            nk_end(ctx);
-        }
-
-        if (debugMode)
-        {
-            if (nk_begin(ctx, "CONTROLLER 0", nk_rect(310, 190, 250, 120), flags) && nes)
-            {
-                s32 buttons[8] =
-                {
-                    GetButton(nes, 0, BUTTON_LEFT),
-                    GetButton(nes, 0, BUTTON_UP),
-                    GetButton(nes, 0, BUTTON_RIGHT),
-                    GetButton(nes, 0, BUTTON_DOWN),
-                    GetButton(nes, 0, BUTTON_SELECT),
-                    GetButton(nes, 0, BUTTON_START),
-                    GetButton(nes, 0, BUTTON_B),
-                    GetButton(nes, 0, BUTTON_A)
-                };
-
-                nk_layout_row_static(ctx, 20, 20, 2);
-                nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);    // Up
-                nk_checkbox_label(ctx, "", &buttons[1]);
-
-                nk_layout_row_static(ctx, 20, 20, 9);
-                nk_checkbox_label(ctx, "", &buttons[0]);    // Left
-                nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
-                nk_checkbox_label(ctx, "", &buttons[2]);    // Right
-                nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
-                nk_checkbox_label(ctx, "", &buttons[4]);    // Select
-                nk_checkbox_label(ctx, "", &buttons[5]);    // Start
-                nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
-                nk_checkbox_label(ctx, "", &buttons[6]);    // B
-                nk_checkbox_label(ctx, "", &buttons[7]);    // A
-
-                nk_layout_row_static(ctx, 20, 20, 2);
-                nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
-                nk_checkbox_label(ctx, "", &buttons[3]);
-
-                // for (s32 i = 0; i < 8; ++i) {
-                //     coarseButtons[i] = buttons[i];
-                // }
-            }
-            nk_end(ctx);
-        }
-
-        if (debugMode)
-        {
-            if (nk_begin(ctx, "PPU INFO", nk_rect(570, 10, 310, 300), flags) && nes)
-            {
-                PPU *ppu = &nes->ppu;
-
-                nk_layout_row_dynamic(ctx, 20, 2);
-
-                nk_label(ctx, DebugText("CTRL (0x2000):%02X", ppu->control), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("SCANLINE:%3d", ppu->scanline), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("MASK (0x2001):%02X", ppu->mask), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("CYCLE:%3d", ppu->cycle), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("STAT (0x2002):%02X", ppu->status), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("CYCLES:%lld", ppu->totalCycles), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("SPRA (0x2003):%02X", ppu->oamAddress), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("FRAMES:%lld", ppu->frameCount), NK_TEXT_LEFT);
-
-                nk_layout_row_dynamic(ctx, 20, 1);
-                nk_label(ctx, DebugText("SPRD (0x2004):%02X", ppu->oamData), NK_TEXT_LEFT);
-
-                nk_label(ctx, DebugText("SCRR (0x2005):%02X", ppu->scroll), NK_TEXT_LEFT);
-
-                nk_label(ctx, DebugText("MEMA (0x2006):%02X", ppu->address), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("    %s:%04X  %s:%04X", "v", ppu->v, "t", ppu->t), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("    %s:%04X  %s:%01X", "x", ppu->x, "w", ppu->w), NK_TEXT_LEFT);
-                nk_label(ctx, DebugText("MEMD (0x2007):%02X", ppu->data), NK_TEXT_LEFT);
-            }
-            nk_end(ctx);
-        }
-
-        struct nk_rect screenRect = debugMode
-            ? nk_rect(890, 10, 300, 300)
-            : nk_rect(310, 10, 880, 780);
-
-        if (nk_begin(ctx, "SCREEN", screenRect, flags))
-        {
-            ctx->current->bounds = screenRect;
-
-            if (nes)
-            {
-                GUI *gui = &nes->gui;
-
-                s32 width = 256, height = 240;
-
-                if (!debugMode)
-                {
-                    width *= 3;
-                    height *= 3;
-                }
-
-                nk_layout_row_static(ctx, height, width, 1);
-
-                struct nk_command_buffer *canvas;
-                canvas = nk_window_get_canvas(ctx);
-
-                struct nk_rect space;
-                enum nk_widget_layout_states state;
-                state = nk_widget(&space, ctx);
-                if (state)
-                {
-                    if (state != NK_WIDGET_ROM)
-                    {
-                        // update_your_widget_by_user_input(...);
-                    }
-
-                    glBindTexture(GL_TEXTURE_2D, device.screen.handle.id);
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
-                    glBindTexture(GL_TEXTURE_2D, 0);
-
-                    nk_draw_image(canvas, space, &device.screen, nk_rgb(255, 255, 255));
-                }
-            }
-        }
-        nk_end(ctx);
-
-        if (debugMode)
-        {
-            if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 210, 290, 580), flags) && nes)
-            {
-                CPU* cpu = &nes->cpu;
-
-                // NOTE: Also review this section of the code so that when an address is entered
-                // in the INSTRUCTIONS section, it jumps to the nearest instruction instead of using
-                // the literal address, since that address might not contain any instruction
-                // or could be a parameter.
-
-                const float ratio[] = { 100, 100 };
-
-                nk_layout_row(ctx, NK_STATIC, 25, 3, ratio);
-                nk_label(ctx, "  Address: ", NK_TEXT_LEFT);
-                nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.instructionAddressText, &app.ui.instructionAddressLen, 12, nk_filter_hex);
-
-                nk_layout_row(ctx, NK_STATIC, 25, 3, ratio);
-                nk_label(ctx, "  Breakpoint: ", NK_TEXT_LEFT);
-                nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.instructionBreakpointText, &app.ui.instructionBreakpointLen, 5, nk_filter_hex);
-
-                nk_layout_row_dynamic(ctx, 20, 1);
-
-                u16 pc = cpu->pc;
-
-                if (app.ui.instructionAddressLen > 0)
-                {
-                    app.ui.instructionAddressText[app.ui.instructionAddressLen] = 0;
-                    pc = (u16)strtol(app.ui.instructionAddressText, NULL, 16);
-                    if (pc < 0x8000 || pc > 0xFFFF)
-                    {
-                        pc = cpu->pc;
-                    }
-                }
-
-                if (app.ui.instructionBreakpointLen > 0)
-                {
-                    app.ui.instructionBreakpointText[app.ui.instructionBreakpointLen] = 0;
-                    breakpoint = (u16)strtol(app.ui.instructionBreakpointText, NULL, 16);
-                }
-
-                for (s32 i = 0; i < 100; ++i)
-                {
-                    memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                    u8 opcode = ReadCPUU8(nes, pc);
-                    CPUInstruction *instruction = &cpuInstructions[opcode];
-
-                    s32 col = 0;
-                    b32 currentInstr = (pc == cpu->pc);
-                    b32 breakpointHit = (pc == breakpoint);
-
-                    col += currentInstr
-                        ? (breakpointHit
-                            ? sprintf(debugBuffer, "O>%04X %02X", pc, instruction->opcode)
-                            : sprintf(debugBuffer, "> %04X %02X", pc, instruction->opcode))
-                        : (breakpointHit
-                            ? sprintf(debugBuffer, "O %04X %02X", pc, instruction->opcode)
-                            : sprintf(debugBuffer, "  %04X %02X", pc, instruction->opcode));
-
-                    switch (instruction->bytesCount)
-                    {
-                        case 2:
-                        {
-                            col += sprintf(debugBuffer + col, " %02X", ReadCPUU8(nes, pc + 1));
-                            break;
-                        }
-                        case 3:
-                        {
-                            col += sprintf(debugBuffer + col, " %02X %02X", ReadCPUU8(nes, pc + 1), ReadCPUU8(nes, pc + 2));
-                            break;
-                        }
-                        default:
-                        {
-                            break;
-                        }
-                    }
-
-                    memset(debugBuffer + col, ' ', 18 - col);
-                    col = 18;
-
-                    col += sprintf(debugBuffer + col, "%s", GetInstructionStr(instruction->instruction));
-
-
-                    switch (instruction->addressingMode)
-                    {
-                        // Immediate #$00
-                        case AM_IMM:
-                        {
-                            u8 data = ReadCPUU8(nes, pc + 1);
-                            col += sprintf(debugBuffer + col, " #$%02X", data);
-                            break;
-                        }
-
-                        // Absolute $0000
-                        case AM_ABS:
-                        {
-                            u8 lo = ReadCPUU8(nes, pc + 1);
-                            u8 hi = ReadCPUU8(nes, pc + 2);
-                            u16 address = (hi << 8) | lo;
-
-                            col += sprintf(debugBuffer + col, " $%04X", address);
-                            break;
-                        }
-
-                        // Absolute Indexed $0000, X
-                        case AM_ABX:
-                        {
-                            u8 lo = ReadCPUU8(nes, pc + 1);
-                            u8 hi = ReadCPUU8(nes, pc + 2);
-                            u16 address = (hi << 8) | lo;
-
-                            col += sprintf(debugBuffer + col, " $%04X, X", address);
-                            break;
-                        }
-
-                        // Absolute Indexed $0000, Y
-                        case AM_ABY:
-                        {
-                            u8 lo = ReadCPUU8(nes, pc + 1);
-                            u8 hi = ReadCPUU8(nes, pc + 2);
-                            u16 address = (hi << 8) | lo;
-
-                            col += sprintf(debugBuffer + col, " $%04X, Y", address);
-                            break;
-                        }
-
-                        // Zero-Page-Absolute $00
-                        case AM_ZPA:
-                        {
-                            u8 address = ReadCPUU8(nes, pc + 1);
-                            col += sprintf(debugBuffer + col, " $%02X", address);
-                            break;
-                        }
-
-                        // Zero-Page-Indexed $00, X
-                        case AM_ZPX:
-                        {
-                            u8 address = ReadCPUU8(nes, pc + 1);
-                            col += sprintf(debugBuffer + col, " $%02X, X", address);
-                            break;
-                        }
-
-                        // Zero-Page-Indexed $00, Y
-                        case AM_ZPY:
-                        {
-                            u8 address = ReadCPUU8(nes, pc + 1);
-                            col += sprintf(debugBuffer + col, " $%02X, Y", address);
-                            break;
-                        }
-
-                        // Indirect ($0000)
-                        case AM_IND:
-                        {
-                            u8 lo = ReadCPUU8(nes, pc + 1);
-                            u8 hi = ReadCPUU8(nes, pc + 2);
-                            u16 address = (hi << 8) | lo;
-
-                            col += sprintf(debugBuffer + col, " ($%04X)", address);
-                            break;
-                        }
-
-                        // Pre-Indexed-Indirect ($00, X)
-                        case AM_IZX:
-                        {
-                            u8 address = ReadCPUU8(nes, pc + 1);
-                            col += sprintf(debugBuffer + col, " ($%02X, X)", address);
-                            break;
-                        }
-
-                        // Post-Indexed-Indirect ($00), Y
-                        case AM_IZY:
-                        {
-                            u8 address = ReadCPUU8(nes, pc + 1);
-                            col += sprintf(debugBuffer + col, " ($%02X), Y", address);
-                            break;
-                        }
-
-                        // Implied
-                        case AM_IMP:
-                            break;
-
-                            // Accumulator
-                        case AM_ACC:
-                            break;
-
-                            // Relative $0000
-                        case AM_REL:
-                        {
-                            s8 address = (s8)ReadCPUU8(nes, pc + 1);
-                            u16 jumpAddress = pc + instruction->bytesCount + address;
-                            col += sprintf(debugBuffer + col, " $%04X", jumpAddress);
-                            break;
-                        }
-
-                        default:
-                            break;
-                    }
-
-                    if (instruction->instruction == CPU_RTS)
-                    {
-                        col += sprintf(debugBuffer + col, " -------------");
-                    }
-
-                    nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
-
-                    pc += instruction->bytesCount;
-                }
-            }
-            nk_end(ctx);
-        }
+        DrawInstructionsPanel(ctx, flags);
 
         if (debugMode)
         {

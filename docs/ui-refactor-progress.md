@@ -33,9 +33,9 @@ This file tracks the UI responsiveness + architecture refactor in phases.
 
 ### Phase 3 - Extract UI panels into dedicated functions/files
 
-- [ ] Split current monolithic UI drawing into panel functions.
-- [ ] Keep layout and behavior identical first (no redesign yet).
-- [ ] Build + run smoke test + screenshot.
+- [x] Split current monolithic UI drawing into panel functions.
+- [x] Keep layout and behavior identical first (no redesign yet).
+- [x] Build + run smoke test + screenshot.
 
 ### Phase 4 - Implement responsive workspace layout
 
