@@ -60,7 +60,8 @@ typedef u64 b64;
 
 typedef size_t size;
 
-typedef struct Color
+typedef struct Color Color;
+struct Color
 {
     u8 r, g, b, a;
 };
@@ -76,23 +77,24 @@ typedef struct Color
 #define SetBitFlag(v, f) (*(v) = (*(v) | (1 << (f))))
 #define ClearBitFlag(v, f) (*(v) = *(v) ^ (*(v) & (1 << (f))))
 
-inline void* Allocate(size size)
+static inline void* Allocate(size size)
 {
     return malloc(size);
 }
 
-inline void Free(void *address)
+static inline void Free(void *address)
 {
     free(address);
 }
 
+typedef struct LoadedFile LoadedFile;
 struct LoadedFile
 {
     u64 size;
     u8 *contents;
 };
 
-inline u64 fsize(FILE *file)
+static inline u64 fsize(FILE *file)
 {
     u64 pos = ftell(file);
     fseek(file, 0, SEEK_END);
@@ -101,9 +103,9 @@ inline u64 fsize(FILE *file)
     return size;
 }
 
-inline LoadedFile LoadEntireFile(char *filePath)
+static inline LoadedFile LoadEntireFile(char *filePath)
 {
-    LoadedFile file = {};
+    LoadedFile file = {0};
 
     FILE *in = fopen(filePath, "rb");
     if (in)
@@ -117,6 +119,7 @@ inline LoadedFile LoadEntireFile(char *filePath)
     return file;
 }
 
+typedef struct LoadedBitmap LoadedBitmap;
 struct LoadedBitmap
 {
     u32 width, height;

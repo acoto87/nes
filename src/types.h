@@ -2,6 +2,8 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include "utils.h"
+
 #define MAX_TITLE_LENGTH 128
 #define MAX_PATH_LENGTH 1024
 #define TRAINER_SIZE 512
@@ -11,6 +13,7 @@
 
 #define APU_BUFFER_LENGTH 1024
 
+typedef struct Memory Memory;
 struct Memory
 {
     b32 created;
@@ -18,13 +21,14 @@ struct Memory
     u8 *bytes;
 };
 
-enum MirrorType
+typedef enum MirrorType
 {
     MIRROR_HORIZONTAL,
     MIRROR_VERTICAL,
     MIRROR_FOUR,
-};
+} MirrorType;
 
+typedef struct CartridgeHeader CartridgeHeader;
 struct CartridgeHeader
 {
     // Constant $4E $45 $53 $1A ("NES" followed by $1A)
@@ -65,6 +69,7 @@ struct CartridgeHeader
     u8 reserved[5];
 };
 
+typedef struct Cartridge Cartridge;
 struct Cartridge
 {
     MirrorType mirrorType;
@@ -87,7 +92,7 @@ struct Cartridge
     u8 *chr;
 };
 
-enum CPUAddressingMode
+typedef enum CPUAddressingMode
 {
     AM_NON = 0,     // None
 
@@ -109,9 +114,9 @@ enum CPUAddressingMode
     AM_ACC = 12,     // Accumulator
 
     AM_REL = 13     // Relative                 $0000
-};
+} CPUAddressingMode;
 
-enum CPURegister
+typedef enum CPURegister
 {
     CPU_NR = 0,     // No register
     CPU_AR = 1,     // Register accumulator
@@ -120,9 +125,9 @@ enum CPURegister
     CPU_ST = 4,     // Register status
     CPU_PC = 5,     // Register program counter
     CPU_SP = 6      // Register stack pointer
-};
+} CPURegister;
 
-enum CPUInstructionSet
+typedef enum CPUInstructionSet
 {
     CPU_ADC, //  Add Memory to Accumulator with Carry
     CPU_AND, //  "AND" Memory with Accumulator
@@ -216,8 +221,9 @@ enum CPUInstructionSet
     CPU_KIL, // Crash
 
     CPU_FEX, //  Future Expansion
-};
+} CPUInstructionSet;
 
+typedef struct CPUInstruction CPUInstruction;
 struct CPUInstruction
 {
     u8 opcode;
@@ -229,14 +235,15 @@ struct CPUInstruction
     b32 pageCycles;
 };
 
-enum CPUInterrupt
+typedef enum CPUInterrupt
 {
     CPU_INTERRUPT_NON = 0,
     CPU_INTERRUPT_NMI = 1,
     CPU_INTERRUPT_IRQ = 2,
     CPU_INTERRUPT_RES = 3
-};
+} CPUInterrupt;
 
+typedef struct CPU CPU;
 struct CPU
 {
     u8 a;                       // accumulator register
@@ -250,6 +257,7 @@ struct CPU
     CPUInterrupt interrupt;     // interrupt type to perform
 };
 
+typedef struct PPU PPU;
 struct PPU
 {
     u32 cycle;                  // PPU current scanline cycles count,
@@ -300,121 +308,131 @@ struct PPU
     u8 spriteCount;
 };
 
+typedef struct APUPulse APUPulse;
+struct APUPulse
+{
+    b32 globalEnabled;
+
+    b32 enabled;
+    u8 channel;
+
+    b32 lengthEnabled;
+    u8 lengthValue;
+
+    u16 timerPeriod;
+    u16 timerValue;
+
+    u8 dutyMode;
+    u8 dutyValue;
+
+    b32 sweepReload;
+    b32 sweepEnabled;
+    b32 sweepNegate;
+    u8 sweepShift;
+    u8 sweepPeriod;
+    u8 sweepValue;
+
+    b32 envelopeEnabled;
+    b32 envelopeLoop;
+    b32 envelopeStart;
+    u8 envelopePeriod;
+    u8 envelopeValue;
+    u8 envelopeVolume;
+
+    u8 constantVolume;
+
+    s32 bufferIndex;
+    s16 buffer[APU_BUFFER_LENGTH];
+};
+
+typedef struct APUTriangle APUTriangle;
+struct APUTriangle
+{
+    b32 globalEnabled;
+
+    b32 enabled;
+
+    b32 linearEnabled;
+    u8 linearPeriod;
+    u8 linearValue;
+    b32 linearReload;
+
+    b32 lengthEnabled;
+    u8 lengthValue;
+
+    u16 timerPeriod;
+    u16 timerValue;
+
+    u8 tableIndex;
+
+    s32 bufferIndex;
+    s16 buffer[APU_BUFFER_LENGTH];
+};
+
+typedef struct APUNoise APUNoise;
+struct APUNoise
+{
+    b32 globalEnabled;
+
+    b32 enabled;
+
+    b32 lengthEnabled;
+    u8 lengthValue;
+
+    b32 timerMode;
+    u16 timerPeriod;
+    u16 timerValue;
+
+    u16 shiftRegister;
+
+    b32 envelopeEnabled;
+    b32 envelopeLoop;
+    b32 envelopeStart;
+    u8 envelopePeriod;
+    u8 envelopeValue;
+    u8 envelopeVolume;
+
+    u8 constantVolume;
+
+    s32 bufferIndex;
+    s16 buffer[APU_BUFFER_LENGTH];
+};
+
+typedef struct APUDMC APUDMC;
+struct APUDMC
+{
+    b32 globalEnabled;
+
+    b32 enabled;
+
+    u16 sampleAddress;
+    u16 sampleLength;
+    u16 currentAddress;
+    u16 currentLength;
+
+    u16 timerPeriod;
+    u16 timerValue;
+
+    u8 shiftRegister;
+    u8 bitCount;
+
+    u8 value;
+
+    b32 loop;
+    b32 irq;
+
+    s32 bufferIndex;
+    s16 buffer[APU_BUFFER_LENGTH];
+};
+
+typedef struct APU APU;
 struct APU
 {
-    // $4000 - $4007
-    struct Pulse
-    {
-        b32 globalEnabled;
-
-        b32 enabled;
-        u8 channel;
-
-        b32 lengthEnabled;
-        u8 lengthValue;
-
-        u16 timerPeriod;
-        u16 timerValue;
-
-        u8 dutyMode;
-        u8 dutyValue;
-
-        b32 sweepReload;
-        b32 sweepEnabled;
-        b32 sweepNegate;
-        u8 sweepShift;
-        u8 sweepPeriod;
-        u8 sweepValue;
-
-        b32 envelopeEnabled;
-        b32 envelopeLoop;
-        b32 envelopeStart;
-        u8 envelopePeriod;
-        u8 envelopeValue;
-        u8 envelopeVolume;
-
-        u8 constantVolume;
-
-        s32 bufferIndex;
-        s16 buffer[APU_BUFFER_LENGTH];
-    } pulse1, pulse2;
-
-    struct Triangle
-    {
-        b32 globalEnabled;
-
-        b32 enabled;
-
-        b32 linearEnabled;
-        u8 linearPeriod;
-        u8 linearValue;
-        b32 linearReload;
-
-        b32 lengthEnabled;
-        u8 lengthValue;
-
-        u16 timerPeriod;
-        u16 timerValue;
-
-        u8 tableIndex;
-
-        s32 bufferIndex;
-        s16 buffer[APU_BUFFER_LENGTH];
-    } triangle;
-
-    struct Noise
-    {
-        b32 globalEnabled;
-
-        b32 enabled;
-
-        b32 lengthEnabled;
-        u8 lengthValue;
-
-        b32 timerMode;
-        u16 timerPeriod;
-        u16 timerValue;
-
-        u16 shiftRegister;
-
-        b32 envelopeEnabled;
-        b32 envelopeLoop;
-        b32 envelopeStart;
-        u8 envelopePeriod;
-        u8 envelopeValue;
-        u8 envelopeVolume;
-
-        u8 constantVolume;
-
-        s32 bufferIndex;
-        s16 buffer[APU_BUFFER_LENGTH];
-    } noise;
-
-    struct DMC
-    {
-        b32 globalEnabled;
-
-        b32 enabled;
-
-        u16 sampleAddress;
-        u16 sampleLength;
-        u16 currentAddress;
-        u16 currentLength;
-
-        u8 timerPeriod;
-        u8 timerValue;
-
-        u8 shiftRegister;
-        u8 bitCount;
-
-        u8 value;
-
-        b32 loop;
-        b32 irq;
-
-        s32 bufferIndex;
-        s16 buffer[APU_BUFFER_LENGTH];
-    } dmc;
+    APUPulse pulse1;
+    APUPulse pulse2;
+    APUTriangle triangle;
+    APUNoise noise;
+    APUDMC dmc;
 
     u64 cycles;
     u8 frameMode;
@@ -430,6 +448,7 @@ struct APU
     s16 buffer[APU_BUFFER_LENGTH];
 };
 
+typedef struct Controller Controller;
 struct Controller
 {
     u8 state;
@@ -437,10 +456,11 @@ struct Controller
     u8 strobe;
 };
 
+typedef struct GUI GUI;
 struct GUI
 {
-    u32 width = 256;
-    u32 height = 240;
+    u32 width;
+    u32 height;
     Color pixels[256 * 240];
 
     Color patterns[2][128 * 128];
@@ -451,6 +471,7 @@ struct GUI
     Color nametable2[32][30][64];
 };
 
+typedef struct NES NES;
 struct NES
 {
     Memory cpuMemory;
@@ -475,6 +496,7 @@ struct NES
     void* mapperData;
 };
 
+typedef struct CPUStep CPUStep;
 struct CPUStep
 {
     u32 cycles;

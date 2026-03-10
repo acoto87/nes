@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "gui.h"
 
 void InitGUI(NES *nes)
@@ -22,7 +24,7 @@ void ResetGUI(NES *nes)
     ASSERT(sizeof(gui->pixels) == gui->width * gui->height * sizeof(Color));
 }
 
-void SetPixel(GUI *gui, u32 x, u32 y, Color color)
+void SetGUIPixel(GUI *gui, u32 x, u32 y, Color color)
 {
     ASSERT(x >= 0 && x < gui->width);
     ASSERT(y >= 0 && y < gui->height);

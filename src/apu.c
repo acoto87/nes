@@ -1,8 +1,10 @@
-﻿#include "apu.h"
+#include <string.h>
+
+#include "apu.h"
 
 #pragma region Pulse
 
-internal void StepPulseEvenlope(APU::Pulse *pulse)
+internal void StepPulseEvenlope(APUPulse *pulse)
 {
     if (pulse->envelopeStart)
     {
@@ -29,7 +31,7 @@ internal void StepPulseEvenlope(APU::Pulse *pulse)
     }
 }
 
-internal void PulseSweep(APU::Pulse *pulse)
+internal void PulseSweep(APUPulse *pulse)
 {
     u8 delta = pulse->timerPeriod >> pulse->sweepShift;
 
@@ -53,7 +55,7 @@ internal void PulseSweep(APU::Pulse *pulse)
     }
 }
 
-internal void StepPulseSweep(APU::Pulse *pulse)
+internal void StepPulseSweep(APUPulse *pulse)
 {
     if (pulse->sweepReload)
     {
@@ -80,7 +82,7 @@ internal void StepPulseSweep(APU::Pulse *pulse)
     }
 }
 
-internal void StepPulseTimer(APU::Pulse *pulse)
+internal void StepPulseTimer(APUPulse *pulse)
 {
     if (!pulse->timerValue)
     {
@@ -93,7 +95,7 @@ internal void StepPulseTimer(APU::Pulse *pulse)
     }
 }
 
-internal void StepPulseLength(APU::Pulse *pulse)
+internal void StepPulseLength(APUPulse *pulse)
 {
     if (pulse->lengthEnabled && pulse->lengthValue > 0)
     {
@@ -101,7 +103,7 @@ internal void StepPulseLength(APU::Pulse *pulse)
     }
 }
 
-internal u8 GetPulseOutput(APU::Pulse *pulse)
+internal u8 GetPulseOutput(APUPulse *pulse)
 {
     if (!pulse->globalEnabled)
     {
@@ -140,7 +142,7 @@ internal u8 GetPulseOutput(APU::Pulse *pulse)
 
 #pragma region Triangle
 
-internal void StepTriangleTimer(APU::Triangle *triangle)
+internal void StepTriangleTimer(APUTriangle *triangle)
 {
     if (!triangle->timerValue)
     {
@@ -157,7 +159,7 @@ internal void StepTriangleTimer(APU::Triangle *triangle)
     }
 }
 
-internal void StepTriangleLength(APU::Triangle *triangle)
+internal void StepTriangleLength(APUTriangle *triangle)
 {
     if (triangle->lengthEnabled && triangle->lengthValue > 0)
     {
@@ -165,7 +167,7 @@ internal void StepTriangleLength(APU::Triangle *triangle)
     }
 }
 
-internal void StepTriangleCounter(APU::Triangle *triangle)
+internal void StepTriangleCounter(APUTriangle *triangle)
 {
     if (triangle->linearReload)
     {
@@ -182,7 +184,7 @@ internal void StepTriangleCounter(APU::Triangle *triangle)
     }
 }
 
-internal u8 GetTriangleOutput(APU::Triangle *triangle)
+internal u8 GetTriangleOutput(APUTriangle *triangle)
 {
     if (!triangle->globalEnabled)
     {
@@ -201,7 +203,7 @@ internal u8 GetTriangleOutput(APU::Triangle *triangle)
 
 #pragma region Noise
 
-internal void StepNoiseEnvelope(APU::Noise *noise)
+internal void StepNoiseEnvelope(APUNoise *noise)
 {
     if (noise->envelopeStart)
     {
@@ -228,7 +230,7 @@ internal void StepNoiseEnvelope(APU::Noise *noise)
     }
 }
 
-internal void StepNoiseTimer(APU::Noise *noise)
+internal void StepNoiseTimer(APUNoise *noise)
 {
     if (!noise->timerValue)
     {
@@ -245,7 +247,7 @@ internal void StepNoiseTimer(APU::Noise *noise)
     }
 }
 
-internal void StepNoiseLength(APU::Noise *noise)
+internal void StepNoiseLength(APUNoise *noise)
 {
     if (noise->lengthEnabled && noise->lengthValue > 0)
     {
@@ -253,7 +255,7 @@ internal void StepNoiseLength(APU::Noise *noise)
     }
 }
 
-internal u8 GetNoiseOutput(APU::Noise *noise)
+internal u8 GetNoiseOutput(APUNoise *noise)
 {
     if (!noise->globalEnabled)
     {
@@ -287,7 +289,7 @@ internal u8 GetNoiseOutput(APU::Noise *noise)
 
 #pragma region DMC
 
-internal void StepDMCReader(NES *nes, APU::DMC *dmc)
+internal void StepDMCReader(NES *nes, APUDMC *dmc)
 {
     if (dmc->currentLength > 0 && dmc->bitCount == 0)
     {
@@ -318,7 +320,7 @@ internal void StepDMCReader(NES *nes, APU::DMC *dmc)
     }
 }
 
-internal void StepDMCShifter(APU::DMC *dmc)
+internal void StepDMCShifter(APUDMC *dmc)
 {
     if (dmc->bitCount > 0)
     {
@@ -342,7 +344,7 @@ internal void StepDMCShifter(APU::DMC *dmc)
     }
 }
 
-internal void StepDMCTimer(NES *nes, APU::DMC *dmc)
+internal void StepDMCTimer(NES *nes, APUDMC *dmc)
 {
     if (dmc->enabled)
     {
@@ -360,7 +362,7 @@ internal void StepDMCTimer(NES *nes, APU::DMC *dmc)
     }
 }
 
-internal u8 GetDMCOutput(APU::DMC *dmc)
+internal u8 GetDMCOutput(APUDMC *dmc)
 {
     return dmc->value;
 }

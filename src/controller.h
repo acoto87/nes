@@ -1,6 +1,8 @@
 #pragma once
 
-enum Buttons
+#include "types.h"
+
+typedef enum Buttons
 {
     BUTTON_A = 0,
     BUTTON_B = 1,
@@ -10,9 +12,9 @@ enum Buttons
     BUTTON_DOWN = 5,
     BUTTON_LEFT = 6,
     BUTTON_RIGHT = 7
-};
+} Buttons;
 
-inline b32 GetButton(NES *nes, s32 index, Buttons button)
+static inline b32 GetButton(NES *nes, s32 index, Buttons button)
 {
     Controller *controller = &nes->controllers[index];   
 
@@ -21,7 +23,7 @@ inline b32 GetButton(NES *nes, s32 index, Buttons button)
     return isDown;
 }
 
-inline void SetButton(NES *nes, s32 index, Buttons button, b32 isDown)
+static inline void SetButton(NES *nes, s32 index, Buttons button, b32 isDown)
 {
     Controller *controller = &nes->controllers[index];
 
@@ -39,7 +41,7 @@ inline void SetButton(NES *nes, s32 index, Buttons button, b32 isDown)
     controller->state = state;
 }
 
-inline u8 ReadControllerU8(NES *nes, s32 index)
+static inline u8 ReadControllerU8(NES *nes, s32 index)
 {
     Controller *controller = &nes->controllers[index];
 
@@ -61,7 +63,7 @@ inline u8 ReadControllerU8(NES *nes, s32 index)
     return value;
 }
 
-inline void WriteControllerU8(NES *nes, s32 index, u8 value)
+static inline void WriteControllerU8(NES *nes, s32 index, u8 value)
 {
     Controller *controller = &nes->controllers[index];
     controller->strobe = value & 0x01;

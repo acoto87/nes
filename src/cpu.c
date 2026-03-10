@@ -1366,7 +1366,7 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
 
         default:
         {
-            ASSERT(false);
+            ASSERT(FALSE);
             break;
         }
     }
@@ -1463,7 +1463,7 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
 
 CPUStep StepCPU(NES *nes)
 {
-    CPUStep step = {};
+    CPUStep step = {0};
 
     CPU *cpu = &nes->cpu;
     u32 startCpuCycles = cpu->cycles;

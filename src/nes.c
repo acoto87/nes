@@ -2,18 +2,20 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#include <string.h>
+
+#include "nes.h"
+#include "cpu.h"
+#include "ppu.h"
+#include "apu.h"
+#include "controller.h"
+#include "gui.h"
 #include "memory.h"
 #include "mapper0.h"
 #include "mapper1.h"
 #include "mapper2.h"
 #include "mapper3.h"
 #include "mapper66.h"
-
-#include "cpu.cpp"
-#include "ppu.cpp"
-#include "apu.cpp"
-#include "controller.cpp"
-#include "gui.cpp"
 
 #define HEADER_SIZE 16
 #define CPU_PRG_BANK_SIZE KILOBYTES(16)
@@ -63,7 +65,7 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
     FILE *file = fopen(filePath, "rb");
     if (!file)
     {
-        return false;
+        return FALSE;
     }
 
     CartridgeHeader header;
@@ -71,7 +73,7 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
     if (read == 0)
     {
         fclose(file);
-        return false;
+        return FALSE;
     }
 
     if (!(header.nesStr[0] == 'N' &&
@@ -80,7 +82,7 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
         header.nesStr[3] == 0x1A))
     {
         fclose(file);
-        return false;
+        return FALSE;
     }
 
     cartridge->hasTrainer = HAS_FLAG(header.flags6, TRAINER_MASK);
@@ -128,7 +130,7 @@ b32 LoadNesRom(char *filePath, Cartridge *cartridge)
 
     fclose(file);
 
-    return true;
+    return TRUE;
 }
 
 internal void CreateMapper(NES *nes)
@@ -204,7 +206,7 @@ NES* CreateNES(Cartridge cartridge)
 
     if (nes)
     {
-        *nes = {};
+        memset(nes, 0, sizeof(NES));
         nes->cartridge = cartridge;
 
         InitCPU(nes);
@@ -320,7 +322,7 @@ void Save(NES *nes, char *filePath)
     {
         nes->mapperSave(nes, file);
     }
-    
+
     // Write GUI data
     GUI *gui = &nes->gui;
     fwrite(&gui->width, sizeof(u32), 1, file);
@@ -361,12 +363,12 @@ internal inline void ReadMemory(Memory *memory, FILE *file)
 {
     fread(&memory->created, sizeof(b32), 1, file);
     fread(&memory->length, sizeof(u32), 1, file);
-    
+
     memory->bytes = (u8*)Allocate(memory->length);
     fread(memory->bytes, sizeof(u8), memory->length, file);
 }
 
-NES* LoadNesSave(char *filePath)
+NES* LoadNESSave(char *filePath)
 {
     FILE *file = fopen(filePath, "rb");
     if (!file)
@@ -375,7 +377,7 @@ NES* LoadNesSave(char *filePath)
     }
 
     NES* nes = (NES*)Allocate(sizeof(NES));
-    *nes = {};
+    memset(nes, 0, sizeof(NES));
 
     // Read ram data
     ReadMemory(&nes->cpuMemory, file);

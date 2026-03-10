@@ -11,13 +11,20 @@
 #include "utils.h"
 #include "types.h"
 #include "cartridge.h"
-#include "nes.cpp"
+#include "nes.h"
+#include "cpu.h"
+#include "cpu_debug.h"
+#include "ppu.h"
+#include "ppu_debug.h"
+#include "apu.h"
+#include "controller.h"
+#include "gui.h"
 
 #define SDL_MAIN_HANDLED
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_audio.h>
-#include <SDL2/SDL_opengl.h>
-#include <SDL2/SDL_opengl_glext.h>
+#include <SDL.h>
+#include <SDL_audio.h>
+#include <SDL_opengl.h>
+#include <SDL_opengl_glext.h>
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -69,6 +76,7 @@ global PFNGLDELETEVERTEXARRAYSPROC GLDeleteVertexArrays;
 global PFNGLBINDVERTEXARRAYPROC GLBindVertexArray;
 global PFNGLGENERATEMIPMAPPROC GLGenerateMipmap;
 
+typedef struct Device Device;
 struct Device {
     struct nk_buffer cmds;
     GLuint vbo, vao, ebo;
@@ -237,7 +245,7 @@ internal b32 LoadFileIntoApp(SDL_Window *win, const char *path)
 
     if (EndsWith(path, ".nes"))
     {
-        Cartridge cartridge = {};
+        Cartridge cartridge = {0};
         if (!LoadNesRom((char*)path, &cartridge))
         {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
@@ -264,7 +272,7 @@ internal b32 LoadFileIntoApp(SDL_Window *win, const char *path)
 
     if (EndsWith(path, ".nsave"))
     {
-        NES *loaded = LoadNesSave((char*)path);
+        NES *loaded = LoadNESSave((char*)path);
         if (!loaded)
         {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
@@ -2039,7 +2047,7 @@ int main(int argc, char **argv)
                     apu->dmc.globalEnabled = dmcEnabled;
 
                     local f32 rectHeight = 200.0f;
-                    local nk_color lineColor = nk_rgb(255, 0, 0);
+                    struct nk_color lineColor = nk_rgb(255, 0, 0);
                     local f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);
@@ -2072,7 +2080,7 @@ int main(int argc, char **argv)
                 }
                 else if (option == SQUARE1 || option == SQUARE2)
                 {
-                    APU::Pulse *pulse = option == SQUARE1 ? &apu->pulse1 : &apu->pulse2;
+                    APUPulse *pulse = option == SQUARE1 ? &apu->pulse1 : &apu->pulse2;
 
                     nk_layout_row_dynamic(ctx, 25, 4);
 
@@ -2101,7 +2109,7 @@ int main(int argc, char **argv)
                     nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", pulse->constantVolume), NK_TEXT_LEFT);
 
                     local f32 rectHeight = 200.0f;
-                    local nk_color lineColor = nk_rgb(255, 0, 0);
+                    struct nk_color lineColor = nk_rgb(255, 0, 0);
                     local f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);
@@ -2134,7 +2142,7 @@ int main(int argc, char **argv)
                 }
                 else if (option == TRIANGLE)
                 {
-                    APU::Triangle *triangle = &apu->triangle;
+                    APUTriangle *triangle = &apu->triangle;
 
                     nk_layout_row_dynamic(ctx, 25, 3);
 
@@ -2153,7 +2161,7 @@ int main(int argc, char **argv)
                     nk_label(ctx, DebugText("COUNTER RELOAD:%02X", triangle->linearReload), NK_TEXT_LEFT);
 
                     local f32 rectHeight = 200.0f;
-                    local nk_color lineColor = nk_rgb(255, 0, 0);
+                    struct nk_color lineColor = nk_rgb(255, 0, 0);
                     local f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);
@@ -2186,7 +2194,7 @@ int main(int argc, char **argv)
                 }
                 else if (option == NOISE)
                 {
-                    APU::Noise *noise = &apu->noise;
+                    APUNoise *noise = &apu->noise;
 
                     nk_layout_row_dynamic(ctx, 25, 3);
 
@@ -2206,7 +2214,7 @@ int main(int argc, char **argv)
                     nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", noise->constantVolume), NK_TEXT_LEFT);
 
                     local f32 rectHeight = 200.0f;
-                    local nk_color lineColor = nk_rgb(255, 0, 0);
+                    struct nk_color lineColor = nk_rgb(255, 0, 0);
                     local f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);
@@ -2239,7 +2247,7 @@ int main(int argc, char **argv)
                 }
                 else if (option == DMC)
                 {
-                    APU::DMC *dmc = &apu->dmc;
+                    APUDMC *dmc = &apu->dmc;
 
                     nk_layout_row_dynamic(ctx, 25, 3);
 
@@ -2260,7 +2268,7 @@ int main(int argc, char **argv)
                     nk_label(ctx, DebugText("ENABLED:%02X", dmc->enabled), NK_TEXT_LEFT);
 
                     local f32 rectHeight = 200.0f;
-                    local nk_color lineColor = nk_rgb(255, 0, 0);
+                    struct nk_color lineColor = nk_rgb(255, 0, 0);
                     local f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);

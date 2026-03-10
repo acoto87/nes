@@ -151,7 +151,7 @@ internal void RenderPixel(NES *nes)
     }
 
     // draw pixel at 'x', 'y' with color 'color'
-    SetPixel(gui, x, y, color);
+    SetGUIPixel(gui, x, y, color);
 }
 
 // from: https://wiki.nesdev.com/w/index.php?title=PPU_scrolling

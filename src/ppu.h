@@ -2,6 +2,9 @@
 #ifndef PPU_H
 #define PPU_H
 
+#include "types.h"
+#include "memory.h"
+
 /*
 * http://wiki.nesdev.com/w/index.php/PPU_power_up_state
 * http://wiki.nesdev.com/w/index.php/PPU_rendering
@@ -188,86 +191,13 @@ $3F1D-$3F1F  Sprite palette 3
 #define GetPixelColorBits(row1, row2, x, h) (((h) << 2) | GetPixelLowBits(row1, row2, x))
 
 // this is a forward reference to a function in cpu.h, so WriteDMA could compile.
-inline u8 ReadCPUU8(NES *nes, u16 address);
+u8 ReadCPUU8(NES *nes, u16 address);
 
 // palette adapted from http://nesdev.parodius.com/NESTechFAQ.htm 
-global Color systemPalette[PPU_NUM_SYSTEM_COLOURS] =
-{
-    { 0x75, 0x75, 0x75, 0xFF },
-    { 0x27, 0x1B, 0x8F, 0xFF },
-    { 0x00, 0x00, 0xAB, 0xFF },
-    { 0x47, 0x00, 0x9F, 0xFF },
-    { 0x8F, 0x00, 0x77, 0xFF },
-    { 0xAB, 0x00, 0x13, 0xFF },
-    { 0xA7, 0x00, 0x00, 0xFF },
-    { 0x7F, 0x0B, 0x00, 0xFF },
-    { 0x43, 0x2F, 0x00, 0xFF },
-    { 0x00, 0x47, 0x00, 0xFF },
-    { 0x00, 0x51, 0x00, 0xFF },
-    { 0x00, 0x3F, 0x17, 0xFF },
-    { 0x1B, 0x3F, 0x5F, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0xBC, 0xBC, 0xBC, 0xFF },
-    { 0x00, 0x73, 0xEF, 0xFF },
-    { 0x23, 0x3B, 0xEF, 0xFF },
-    { 0x83, 0x00, 0xF3, 0xFF },
-    { 0xBF, 0x00, 0xBF, 0xFF },
-    { 0xE7, 0x00, 0x5B, 0xFF },
-    { 0xDB, 0x2B, 0x00, 0xFF },
-    { 0xCB, 0x4F, 0x0F, 0xFF },
-    { 0x8B, 0x73, 0x00, 0xFF },
-    { 0x00, 0x97, 0x00, 0xFF },
-    { 0x00, 0xAB, 0x00, 0xFF },
-    { 0x00, 0x93, 0x3B, 0xFF },
-    { 0x00, 0x83, 0x8B, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0xFF, 0xFF, 0xFF, 0xFF },
-    { 0x3F, 0xBF, 0xFF, 0xFF },
-    { 0x5F, 0x97, 0xFF, 0xFF },
-    { 0xA7, 0x8B, 0xFD, 0xFF },
-    { 0xF7, 0x7B, 0xFF, 0xFF },
-    { 0xFF, 0x77, 0xB7, 0xFF },
-    { 0xFF, 0x77, 0x63, 0xFF },
-    { 0xFF, 0x9B, 0x3B, 0xFF },
-    { 0xF3, 0xBF, 0x3F, 0xFF },
-    { 0x83, 0xD3, 0x13, 0xFF },
-    { 0x4F, 0xDF, 0x4B, 0xFF },
-    { 0x58, 0xF8, 0x98, 0xFF },
-    { 0x00, 0xEB, 0xDB, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0xFF, 0xFF, 0xFF, 0xFF },
-    { 0xAB, 0xE7, 0xFF, 0xFF },
-    { 0xC7, 0xD7, 0xFF, 0xFF },
-    { 0xD7, 0xCB, 0xFF, 0xFF },
-    { 0xFF, 0xC7, 0xFF, 0xFF },
-    { 0xFF, 0xC7, 0xDB, 0xFF },
-    { 0xFF, 0xBF, 0xB3, 0xFF },
-    { 0xFF, 0xDB, 0xAB, 0xFF },
-    { 0xFF, 0xE7, 0xA3, 0xFF },
-    { 0xE3, 0xFF, 0xA3, 0xFF },
-    { 0xAB, 0xF3, 0xBF, 0xFF },
-    { 0xB3, 0xFF, 0xCF, 0xFF },
-    { 0x9F, 0xFF, 0xF3, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF },
-    { 0x00, 0x00, 0x00, 0xFF }
-};
+extern Color systemPalette[PPU_NUM_SYSTEM_COLOURS];
+extern u8 attributeTableLookup[PPU_VERTICAL_TILES_PER_ATTRIBUTE_BYTE][PPU_HORIZONTAL_TILES_PER_ATTRIBUTE_BYTE];
 
-global u8 attributeTableLookup[PPU_VERTICAL_TILES_PER_ATTRIBUTE_BYTE][PPU_HORIZONTAL_TILES_PER_ATTRIBUTE_BYTE] =
-{
-    { 0x0, 0x1, 0x4, 0x5 },
-    { 0x2, 0x3, 0x6, 0x7 },
-    { 0x8, 0x9, 0xC, 0xD },
-    { 0xA, 0xB, 0xE, 0xF }
-};
-
-inline u8 ReadPPUU8(NES *nes, u16 address)
+static inline u8 ReadPPUU8(NES *nes, u16 address)
 {
     address = address % 0x4000;
 
@@ -316,7 +246,7 @@ inline u8 ReadPPUU8(NES *nes, u16 address)
     return 0;
 }
 
-inline u16 ReadPPUU16(NES *nes, u16 address)
+static inline u16 ReadPPUU16(NES *nes, u16 address)
 {
     // read in little-endian mode
     u8 lo = ReadPPUU8(nes, address);
@@ -324,7 +254,7 @@ inline u16 ReadPPUU16(NES *nes, u16 address)
     return (hi << 8) | lo;
 }
 
-inline void WritePPUU8(NES *nes, u16 address, u8 value)
+static inline void WritePPUU8(NES *nes, u16 address, u8 value)
 {
     address = address % 0x4000;
 
@@ -427,22 +357,22 @@ inline void WritePPUU8(NES *nes, u16 address, u8 value)
     }
 }
 
-inline void WritePPUU16(NES *nes, u16 address, u16 value)
+static inline void WritePPUU16(NES *nes, u16 address, u16 value)
 {
     // write in little-endian mode
-    u8 lo = value & 0xFF00;
+    u8 lo = value & 0x00FF;
     u8 hi = (value & 0xFF00) >> 8;
     WritePPUU8(nes, address, lo);
     WritePPUU8(nes, address + 1, hi);
 }
 
-inline u8 ReadPPUCtrl(NES *nes)
+static inline u8 ReadPPUCtrl(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ppu->control;
 }
 
-inline void WritePPUCtrl(NES *nes, u8 value)
+static inline void WritePPUCtrl(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->control = value;
@@ -452,13 +382,13 @@ inline void WritePPUCtrl(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadPPUMask(NES *nes)
+static inline u8 ReadPPUMask(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ppu->mask;
 }
 
-inline void WritePPUMask(NES *nes, u8 value)
+static inline void WritePPUMask(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->mask = value;
@@ -467,7 +397,7 @@ inline void WritePPUMask(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadPPUStatus(NES *nes)
+static inline u8 ReadPPUStatus(NES *nes)
 {
     PPU *ppu = &nes->ppu;
 
@@ -492,18 +422,18 @@ inline u8 ReadPPUStatus(NES *nes)
     return status;
 }
 
-inline void WritePPUStatus(NES *nes, u8 value)
+static inline void WritePPUStatus(NES *nes, u8 value)
 {
     // This register is read only
 }
 
-inline u8 ReadPPUOamAddr(NES *nes)
+static inline u8 ReadPPUOamAddr(NES *nes)
 {
     // This register is write only
     return 0;
 }
 
-inline void WritePPUOamAddr(NES *nes, u8 value)
+static inline void WritePPUOamAddr(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->oamAddress = value;
@@ -512,13 +442,13 @@ inline void WritePPUOamAddr(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadPPUOamData(NES *nes)
+static inline u8 ReadPPUOamData(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ReadPPUU8(nes, ppu->oamAddress);
 }
 
-inline void WritePPUOamData(NES *nes, u8 value)
+static inline void WritePPUOamData(NES *nes, u8 value)
 {
     // TODO: write here to oamAddress: WriteU8(oamAddress, value); ??
     PPU *ppu = &nes->ppu;
@@ -530,13 +460,13 @@ inline void WritePPUOamData(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadPPUScroll(NES *nes)
+static inline u8 ReadPPUScroll(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ppu->scroll;
 }
 
-inline void WritePPUScroll(NES *nes, u8 value)
+static inline void WritePPUScroll(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->scroll = value;
@@ -562,13 +492,13 @@ inline void WritePPUScroll(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadPPUVramAddr(NES *nes)
+static inline u8 ReadPPUVramAddr(NES *nes)
 {
     PPU *ppu = &nes->ppu;
     return ppu->address;
 }
 
-inline void WritePPUVramAddr(NES *nes, u8 value)
+static inline void WritePPUVramAddr(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->address = value;
@@ -595,7 +525,7 @@ inline void WritePPUVramAddr(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline u8 ReadPPUVramData(NES *nes)
+static inline u8 ReadPPUVramData(NES *nes)
 {
     PPU *ppu = &nes->ppu;
 
@@ -626,7 +556,7 @@ inline u8 ReadPPUVramData(NES *nes)
     return value;
 }
 
-inline void WritePPUVramData(NES *nes, u8 value)
+static inline void WritePPUVramData(NES *nes, u8 value)
 {
     PPU *ppu = &nes->ppu;
     ppu->data = value;
@@ -647,7 +577,7 @@ inline void WritePPUVramData(NES *nes, u8 value)
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
 
-inline void WritePPUDMA(NES *nes, u8 value)
+static inline void WritePPUDMA(NES *nes, u8 value)
 {
     CPU *cpu = &nes->cpu;
     PPU *ppu = &nes->ppu;
@@ -672,7 +602,7 @@ inline void WritePPUDMA(NES *nes, u8 value)
         ++cpu->waitCycles;
 }
 
-inline u8 GetSpritePixelRow(NES *nes, u16 baseAddress, u8 spriteIndex, u8 y, u8 index)
+static inline u8 GetSpritePixelRow(NES *nes, u16 baseAddress, u8 spriteIndex, u8 y, u8 index)
 {
     // this happen when the sprite size of ppu->control is set to 1 (8x16 sprites)
     if (y >= 8)
@@ -684,7 +614,7 @@ inline u8 GetSpritePixelRow(NES *nes, u16 baseAddress, u8 spriteIndex, u8 y, u8 
     return ReadPPUU8(nes, baseAddress + spriteIndex * 16 + index * 8 + y);
 }
 
-inline u8 GetSpritePixel(NES *nes, u16 baseAddress, u8 spriteIndex, u8 x, u8 y)
+static inline u8 GetSpritePixel(NES *nes, u16 baseAddress, u8 spriteIndex, u8 x, u8 y)
 {
     // this happen when the sprite size of ppu->control is set to 1 (8x16 sprites)
     if (y >= 8)
@@ -698,7 +628,7 @@ inline u8 GetSpritePixel(NES *nes, u16 baseAddress, u8 spriteIndex, u8 x, u8 y)
     return GetPixelLowBits(row1, row2, x);
 }
 
-inline void ColorEmphasis(Color *color, u8 mask)
+static inline void ColorEmphasis(Color *color, u8 mask)
 {
     switch (mask)
     {
@@ -737,7 +667,7 @@ inline void ColorEmphasis(Color *color, u8 mask)
     }
 }
 
-inline void SetVerticalBlank(NES *nes)
+static inline void SetVerticalBlank(NES *nes)
 {
     CPU *cpu = &nes->cpu;
     PPU *ppu = &nes->ppu;
@@ -755,7 +685,7 @@ inline void SetVerticalBlank(NES *nes)
     ppu->suppressNmi = FALSE;
 }
 
-inline void ClearVerticalBlank(NES *nes)
+static inline void ClearVerticalBlank(NES *nes)
 {
     PPU *ppu = &nes->ppu;
 
@@ -773,7 +703,7 @@ void PowerPPU(NES *nes);
 void InitPPU(NES *nes);
 void StepPPU(NES *nes);
 
-inline void StepPPU(NES *nes, s32 cycles)
+static inline void StepPPUCycles(NES *nes, s32 cycles)
 {
     for (s32 i = 0; i < 3 * cycles; ++i)
     {

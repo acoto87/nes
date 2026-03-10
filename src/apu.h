@@ -1,5 +1,9 @@
 #pragma once
 
+#include "types.h"
+
+u8 ReadCPUU8(NES *nes, u16 address);
+
 // (CPU_FREQ / 240) = (1789773 / 240) = 7457.38
 // Frequency of FrameCounter
 // from: http://wiki.nesdev.com/w/index.php/APU#Frame_Counter_.28.244017.29
@@ -13,44 +17,19 @@
 #define APU_BYTES_PER_SAMPLE sizeof(s16)
 #define APU_AMPLIFIER_VALUE 10000
 
-global u8 lengthTable[32]
-{
-    10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
-    12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30
-};
-
-global u8 dutyTable[4][8]
-{
-    { 0, 1, 0, 0, 0, 0, 0, 0 },
-    { 0, 1, 1, 0, 0, 0, 0, 0 },
-    { 0, 1, 1, 1, 1, 0, 0, 0 },
-    { 1, 0, 0, 1, 1, 1, 1, 1 }
-};
-
-global u8 triangleTable[32]
-{
-    15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,  0, 
-     0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15
-};
-
-global u16 noiseTable[16]
-{
-    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
-};
-
-global u8 dmcTable[16]
-{
-    428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54
-};
-
-global f32 pulseTable[31];
-global f32 tndTable[203];
+extern u8 lengthTable[32];
+extern u8 dutyTable[4][8];
+extern u8 triangleTable[32];
+extern u16 noiseTable[16];
+extern u16 dmcTable[16];
+extern f32 pulseTable[31];
+extern f32 tndTable[203];
 
 /*************************************
             PULSE CHANNEL
 **************************************/
 
-inline void WriteAPUPulseEnvelope(APU::Pulse *pulse, u8 value)
+static inline void WriteAPUPulseEnvelope(APUPulse *pulse, u8 value)
 {
     pulse->dutyMode = (value >> 6) & 3;
     pulse->lengthEnabled = !((value >> 5) & 1);
@@ -61,7 +40,7 @@ inline void WriteAPUPulseEnvelope(APU::Pulse *pulse, u8 value)
     pulse->envelopeStart = TRUE;
 }
 
-inline void WriteAPUPulseSweep(APU::Pulse *pulse, u8 value)
+static inline void WriteAPUPulseSweep(APUPulse *pulse, u8 value)
 {
     pulse->sweepEnabled = (value >> 7) & 1;
     pulse->sweepPeriod = ((value >> 4) & 7) + 1;
@@ -70,12 +49,12 @@ inline void WriteAPUPulseSweep(APU::Pulse *pulse, u8 value)
     pulse->sweepReload = TRUE;
 }
 
-inline void WriteAPUPulseTimer(APU::Pulse *pulse, u8 value)
+static inline void WriteAPUPulseTimer(APUPulse *pulse, u8 value)
 {
     pulse->timerPeriod = (pulse->timerPeriod & 0xFF00) | (u16)value;
 }
 
-inline void WriteAPUPulseLength(APU::Pulse *pulse, u8 value)
+static inline void WriteAPUPulseLength(APUPulse *pulse, u8 value)
 {
     if (pulse->enabled)
     {
@@ -90,19 +69,19 @@ inline void WriteAPUPulseLength(APU::Pulse *pulse, u8 value)
             TRIANGLE CHANNEL
 **************************************/
 
-inline void WriteAPUTriangleLinear(APU::Triangle *triangle, u8 value)
+static inline void WriteAPUTriangleLinear(APUTriangle *triangle, u8 value)
 {
     triangle->linearEnabled = !((value >> 7) & 1);
     triangle->lengthEnabled = !((value >> 7) & 1);
     triangle->linearPeriod = value & 0x7F;
 }
 
-inline void WriteAPUTriangleTimer(APU::Triangle *triangle, u8 value)
+static inline void WriteAPUTriangleTimer(APUTriangle *triangle, u8 value)
 {
     triangle->timerPeriod = (triangle->timerPeriod & 0xFF00) | (u16)value;
 }
 
-inline void WriteAPUTriangleLength(APU::Triangle *triangle, u8 value)
+static inline void WriteAPUTriangleLength(APUTriangle *triangle, u8 value)
 {
     if (triangle->enabled)
     {
@@ -117,7 +96,7 @@ inline void WriteAPUTriangleLength(APU::Triangle *triangle, u8 value)
             NOISE CHANNEL
 **************************************/
 
-inline void WriteAPUNoiseEnvelope(APU::Noise *noise, u8 value)
+static inline void WriteAPUNoiseEnvelope(APUNoise *noise, u8 value)
 {
     noise->lengthEnabled = !((value >> 5) & 1);
     noise->constantVolume = value & 15;
@@ -127,13 +106,13 @@ inline void WriteAPUNoiseEnvelope(APU::Noise *noise, u8 value)
     noise->envelopeStart = TRUE;
 }
 
-inline void WriteAPUNoisePeriod(APU::Noise *noise, u8 value)
+static inline void WriteAPUNoisePeriod(APUNoise *noise, u8 value)
 {
     noise->timerMode = (value >> 7) & 1;
     noise->timerPeriod = noiseTable[value & 0x0F];
 }
 
-inline void WriteAPUNoiseLength(APU::Noise *noise, u8 value)
+static inline void WriteAPUNoiseLength(APUNoise *noise, u8 value)
 {
     if (noise->enabled)
     {
@@ -146,31 +125,31 @@ inline void WriteAPUNoiseLength(APU::Noise *noise, u8 value)
             DMC CHANNEL
 **************************************/
 
-inline void WriteAPUDMCControl(APU::DMC *dmc, u8 value)
+static inline void WriteAPUDMCControl(APUDMC *dmc, u8 value)
 {
     dmc->irq = (value & 0x80) >> 7;
     dmc->loop = (value & 0x40) >> 6;
     dmc->timerPeriod = dmcTable[value & 0x0F];
 }
 
-inline void WriteAPUDMCValue(APU::DMC *dmc, u8 value)
+static inline void WriteAPUDMCValue(APUDMC *dmc, u8 value)
 {
     dmc->value = (value & 0x7F);
 }
 
-inline void WriteAPUDMCAddress(APU::DMC *dmc, u8 value)
+static inline void WriteAPUDMCAddress(APUDMC *dmc, u8 value)
 {
     // Sample address = %11AAAAAA.AA000000
     dmc->sampleAddress = 0xC000 + (u16)value * 64;
 }
 
-inline void WriteAPUDMCLength(APU::DMC *dmc, u8 value)
+static inline void WriteAPUDMCLength(APUDMC *dmc, u8 value)
 {
     // Sample length = %0000LLLL.LLLL0001
     dmc->sampleLength = (u16)value * 16 + 1;
 }
 
-inline void RestartDMC(APU::DMC *dmc)
+static inline void RestartDMC(APUDMC *dmc)
 {
     dmc->currentAddress = dmc->sampleAddress;
     dmc->currentLength = dmc->sampleLength;
@@ -180,7 +159,7 @@ inline void RestartDMC(APU::DMC *dmc)
             STATUS AND FRAMECOUNTER CHANNEL
 ********************************************************/
 
-inline u8 ReadAPUStatus(NES *nes)
+static inline u8 ReadAPUStatus(NES *nes)
 {
     APU *apu = &nes->apu;
 
@@ -226,7 +205,7 @@ inline u8 ReadAPUStatus(NES *nes)
     return result;
 }
 
-inline void WriteAPUStatus(NES *nes, u8 value)
+static inline void WriteAPUStatus(NES *nes, u8 value)
 {
     APU *apu = &nes->apu;
 
@@ -273,7 +252,7 @@ void InitAPU(NES *nes);
 void StepAPU(NES *nes);
 void WriteAPUFrameCounter(NES *nes, u8 value);
 
-inline void StepAPU(NES *nes, s32 cycles)
+static inline void StepAPUCycles(NES *nes, s32 cycles)
 {
     for (s32 i = 0; i < cycles; ++i)
     {
