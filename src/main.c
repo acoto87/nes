@@ -88,11 +88,6 @@ struct Device {
 
 #define ONE_MINUTE_OF_SOUND (48000 * 60 * 2 * 8)
 
-internal inline u64 GetWallClock(void)
-{
-    return SDL_GetPerformanceCounter();
-}
-
 internal inline f32 GetSecondsElapsed(u64 start, u64 end)
 {
     f32 result = ((f32)(end - start) / (f32)globalPerfCountFrequency);
@@ -397,7 +392,7 @@ int main(int argc, char **argv)
     struct Device device;
     SDL_GameController *controller = NULL;
 
-    initialCounter = GetWallClock();
+    initialCounter = SDL_GetPerformanceCounter();
     globalPerfCountFrequency = SDL_GetPerformanceFrequency();
 
     /* SDL setup */
@@ -484,7 +479,7 @@ int main(int argc, char **argv)
         SDL_Log("Failed to open SDL audio device: %s", SDL_GetError());
     }
 
-    u64 startCounter = GetWallClock();
+    u64 startCounter = SDL_GetPerformanceCounter();
     dt = GetSecondsElapsed(initialCounter, startCounter);
     running = TRUE;
 
@@ -535,7 +530,7 @@ int main(int argc, char **argv)
             break;
         }
 
-        u64 s = GetWallClock();
+        u64 s = SDL_GetPerformanceCounter();
 
         if (nes)
         {
@@ -681,10 +676,10 @@ int main(int argc, char **argv)
             }
         }
 
-        u64 e = GetWallClock();
+        u64 e = SDL_GetPerformanceCounter();
         d1 = GetSecondsElapsed(s, e);
 
-        s = GetWallClock();
+        s = SDL_GetPerformanceCounter();
 
         /* GUI */
         nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
@@ -698,7 +693,7 @@ int main(int argc, char **argv)
 
             nk_layout_row_dynamic(ctx, 20, 2);
 
-            u64 fpsCounter = GetWallClock();
+            u64 fpsCounter = SDL_GetPerformanceCounter();
             f32 fpsdt = GetSecondsElapsed(initialCounter, fpsCounter);
             if (fpsdt > 1)
             {
@@ -2181,15 +2176,15 @@ int main(int argc, char **argv)
             SDL_GL_SwapWindow(win);
         }
 
-        e = GetWallClock();
+        e = SDL_GetPerformanceCounter();
         d2 = GetSecondsElapsed(s, e);
 
-        u64 endCounter = GetWallClock();
+        u64 endCounter = SDL_GetPerformanceCounter();
         f32 secondsElapsed = GetSecondsElapsed(startCounter, endCounter);
 
         while (secondsElapsed < 0.0167)
         {
-            endCounter = GetWallClock();
+            endCounter = SDL_GetPerformanceCounter();
             secondsElapsed = GetSecondsElapsed(startCounter, endCounter);
         }
 

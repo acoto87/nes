@@ -4,14 +4,14 @@ setlocal
 set "ROOT=%~dp0"
 set "BUILD_DIR=%ROOT%build"
 set "SDL_ROOT=%ROOT%external\SDL2\x86_64-w64-mingw32"
-set "SDL_INCLUDE=%SDL_ROOT%\include\SDL2"
+set "SDL_INCLUDE=%SDL_ROOT%\include"
 set "SDL_LIB=%SDL_ROOT%\lib"
 set "SDL_BIN=%SDL_ROOT%\bin"
 
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 
 gcc -std=c99 -O0 -g -Wall -Wno-narrowing -I"%SDL_INCLUDE%" ^
-    "%ROOT%src\sdl_opengl2.c" ^
+    "%ROOT%src\main.c" ^
     "%ROOT%src\nes.c" ^
     "%ROOT%src\cpu.c" ^
     "%ROOT%src\cpu_io.c" ^
