@@ -137,6 +137,20 @@ global AppState app = {
 #define loadedFilePath (app.runtime.loadedFilePath)
 #define saveFilePath (app.runtime.saveFilePath)
 
+typedef struct UiLayout UiLayout;
+struct UiLayout
+{
+    struct nk_rect fps;
+    struct nk_rect cpu;
+    struct nk_rect controller;
+    struct nk_rect ppu;
+    struct nk_rect screen;
+    struct nk_rect instructions;
+    struct nk_rect memory;
+    struct nk_rect video;
+    struct nk_rect audio;
+};
+
 global PFNGLGENBUFFERSPROC GLGenBuffers;
 global PFNGLDELETEBUFFERSPROC GLDeleteBuffers;
 global PFNGLBINDBUFFERPROC GLBindBuffer;
@@ -611,9 +625,91 @@ internal void RunEmulatorFrame(struct nk_context *ctx, SDL_GameController *contr
     QueueAudioBuffer(apu, dev, audioStream);
 }
 
-internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window *win, Device *device, f32 dt, f32 d1, f32 d2, u64 *initialCounter)
+internal UiLayout ComputeUiLayout(s32 winWidth, s32 winHeight)
 {
-    if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 290, 190), flags))
+    UiLayout layout;
+    f32 w = (f32)winWidth;
+    f32 h = (f32)winHeight;
+
+    f32 gap = 10.0f;
+    f32 left = 10.0f;
+    f32 top = 10.0f;
+    f32 right = 10.0f;
+    f32 bottom = 10.0f;
+
+    if (!debugMode)
+    {
+        layout.fps = nk_rect(left, top, 290, 190);
+
+        f32 sx = layout.fps.x + layout.fps.w + gap;
+        f32 sy = top;
+        f32 sw = w - sx - right;
+        f32 sh = h - sy - bottom;
+
+        if (sw < 320) sw = 320;
+        if (sh < 240) sh = 240;
+
+        layout.screen = nk_rect(sx, sy, sw, sh);
+
+        layout.cpu = nk_rect(0, 0, 0, 0);
+        layout.controller = nk_rect(0, 0, 0, 0);
+        layout.ppu = nk_rect(0, 0, 0, 0);
+        layout.instructions = nk_rect(0, 0, 0, 0);
+        layout.memory = nk_rect(0, 0, 0, 0);
+        layout.video = nk_rect(0, 0, 0, 0);
+        layout.audio = nk_rect(0, 0, 0, 0);
+        return layout;
+    }
+
+    f32 colLeftW = MAX(260.0f, w * 0.23f);
+    f32 colRightW = MAX(330.0f, w * 0.37f);
+    f32 contentW = w - left - right;
+    if (colLeftW + colRightW + gap > contentW)
+    {
+        colLeftW = contentW * 0.34f;
+        colRightW = contentW * 0.42f;
+    }
+    f32 colMidW = contentW - colLeftW - colRightW - gap * 2.0f;
+    if (colMidW < 220)
+    {
+        colMidW = 220;
+    }
+
+    f32 x0 = left;
+    f32 x1 = x0 + colLeftW + gap;
+    f32 x2 = x1 + colMidW + gap;
+
+    f32 y = top;
+
+    layout.fps = nk_rect(x0, y, colLeftW, 190);
+    y += 190 + gap;
+    layout.instructions = nk_rect(x0, y, colLeftW, h - y - bottom);
+
+    f32 y1 = top;
+    layout.cpu = nk_rect(x1, y1, colMidW, 170);
+    y1 += 170 + gap;
+    layout.controller = nk_rect(x1, y1, colMidW, 120);
+    y1 += 120 + gap;
+    layout.memory = nk_rect(x1, y1, colMidW, h - y1 - bottom);
+
+    f32 topRowH = MAX(300.0f, h * 0.36f);
+    if (topRowH > h - 220) topRowH = h - 220;
+    layout.ppu = nk_rect(x2, top, colRightW * 0.58f, topRowH);
+    layout.screen = nk_rect(x2 + layout.ppu.w + gap, top, colRightW - layout.ppu.w - gap, topRowH);
+
+    f32 y2 = top + topRowH + gap;
+    f32 remH = h - y2 - bottom;
+    f32 audioH = MAX(250.0f, remH * 0.48f);
+    if (audioH > remH - 120) audioH = remH - 120;
+    layout.audio = nk_rect(x2, y2, colRightW, audioH);
+    layout.video = nk_rect(x2, y2 + audioH + gap, colRightW, h - (y2 + audioH + gap) - bottom);
+
+    return layout;
+}
+
+internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window *win, Device *device, const UiLayout *layout, f32 dt, f32 d1, f32 d2, u64 *initialCounter)
+{
+    if (nk_begin(ctx, "FPS INFO", layout->fps, flags))
     {
         nk_layout_row_dynamic(ctx, 20, 2);
 
@@ -711,7 +807,7 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
 
     if (debugMode)
     {
-        if (nk_begin(ctx, "CPU INFO", nk_rect(310, 10, 250, 170), flags) && nes)
+        if (nk_begin(ctx, "CPU INFO", layout->cpu, flags) && nes)
         {
             CPU *cpu = &nes->cpu;
 
@@ -741,7 +837,7 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
 
     if (debugMode)
     {
-        if (nk_begin(ctx, "CONTROLLER 0", nk_rect(310, 190, 250, 120), flags) && nes)
+        if (nk_begin(ctx, "CONTROLLER 0", layout->controller, flags) && nes)
         {
             s32 buttons[8] =
             {
@@ -779,7 +875,7 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
 
     if (debugMode)
     {
-        if (nk_begin(ctx, "PPU INFO", nk_rect(570, 10, 310, 300), flags) && nes)
+        if (nk_begin(ctx, "PPU INFO", layout->ppu, flags) && nes)
         {
             PPU *ppu = &nes->ppu;
 
@@ -807,9 +903,7 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
         nk_end(ctx);
     }
 
-    struct nk_rect screenRect = debugMode
-        ? nk_rect(890, 10, 300, 300)
-        : nk_rect(310, 10, 880, 780);
+    struct nk_rect screenRect = layout->screen;
 
     if (nk_begin(ctx, "SCREEN", screenRect, flags))
     {
@@ -853,14 +947,14 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
     nk_end(ctx);
 }
 
-internal void DrawInstructionsPanel(struct nk_context *ctx, nk_flags flags)
+internal void DrawInstructionsPanel(struct nk_context *ctx, nk_flags flags, const UiLayout *layout)
 {
     if (!debugMode)
     {
         return;
     }
 
-    if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 210, 290, 580), flags) && nes)
+    if (nk_begin(ctx, "INSTRUCTIONS", layout->instructions, flags) && nes)
     {
         CPU* cpu = &nes->cpu;
         const float ratio[] = { 100, 100 };
@@ -1162,14 +1256,16 @@ int main(int argc, char **argv)
 
         /* GUI */
         nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
+        SDL_GetWindowSize(win, &win_width, &win_height);
+        UiLayout layout = ComputeUiLayout(win_width, win_height);
 
-        DrawMainPanels(ctx, flags, win, &device, dt, d1, d2, &initialCounter);
+        DrawMainPanels(ctx, flags, win, &device, &layout, dt, d1, d2, &initialCounter);
 
-        DrawInstructionsPanel(ctx, flags);
+        DrawInstructionsPanel(ctx, flags, &layout);
 
         if (debugMode)
         {
-            if (nk_begin(ctx, "MEMORY", nk_rect(310, 320, 425, 470), flags) && nes)
+            if (nk_begin(ctx, "MEMORY", layout.memory, flags) && nes)
             {
                 enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
                 const float ratio[] = { 80, 80, 80, 80 };
@@ -1262,7 +1358,7 @@ int main(int argc, char **argv)
 
         if (debugMode)
         {
-            if (nk_begin(ctx, "VIDEO", nk_rect(745, 320, 445, 470), flags) && nes)
+            if (nk_begin(ctx, "VIDEO", layout.video, flags) && nes)
             {
                 PPU *ppu = &nes->ppu;
                 GUI *gui = &nes->gui;
@@ -1849,7 +1945,7 @@ int main(int argc, char **argv)
 
         if (debugMode)
         {
-            if (nk_begin(ctx, "AUDIO", nk_rect(445, 220, 650, 430), flags | NK_WINDOW_SCALABLE) && nes)
+            if (nk_begin(ctx, "AUDIO", layout.audio, flags | NK_WINDOW_SCALABLE) && nes)
             {
                 APU *apu = &nes->apu;
 
