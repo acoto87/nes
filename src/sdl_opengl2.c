@@ -21,10 +21,10 @@
 #include "gui.h"
 
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
-#include <SDL_audio.h>
-#include <SDL_opengl.h>
-#include <SDL_opengl_glext.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
+#include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_opengl_glext.h>
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -76,14 +76,6 @@ typedef struct Device Device;
 struct Device {
     struct nk_buffer cmds;
     GLuint vbo, vao, ebo;
-    /* GLuint prog;
-     GLuint vert_shdr;
-     GLuint frag_shdr;
-     GLint attrib_pos;
-     GLint attrib_uv;
-     GLint attrib_col;
-     GLint uniform_tex;
-     GLint uniform_proj;*/
 
     struct nk_image screen;
     struct nk_image patterns[2];
@@ -95,40 +87,6 @@ struct Device {
 };
 
 #define ONE_MINUTE_OF_SOUND (48000 * 60 * 2 * 8)
-
-// struct WavAudio
-// {
-//     /* RIFF identifier */
-//     char riff[5] = "RIFF";
-//     /* file length */
-//     u32 length = 36 + ONE_MINUTE_OF_SOUND;
-//     /* RIFF type */
-//     char format[5] = "WAVE";
-
-//     /* format chunk identifier */
-//     char fmt[5] = "fmt ";
-//     /* format chunk length */
-//     u32 chunkLength = 16;
-//     /* sample format (raw PCM) */
-//     u16 sampleFormat = 1;
-//     /* channel count */
-//     u16 channelCount = 2;
-//     /* sample rate */
-//     u32 sampleRate = 48000;
-//     /* byte rate (sample rate * block align) */
-//     u32 byteRate = 48000 * 2 * 4;
-//     /* block align (channel count * bytes per sample) */
-//     u16 blockAlign = 2 * 4;
-//     /* bits per sample */
-//     u16 bitsPerSample = 32;
-
-//     /* data chunk identifier */
-//     char view[5] = "data";
-//     /* data chunk length */
-//     u32 dataLength = ONE_MINUTE_OF_SOUND; // one minute of sound
-//     /* data */
-//     u8 data[ONE_MINUTE_OF_SOUND];
-// };
 
 internal inline u64 GetWallClock(void)
 {
