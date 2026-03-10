@@ -449,6 +449,168 @@ internal void DeleteTextures(Device *dev)
     }
 }
 
+internal void UpdateControllerInput(struct nk_context *ctx, SDL_GameController *controller)
+{
+    const Uint8 *keyboard = SDL_GetKeyboardState(NULL);
+
+    SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down || coarseButtons[1]);
+    SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down || coarseButtons[3]);
+    SetButton(nes, 0, BUTTON_LEFT, ctx->input.keyboard.keys[NK_KEY_LEFT].down || coarseButtons[0]);
+    SetButton(nes, 0, BUTTON_RIGHT, ctx->input.keyboard.keys[NK_KEY_RIGHT].down || coarseButtons[2]);
+    SetButton(nes, 0, BUTTON_SELECT, keyboard[SDL_SCANCODE_SPACE] || coarseButtons[4]);
+    SetButton(nes, 0, BUTTON_START, ctx->input.keyboard.keys[NK_KEY_ENTER].down || coarseButtons[5]);
+    SetButton(nes, 0, BUTTON_B, keyboard[SDL_SCANCODE_S] || coarseButtons[6]);
+    SetButton(nes, 0, BUTTON_A, keyboard[SDL_SCANCODE_A] || coarseButtons[7]);
+
+    if (controller)
+    {
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A))
+        {
+            SetButton(nes, 0, BUTTON_A, TRUE);
+        }
+
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X))
+        {
+            SetButton(nes, 0, BUTTON_B, TRUE);
+        }
+
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START))
+        {
+            SetButton(nes, 0, BUTTON_START, TRUE);
+        }
+
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK))
+        {
+            SetButton(nes, 0, BUTTON_SELECT, TRUE);
+        }
+
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP))
+        {
+            SetButton(nes, 0, BUTTON_UP, TRUE);
+        }
+
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN))
+        {
+            SetButton(nes, 0, BUTTON_DOWN, TRUE);
+        }
+
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT))
+        {
+            SetButton(nes, 0, BUTTON_LEFT, TRUE);
+        }
+
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
+        {
+            SetButton(nes, 0, BUTTON_RIGHT, TRUE);
+        }
+    }
+}
+
+internal void QueueAudioBuffer(APU *apu, SDL_AudioDeviceID dev, SDL_AudioStream *audioStream)
+{
+    if (!dev)
+    {
+        return;
+    }
+
+    s32 bytesToQueue = apu->bufferIndex * APU_BYTES_PER_SAMPLE;
+
+    if (audioStream)
+    {
+        if (SDL_AudioStreamPut(audioStream, apu->buffer, bytesToQueue) == 0)
+        {
+            s32 convertedBytes = SDL_AudioStreamAvailable(audioStream);
+            if (convertedBytes > 0)
+            {
+                u8 *convertedBuffer = (u8*)SDL_malloc(convertedBytes);
+                if (convertedBuffer)
+                {
+                    s32 readBytes = SDL_AudioStreamGet(audioStream, convertedBuffer, convertedBytes);
+                    if (readBytes > 0)
+                    {
+                        SDL_QueueAudio(dev, convertedBuffer, readBytes);
+                    }
+                    SDL_free(convertedBuffer);
+                }
+            }
+        }
+    }
+    else
+    {
+        SDL_QueueAudio(dev, apu->buffer, bytesToQueue);
+    }
+}
+
+internal void RunEmulatorFrame(struct nk_context *ctx, SDL_GameController *controller, SDL_AudioDeviceID dev, SDL_AudioStream *audioStream)
+{
+    if (!nes)
+    {
+        return;
+    }
+
+    CPU *cpu = &nes->cpu;
+    APU *apu = &nes->apu;
+
+    UpdateControllerInput(ctx, controller);
+
+    // Frame
+    // I'm targeting 60fps, so run the amount of cpu cycles for 0.0167 seconds
+    //
+    // This could be calculated with the frequency of the PPU, and run based on
+    // the amount of cycles that we want the PPU to run in 0.0167 seconds. For now
+    // i'm using the CPU frequency.
+    s32 cycles = 0.0167 * CPU_FREQ;
+
+    // If we are stepping in the debugger, run only 1 instruction
+    // so set cycles = 1 to enter the while only one time
+    if (stepping || oneCycleAtTime)
+    {
+        cycles = 1;
+    }
+
+    // Reset the index of the audio buffer in the APU
+    apu->bufferIndex = 0;
+    apu->pulse1.bufferIndex = 0;
+    apu->pulse2.bufferIndex = 0;
+    apu->triangle.bufferIndex = 0;
+    apu->noise.bufferIndex = 0;
+    apu->dmc.bufferIndex = 0;
+
+    while (cycles > 0)
+    {
+        if (!debugging)
+        {
+            if (!hitRun)
+            {
+                if (cpu->pc == breakpoint)
+                {
+                    debugging = TRUE;
+                    stepping = FALSE;
+                }
+            }
+            else
+            {
+                hitRun = FALSE;
+            }
+        }
+
+        if (debugging && !stepping)
+        {
+            break;
+        }
+
+        CPUStep step = StepCPU(nes);
+        cycles -= step.cycles;
+
+        if (debugging)
+        {
+            stepping = FALSE;
+        }
+    }
+
+    QueueAudioBuffer(apu, dev, audioStream);
+}
+
 int main(int argc, char **argv)
 {
     /* Platform */
@@ -605,149 +767,7 @@ int main(int argc, char **argv)
 
         u64 s = SDL_GetPerformanceCounter();
 
-        if (nes)
-        {
-            CPU *cpu = &nes->cpu;
-            APU *apu = &nes->apu;
-            const Uint8 *keyboard = SDL_GetKeyboardState(NULL);
-
-            SetButton(nes, 0, BUTTON_UP, ctx->input.keyboard.keys[NK_KEY_UP].down || coarseButtons[1]);
-            SetButton(nes, 0, BUTTON_DOWN, ctx->input.keyboard.keys[NK_KEY_DOWN].down || coarseButtons[3]);
-            SetButton(nes, 0, BUTTON_LEFT, ctx->input.keyboard.keys[NK_KEY_LEFT].down || coarseButtons[0]);
-            SetButton(nes, 0, BUTTON_RIGHT, ctx->input.keyboard.keys[NK_KEY_RIGHT].down || coarseButtons[2]);
-            SetButton(nes, 0, BUTTON_SELECT, keyboard[SDL_SCANCODE_SPACE] || coarseButtons[4]);
-            SetButton(nes, 0, BUTTON_START, ctx->input.keyboard.keys[NK_KEY_ENTER].down || coarseButtons[5]);
-            SetButton(nes, 0, BUTTON_B, keyboard[SDL_SCANCODE_S] || coarseButtons[6]);
-            SetButton(nes, 0, BUTTON_A, keyboard[SDL_SCANCODE_A] || coarseButtons[7]);
-
-            if (controller)
-            {
-                if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A))
-                {
-                    SetButton(nes, 0, BUTTON_A, TRUE);
-                }
-
-                if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X))
-                {
-                    SetButton(nes, 0, BUTTON_B, TRUE);
-                }
-
-                if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START))
-                {
-                    SetButton(nes, 0, BUTTON_START, TRUE);
-                }
-
-                if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK))
-                {
-                    SetButton(nes, 0, BUTTON_SELECT, TRUE);
-                }
-
-                if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP))
-                {
-                    SetButton(nes, 0, BUTTON_UP, TRUE);
-                }
-
-                if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN))
-                {
-                    SetButton(nes, 0, BUTTON_DOWN, TRUE);
-                }
-
-                if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT))
-                {
-                    SetButton(nes, 0, BUTTON_LEFT, TRUE);
-                }
-
-                if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
-                {
-                    SetButton(nes, 0, BUTTON_RIGHT, TRUE);
-                }
-            }
-
-            // Frame
-            // I'm targeting 60fps, so run the amount of cpu cycles for 0.0167 seconds
-            //
-            // This could be calculated with the frequency of the PPU, and run based on
-            // the amount of cycles that we want the PPU to run in 0.0167 seconds. For now
-            // i'm using the CPU frequency.
-            s32 cycles = 0.0167 * CPU_FREQ;
-
-            // If we are stepping in the debugger, run only 1 instruction
-            // so set cycles = 1 to enter the while only one time
-            if (stepping || oneCycleAtTime)
-            {
-                cycles = 1;
-            }
-
-            // Reset the index of the audio buffer in the APU
-            apu->bufferIndex = 0;
-            apu->pulse1.bufferIndex = 0;
-            apu->pulse2.bufferIndex = 0;
-            apu->triangle.bufferIndex = 0;
-            apu->noise.bufferIndex = 0;
-            apu->dmc.bufferIndex = 0;
-
-            while (cycles > 0)
-            {
-                if (!debugging)
-                {
-                    if (!hitRun)
-                    {
-                        if (cpu->pc == breakpoint)
-                        {
-                            debugging = TRUE;
-                            stepping = FALSE;
-                        }
-                    }
-                    else
-                    {
-                        hitRun = FALSE;
-                    }
-                }
-
-                if (debugging && !stepping)
-                {
-                    break;
-                }
-
-                CPUStep step = StepCPU(nes);
-                cycles -= step.cycles;
-
-                if (debugging)
-                {
-                    stepping = FALSE;
-                }
-            }
-
-            if (dev)
-            {
-                s32 bytesToQueue = apu->bufferIndex * APU_BYTES_PER_SAMPLE;
-
-                if (audioStream)
-                {
-                    if (SDL_AudioStreamPut(audioStream, apu->buffer, bytesToQueue) == 0)
-                    {
-                        s32 convertedBytes = SDL_AudioStreamAvailable(audioStream);
-                        if (convertedBytes > 0)
-                        {
-                            u8 *convertedBuffer = (u8*)SDL_malloc(convertedBytes);
-                            if (convertedBuffer)
-                            {
-                                s32 readBytes = SDL_AudioStreamGet(audioStream, convertedBuffer, convertedBytes);
-                                if (readBytes > 0)
-                                {
-                                    SDL_QueueAudio(dev, convertedBuffer, readBytes);
-                                }
-                                SDL_free(convertedBuffer);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    SDL_QueueAudio(dev, apu->buffer, bytesToQueue);
-                }
-            }
-        }
+        RunEmulatorFrame(ctx, controller, dev, audioStream);
 
         u64 e = SDL_GetPerformanceCounter();
         d1 = GetSecondsElapsed(s, e);

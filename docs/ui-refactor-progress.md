@@ -26,10 +26,10 @@ This file tracks the UI responsiveness + architecture refactor in phases.
 
 ### Phase 2 - Extract emulator loop and input mapping from UI section
 
-- [ ] Move emulator stepping/timing logic into runner functions.
-- [ ] Move keyboard/controller mapping into dedicated input function(s).
-- [ ] Keep exact run/pause/step/breakpoint behavior unchanged.
-- [ ] Build + run smoke test + screenshot.
+- [x] Move emulator stepping/timing logic into runner functions.
+- [x] Move keyboard/controller mapping into dedicated input function(s).
+- [x] Keep exact run/pause/step/breakpoint behavior unchanged.
+- [x] Build + run smoke test + screenshot.
 
 ### Phase 3 - Extract UI panels into dedicated functions/files
 
