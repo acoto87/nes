@@ -50,19 +50,92 @@
 
 #define NK_SHADER_VERSION "#version 150\n"
 
-global s64 globalPerfCountFrequency;
-global char debugBuffer[256];
-global b32 hitRun;
-global b32 debugging = TRUE;
-global b32 stepping;
-global u16 breakpoint;
-global b32 coarseButtons[8];
-global b32 oneCycleAtTime;
-global b32 debugMode;
+typedef struct RuntimeState RuntimeState;
+struct RuntimeState
+{
+    s64 perfCountFrequency;
+    NES *nes;
+    char loadedFilePath[1024];
+    char saveFilePath[1024];
+};
 
-global NES *nes;
-global char loadedFilePath[1024];
-global char saveFilePath[1024];
+typedef struct EmuControlState EmuControlState;
+struct EmuControlState
+{
+    b32 hitRun;
+    b32 debugging;
+    b32 stepping;
+    u16 breakpoint;
+};
+
+typedef struct UiState UiState;
+struct UiState
+{
+    char debugBuffer[256];
+
+    b32 coarseButtons[8];
+    b32 oneCycleAtTime;
+    b32 debugMode;
+
+    s32 fps;
+    s32 fpsCount;
+    s32 oneCycleToggle;
+    s32 debugToggle;
+
+    char instructionAddressText[12];
+    s32 instructionAddressLen;
+    char instructionBreakpointText[5];
+    s32 instructionBreakpointLen;
+
+    s32 memoryOption;
+    char memoryAddressText[12];
+    s32 memoryAddressLen;
+
+    s32 videoOption;
+    s32 nametableOption;
+    s32 showSeparatePixels;
+
+    s32 audioOption;
+    s32 square1Enabled;
+    s32 square2Enabled;
+    s32 triangleEnabled;
+    s32 noiseEnabled;
+    s32 dmcEnabled;
+};
+
+typedef struct AppState AppState;
+struct AppState
+{
+    RuntimeState runtime;
+    EmuControlState control;
+    UiState ui;
+};
+
+global AppState app = {
+    .control = {
+        .debugging = TRUE,
+    },
+    .ui = {
+        .square1Enabled = TRUE,
+        .square2Enabled = TRUE,
+        .triangleEnabled = TRUE,
+        .noiseEnabled = TRUE,
+        .dmcEnabled = TRUE,
+    },
+};
+
+#define globalPerfCountFrequency (app.runtime.perfCountFrequency)
+#define debugBuffer (app.ui.debugBuffer)
+#define hitRun (app.control.hitRun)
+#define debugging (app.control.debugging)
+#define stepping (app.control.stepping)
+#define breakpoint (app.control.breakpoint)
+#define coarseButtons (app.ui.coarseButtons)
+#define oneCycleAtTime (app.ui.oneCycleAtTime)
+#define debugMode (app.ui.debugMode)
+#define nes (app.runtime.nes)
+#define loadedFilePath (app.runtime.loadedFilePath)
+#define saveFilePath (app.runtime.saveFilePath)
 
 global PFNGLGENBUFFERSPROC GLGenBuffers;
 global PFNGLDELETEBUFFERSPROC GLDeleteBuffers;
@@ -686,11 +759,6 @@ int main(int argc, char **argv)
 
         if (nk_begin(ctx, "FPS INFO", nk_rect(10, 10, 290, 190), flags))
         {
-            local s32 fps = 0;
-            local s32 fpsCount = 0;
-            local s32 oneCycle = 0;
-            local s32 debug = 0;
-
             nk_layout_row_dynamic(ctx, 20, 2);
 
             u64 fpsCounter = SDL_GetPerformanceCounter();
@@ -698,22 +766,22 @@ int main(int argc, char **argv)
             if (fpsdt > 1)
             {
                 initialCounter = fpsCounter;
-                fps = fpsCount;
-                fpsCount = 0;
+                app.ui.fps = app.ui.fpsCount;
+                app.ui.fpsCount = 0;
             }
 
-            ++fpsCount;
+            ++app.ui.fpsCount;
 
-            nk_label(ctx, DebugText("fps: %d", fps), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("fps: %d", app.ui.fps), NK_TEXT_LEFT);
             nk_label(ctx, DebugText("dt: %.4f", dt), NK_TEXT_LEFT);
 
-            nk_checkbox_label(ctx, "debug mode", &debug);
-            debugMode = debug;
+            nk_checkbox_label(ctx, "debug mode", &app.ui.debugToggle);
+            debugMode = app.ui.debugToggle;
 
             if (debugMode)
             {
-                nk_checkbox_label(ctx, "1 cycle", &oneCycle);
-                oneCycleAtTime = oneCycle;
+                nk_checkbox_label(ctx, "1 cycle", &app.ui.oneCycleToggle);
+                oneCycleAtTime = app.ui.oneCycleToggle;
 
                 nk_label(ctx, DebugText("d1: %.4f", d1), NK_TEXT_LEFT);
                 nk_label(ctx, DebugText("d2: %.4f", d2), NK_TEXT_LEFT);
@@ -943,36 +1011,34 @@ int main(int argc, char **argv)
                 // the literal address, since that address might not contain any instruction
                 // or could be a parameter.
 
-                local const float ratio[] = { 100, 100 };
-                local char text[12], text2[5];
-                local s32 len, len2;
+                const float ratio[] = { 100, 100 };
 
                 nk_layout_row(ctx, NK_STATIC, 25, 3, ratio);
                 nk_label(ctx, "  Address: ", NK_TEXT_LEFT);
-                nk_edit_string(ctx, NK_EDIT_SIMPLE, text, &len, 12, nk_filter_hex);
+                nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.instructionAddressText, &app.ui.instructionAddressLen, 12, nk_filter_hex);
 
                 nk_layout_row(ctx, NK_STATIC, 25, 3, ratio);
                 nk_label(ctx, "  Breakpoint: ", NK_TEXT_LEFT);
-                nk_edit_string(ctx, NK_EDIT_SIMPLE, text2, &len2, 5, nk_filter_hex);
+                nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.instructionBreakpointText, &app.ui.instructionBreakpointLen, 5, nk_filter_hex);
 
                 nk_layout_row_dynamic(ctx, 20, 1);
 
                 u16 pc = cpu->pc;
 
-                if (len > 0)
+                if (app.ui.instructionAddressLen > 0)
                 {
-                    text[len] = 0;
-                    pc = (u16)strtol(text, NULL, 16);
+                    app.ui.instructionAddressText[app.ui.instructionAddressLen] = 0;
+                    pc = (u16)strtol(app.ui.instructionAddressText, NULL, 16);
                     if (pc < 0x8000 || pc > 0xFFFF)
                     {
                         pc = cpu->pc;
                     }
                 }
 
-                if (len2 > 0)
+                if (app.ui.instructionBreakpointLen > 0)
                 {
-                    text2[len2] = 0;
-                    breakpoint = (u16)strtol(text2, NULL, 16);
+                    app.ui.instructionBreakpointText[app.ui.instructionBreakpointLen] = 0;
+                    breakpoint = (u16)strtol(app.ui.instructionBreakpointText, NULL, 16);
                 }
 
                 for (s32 i = 0; i < 100; ++i)
@@ -1151,27 +1217,28 @@ int main(int argc, char **argv)
             if (nk_begin(ctx, "MEMORY", nk_rect(310, 320, 425, 470), flags) && nes)
             {
                 enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
-                local s32 option = CPU_MEM;
+                const float ratio[] = { 80, 80, 80, 80 };
 
-                local const float ratio[] = { 80, 80, 80, 80 };
-                local char text[12];
-                local s32 len;
+                if (app.ui.memoryOption < CPU_MEM || app.ui.memoryOption > OAM2_MEM)
+                {
+                    app.ui.memoryOption = CPU_MEM;
+                }
 
                 nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
-                option = nk_option_label(ctx, "CPU", option == CPU_MEM) ? CPU_MEM : option;
-                option = nk_option_label(ctx, "PPU", option == PPU_MEM) ? PPU_MEM : option;
-                option = nk_option_label(ctx, "OAM", option == OAM_MEM) ? OAM_MEM : option;
-                option = nk_option_label(ctx, "OAM2", option == OAM2_MEM) ? OAM2_MEM : option;
+                app.ui.memoryOption = nk_option_label(ctx, "CPU", app.ui.memoryOption == CPU_MEM) ? CPU_MEM : app.ui.memoryOption;
+                app.ui.memoryOption = nk_option_label(ctx, "PPU", app.ui.memoryOption == PPU_MEM) ? PPU_MEM : app.ui.memoryOption;
+                app.ui.memoryOption = nk_option_label(ctx, "OAM", app.ui.memoryOption == OAM_MEM) ? OAM_MEM : app.ui.memoryOption;
+                app.ui.memoryOption = nk_option_label(ctx, "OAM2", app.ui.memoryOption == OAM2_MEM) ? OAM2_MEM : app.ui.memoryOption;
 
                 u16 address = 0x0000;
 
                 nk_label(ctx, "Address: ", NK_TEXT_LEFT);
-                nk_edit_string(ctx, NK_EDIT_SIMPLE, text, &len, 12, nk_filter_hex);
+                nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.memoryAddressText, &app.ui.memoryAddressLen, 12, nk_filter_hex);
 
-                if (len > 0)
+                if (app.ui.memoryAddressLen > 0)
                 {
-                    text[len] = 0;
-                    address = (u16)strtol(text, NULL, 16);
+                    app.ui.memoryAddressText[app.ui.memoryAddressLen] = 0;
+                    address = (u16)strtol(app.ui.memoryAddressText, NULL, 16);
                     if (address < 0x0000 || address > 0xFFFF)
                     {
                         address = 0x0000;
@@ -1180,7 +1247,7 @@ int main(int argc, char **argv)
 
                 nk_layout_row_dynamic(ctx, 20, 1);
 
-                if (option == OAM_MEM)
+                if (app.ui.memoryOption == OAM_MEM)
                 {
                     for (s32 i = 0; i < 16; ++i)
                     {
@@ -1197,7 +1264,7 @@ int main(int argc, char **argv)
                         nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
                     }
                 }
-                else if (option == OAM2_MEM)
+                else if (app.ui.memoryOption == OAM2_MEM)
                 {
                     for (s32 i = 0; i < 2; ++i)
                     {
@@ -1224,7 +1291,7 @@ int main(int argc, char **argv)
 
                         for (s32 j = 0; j < 16; ++j)
                         {
-                            u8 v = (option == CPU_MEM)
+                            u8 v = (app.ui.memoryOption == CPU_MEM)
                                 ? ReadCPUU8(nes, address + i * 16 + j)
                                 : ReadPPUU8(nes, address + i * 16 + j);
 
@@ -1252,15 +1319,18 @@ int main(int argc, char **argv)
                 enum nk_widget_layout_states state;
 
                 enum options { PATTERNS_PALETTES_OAM, NAMETABLES };
-                static s32 option = PATTERNS_PALETTES_OAM;
+                const float ratio[] = { 200, 200 };
 
-                local const float ratio[] = { 200, 200 };
+                if (app.ui.videoOption < PATTERNS_PALETTES_OAM || app.ui.videoOption > NAMETABLES)
+                {
+                    app.ui.videoOption = PATTERNS_PALETTES_OAM;
+                }
 
                 nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
-                option = nk_option_label(ctx, "PATTERNS, PALETTES, OAM", option == PATTERNS_PALETTES_OAM) ? PATTERNS_PALETTES_OAM : option;
-                option = nk_option_label(ctx, "NAMETABLES", option == NAMETABLES) ? NAMETABLES : option;
+                app.ui.videoOption = nk_option_label(ctx, "PATTERNS, PALETTES, OAM", app.ui.videoOption == PATTERNS_PALETTES_OAM) ? PATTERNS_PALETTES_OAM : app.ui.videoOption;
+                app.ui.videoOption = nk_option_label(ctx, "NAMETABLES", app.ui.videoOption == NAMETABLES) ? NAMETABLES : app.ui.videoOption;
 
-                if (option == PATTERNS_PALETTES_OAM)
+                if (app.ui.videoOption == PATTERNS_PALETTES_OAM)
                 {
                     // PATTERNS
                     {
@@ -1627,25 +1697,27 @@ int main(int argc, char **argv)
                         }
                     }
                 }
-                else if (option == NAMETABLES)
+                else if (app.ui.videoOption == NAMETABLES)
                 {
                     enum options { H2000, H2400, H2800, H2C00 };
-                    local s32 option = H2000;
+                    const float ratio[] = { 80, 80, 80, 80, 80 };
 
-                    local const float ratio[] = { 80, 80, 80, 80, 80 };
+                    if (app.ui.nametableOption < H2000 || app.ui.nametableOption > H2C00)
+                    {
+                        app.ui.nametableOption = H2000;
+                    }
 
                     nk_layout_row(ctx, NK_STATIC, 25, 5, ratio);
-                    option = nk_option_label(ctx, "$2000", option == H2000) ? H2000 : option;
-                    option = nk_option_label(ctx, "$2400", option == H2400) ? H2400 : option;
-                    option = nk_option_label(ctx, "$2800", option == H2800) ? H2800 : option;
-                    option = nk_option_label(ctx, "$2C00", option == H2C00) ? H2C00 : option;
+                    app.ui.nametableOption = nk_option_label(ctx, "$2000", app.ui.nametableOption == H2000) ? H2000 : app.ui.nametableOption;
+                    app.ui.nametableOption = nk_option_label(ctx, "$2400", app.ui.nametableOption == H2400) ? H2400 : app.ui.nametableOption;
+                    app.ui.nametableOption = nk_option_label(ctx, "$2800", app.ui.nametableOption == H2800) ? H2800 : app.ui.nametableOption;
+                    app.ui.nametableOption = nk_option_label(ctx, "$2C00", app.ui.nametableOption == H2C00) ? H2C00 : app.ui.nametableOption;
 
-                    local s32 showSepPixels;
-                    nk_checkbox_label(ctx, "PIX", &showSepPixels);
+                    nk_checkbox_label(ctx, "PIX", &app.ui.showSeparatePixels);
 
-                    u16 address = 0x2000 + option * 0x400;
+                    u16 address = 0x2000 + app.ui.nametableOption * 0x400;
 
-                    if (showSepPixels)
+                    if (app.ui.showSeparatePixels)
                     {
                         nk_layout_row_static(ctx, 8, 8, 32);
 
@@ -1832,27 +1904,24 @@ int main(int argc, char **argv)
                 enum nk_widget_layout_states state;
 
                 enum options { GENERAL, SQUARE1, SQUARE2, TRIANGLE, NOISE, DMC, BUFFER };
-                static s32 option = GENERAL;
+                const float ratio[] = { 100, 100, 100, 100, 100 };
 
-                local const float ratio[] = { 100, 100, 100, 100, 100 };
+                if (app.ui.audioOption < GENERAL || app.ui.audioOption > BUFFER)
+                {
+                    app.ui.audioOption = GENERAL;
+                }
 
                 nk_layout_row(ctx, NK_STATIC, 25, 5, ratio);
-                option = nk_option_label(ctx, "GENERAL", option == GENERAL) ? GENERAL : option;
-                option = nk_option_label(ctx, "SQUARE 1", option == SQUARE1) ? SQUARE1 : option;
-                option = nk_option_label(ctx, "SQUARE 2", option == SQUARE2) ? SQUARE2 : option;
-                option = nk_option_label(ctx, "TRIANGLE", option == TRIANGLE) ? TRIANGLE : option;
-                option = nk_option_label(ctx, "NOISE", option == NOISE) ? NOISE : option;
-                option = nk_option_label(ctx, "DMC", option == DMC) ? DMC : option;
-                option = nk_option_label(ctx, "BUFFER", option == BUFFER) ? BUFFER : option;
+                app.ui.audioOption = nk_option_label(ctx, "GENERAL", app.ui.audioOption == GENERAL) ? GENERAL : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "SQUARE 1", app.ui.audioOption == SQUARE1) ? SQUARE1 : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "SQUARE 2", app.ui.audioOption == SQUARE2) ? SQUARE2 : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "TRIANGLE", app.ui.audioOption == TRIANGLE) ? TRIANGLE : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "NOISE", app.ui.audioOption == NOISE) ? NOISE : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "DMC", app.ui.audioOption == DMC) ? DMC : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "BUFFER", app.ui.audioOption == BUFFER) ? BUFFER : app.ui.audioOption;
 
-                if (option == GENERAL)
+                if (app.ui.audioOption == GENERAL)
                 {
-                    local s32 square1Enabled = TRUE;
-                    local s32 square2Enabled = TRUE;
-                    local s32 triangleEnabled = TRUE;
-                    local s32 noiseEnabled = TRUE;
-                    local s32 dmcEnabled = TRUE;
-
                     nk_layout_row_dynamic(ctx, 25, 3);
 
                     nk_label(ctx, DebugText("CYCLES:%lld", apu->cycles), NK_TEXT_LEFT);
@@ -1867,21 +1936,21 @@ int main(int argc, char **argv)
                     nk_label(ctx, DebugText("FRAME COUNTER:%02X", apu->frameCounter), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("BUFFER INDEX:%04X", apu->bufferIndex), NK_TEXT_LEFT);
 
-                    nk_checkbox_label(ctx, "SQUARE1 ENABLED", &square1Enabled);
-                    nk_checkbox_label(ctx, "SQUARE2 ENABLED", &square2Enabled);
-                    nk_checkbox_label(ctx, "TRIANGLE ENABLED", &triangleEnabled);
-                    nk_checkbox_label(ctx, "NOISE ENABLED", &noiseEnabled);
-                    nk_checkbox_label(ctx, "DMC ENABLED", &dmcEnabled);
+                    nk_checkbox_label(ctx, "SQUARE1 ENABLED", &app.ui.square1Enabled);
+                    nk_checkbox_label(ctx, "SQUARE2 ENABLED", &app.ui.square2Enabled);
+                    nk_checkbox_label(ctx, "TRIANGLE ENABLED", &app.ui.triangleEnabled);
+                    nk_checkbox_label(ctx, "NOISE ENABLED", &app.ui.noiseEnabled);
+                    nk_checkbox_label(ctx, "DMC ENABLED", &app.ui.dmcEnabled);
 
-                    apu->pulse1.globalEnabled = square1Enabled;
-                    apu->pulse2.globalEnabled = square2Enabled;
-                    apu->triangle.globalEnabled = triangleEnabled;
-                    apu->noise.globalEnabled = noiseEnabled;
-                    apu->dmc.globalEnabled = dmcEnabled;
+                    apu->pulse1.globalEnabled = app.ui.square1Enabled;
+                    apu->pulse2.globalEnabled = app.ui.square2Enabled;
+                    apu->triangle.globalEnabled = app.ui.triangleEnabled;
+                    apu->noise.globalEnabled = app.ui.noiseEnabled;
+                    apu->dmc.globalEnabled = app.ui.dmcEnabled;
 
-                    local f32 rectHeight = 200.0f;
+                    const f32 rectHeight = 200.0f;
                     struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    local f32 lineThickness = 1.0f;
+                    const f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);
 
@@ -1911,9 +1980,9 @@ int main(int argc, char **argv)
                         Free(points);
                     }
                 }
-                else if (option == SQUARE1 || option == SQUARE2)
+                else if (app.ui.audioOption == SQUARE1 || app.ui.audioOption == SQUARE2)
                 {
-                    APUPulse *pulse = option == SQUARE1 ? &apu->pulse1 : &apu->pulse2;
+                    APUPulse *pulse = app.ui.audioOption == SQUARE1 ? &apu->pulse1 : &apu->pulse2;
 
                     nk_layout_row_dynamic(ctx, 25, 4);
 
@@ -1941,9 +2010,9 @@ int main(int argc, char **argv)
                     nk_label(ctx, DebugText("SWEEP VALUE:%02X", pulse->sweepValue), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", pulse->constantVolume), NK_TEXT_LEFT);
 
-                    local f32 rectHeight = 200.0f;
+                    const f32 rectHeight = 200.0f;
                     struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    local f32 lineThickness = 1.0f;
+                    const f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);
 
@@ -1973,7 +2042,7 @@ int main(int argc, char **argv)
                         Free(points);
                     }
                 }
-                else if (option == TRIANGLE)
+                else if (app.ui.audioOption == TRIANGLE)
                 {
                     APUTriangle *triangle = &apu->triangle;
 
@@ -1993,9 +2062,9 @@ int main(int argc, char **argv)
 
                     nk_label(ctx, DebugText("COUNTER RELOAD:%02X", triangle->linearReload), NK_TEXT_LEFT);
 
-                    local f32 rectHeight = 200.0f;
+                    const f32 rectHeight = 200.0f;
                     struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    local f32 lineThickness = 1.0f;
+                    const f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);
 
@@ -2025,7 +2094,7 @@ int main(int argc, char **argv)
                         Free(points);
                     }
                 }
-                else if (option == NOISE)
+                else if (app.ui.audioOption == NOISE)
                 {
                     APUNoise *noise = &apu->noise;
 
@@ -2046,9 +2115,9 @@ int main(int argc, char **argv)
                     nk_label(ctx, DebugText("ENVELOPE VOLUME:%02X", noise->envelopeVolume), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", noise->constantVolume), NK_TEXT_LEFT);
 
-                    local f32 rectHeight = 200.0f;
+                    const f32 rectHeight = 200.0f;
                     struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    local f32 lineThickness = 1.0f;
+                    const f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);
 
@@ -2078,7 +2147,7 @@ int main(int argc, char **argv)
                         Free(points);
                     }
                 }
-                else if (option == DMC)
+                else if (app.ui.audioOption == DMC)
                 {
                     APUDMC *dmc = &apu->dmc;
 
@@ -2100,9 +2169,9 @@ int main(int argc, char **argv)
                     nk_label(ctx, DebugText("LOOP:%02X", dmc->loop), NK_TEXT_LEFT);
                     nk_label(ctx, DebugText("ENABLED:%02X", dmc->enabled), NK_TEXT_LEFT);
 
-                    local f32 rectHeight = 200.0f;
+                    const f32 rectHeight = 200.0f;
                     struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    local f32 lineThickness = 1.0f;
+                    const f32 lineThickness = 1.0f;
 
                     nk_layout_row_dynamic(ctx, rectHeight, 1);
 
@@ -2132,7 +2201,7 @@ int main(int argc, char **argv)
                         Free(points);
                     }
                 }
-                else if (option == BUFFER)
+                else if (app.ui.audioOption == BUFFER)
                 {
                     nk_layout_row_dynamic(ctx, 20, 1);
 
