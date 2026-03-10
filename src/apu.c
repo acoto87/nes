@@ -130,7 +130,7 @@ internal u8 GetPulseOutput(APUPulse *pulse)
         return 0;
     }
 
-    if (pulse->envelopeEnabled) 
+    if (pulse->envelopeEnabled)
     {
         return pulse->envelopeVolume;
     }
@@ -175,7 +175,7 @@ internal void StepTriangleCounter(APUTriangle *triangle)
     }
     else if(triangle->linearValue > 0)
     {
-        triangle->linearValue--;   
+        triangle->linearValue--;
     }
 
     if (triangle->linearEnabled)
@@ -272,12 +272,12 @@ internal u8 GetNoiseOutput(APUNoise *noise)
         return 0;
     }
 
-    if (noise->shiftRegister & 1) 
+    if (noise->shiftRegister & 1)
     {
         return 0;
     }
 
-    if (noise->envelopeEnabled) 
+    if (noise->envelopeEnabled)
     {
         return noise->envelopeVolume;
     }
@@ -339,7 +339,7 @@ internal void StepDMCShifter(APUDMC *dmc)
             }
         }
 
-        dmc->shiftRegister >> 1;
+        dmc->shiftRegister >> 1; // BUG: Is this a bug? Should it be dmc->shiftRegister >>= 1; ?
         dmc->bitCount--;
     }
 }
@@ -555,7 +555,7 @@ internal void SetOutput(APU *apu)
     f32 tndOut = tndTable[3 * t + 2 * n + d];
     f32 out = pulseOut + tndOut;
 
-    // Don't know if this make sense after the change to s16 format instead of f32
+    // NOTE: Don't know if this make sense after the change to s16 format instead of f32
     // output = HighPassFilter(output, 90);
     // output = HighPassFilter(output, 440);
     // output = LowPassFilter(output, 14000);
@@ -568,18 +568,12 @@ void StepAPU(NES *nes)
 {
     APU *apu = &nes->apu;
 
-    //u64 cycle1 = apu->cycles;
     apu->cycles++;
-    //u64 cycle2 = apu->cycles;
 
     StepAPUTimer(nes, apu);
 
-    //s32 f1 = (s32)((f32)cycle1 / FRAME_COUNTER_RATE);
-    //s32 f2 = (s32)((f32)cycle2 / FRAME_COUNTER_RATE);
-
     apu->frameCounter++;
 
-    //if (f1 != f2)
     if (apu->frameCounter >= FRAME_COUNTER_RATE)
     {
         StepAPUFrameCounter(nes);
@@ -588,14 +582,10 @@ void StepAPU(NES *nes)
 
     apu->sampleCounter++;
 
-    //s32 s1 = (s32)((f32)cycle1 / apu->sampleRate);
-    //s32 s2 = (s32)((f32)cycle2 / apu->sampleRate);
-
-    //if (s1 != s2)
     if (apu->sampleCounter >= APU_CYCLES_PER_SAMPLE)
     {
         SetOutput(apu);
-        apu->sampleCounter = 0;    
+        apu->sampleCounter = 0;
     }
 }
 
@@ -660,7 +650,7 @@ void ResetAPU(NES *nes)
     apu->pulse2.enabled = FALSE;
     apu->pulse2.lengthValue = 0;
     apu->pulse2.channel = 2;
-    
+
     apu->triangle.globalEnabled = TRUE;
     apu->triangle.enabled = FALSE;
     apu->triangle.lengthValue = 0;

@@ -2,13 +2,10 @@
 
 u8 ReadCPUU8(NES *nes, u16 address)
 {
-    CPU *cpu = &nes->cpu;
-    PPU *ppu = &nes->ppu;
-
     if (ISBETWEEN(address, 0x00, 0x2000))
     {
         // Memory locations $0000-$07FF are mirrored three times at $0800-$1FFF.
-        // This means that, for example, any data written to $0000 will also be written to $0800, $1000 and $1800. 
+        // This means that, for example, any data written to $0000 will also be written to $0800, $1000 and $1800.
         address = (address % 0x800);
         return ReadU8(&nes->cpuMemory, address);
     }
@@ -16,7 +13,7 @@ u8 ReadCPUU8(NES *nes, u16 address)
     if (ISBETWEEN(address, 0x2000, 0x4000))
     {
         // Memory locations $2000-$2008 are mirrored each 8 bytes.
-        // This means that, for example, any data written to $2000 will also be written to $2008, $2010 and so on... 
+        // This means that, for example, any data written to $2000 will also be written to $2008, $2010 and so on...
         address = 0x2000 + ((address - 0x2000) % 0x08);
 
         switch (address)
@@ -105,13 +102,10 @@ u8 ReadCPUU8(NES *nes, u16 address)
 
 void WriteCPUU8(NES *nes, u16 address, u8 value)
 {
-    CPU *cpu = &nes->cpu;
-    PPU *ppu = &nes->ppu;
-
     if (ISBETWEEN(address, 0x00, 0x2000))
     {
         // Memory locations $0000-$07FF are mirrored three times at $0800-$1FFF.
-        // This means that, for example, any data written to $0000 will also be written to $0800, $1000 and $1800. 
+        // This means that, for example, any data written to $0000 will also be written to $0800, $1000 and $1800.
         address = (address % 0x800);
         WriteU8(&nes->cpuMemory, address, value);
         return;
@@ -120,7 +114,7 @@ void WriteCPUU8(NES *nes, u16 address, u8 value)
     if (ISBETWEEN(address, 0x2000, 0x4000))
     {
         // Memory locations $2000-$2008 are mirrored each 8 bytes.
-        // This means that, for example, any data written to $2000 will also be written to $2008, $2010 and so on... 
+        // This means that, for example, any data written to $2000 will also be written to $2008, $2010 and so on...
         address = 0x2000 + ((address - 0x2000) % 0x08);
 
         switch (address)
@@ -298,7 +292,7 @@ void WriteCPUU8(NES *nes, u16 address, u8 value)
                WriteAPUDMCLength(&nes->apu.dmc, value);
                break;
             }
-            
+
             case 0x4014:
             {
                 WritePPUDMA(nes, value);

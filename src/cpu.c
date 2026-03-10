@@ -952,9 +952,6 @@ internal inline void ARR(NES *nes, u16 address)
 
     u8 data = ReadCPUU8(nes, address);
     data = cpu->a & data;
-
-    b32 setCarry = data & 0x01;
-
     data >>= 1;
 
     if (GetCarry(cpu))
@@ -1001,7 +998,7 @@ internal inline void AHX(NES *nes, u16 address)
 internal inline void TAS(NES *nes, u16 address)
 {
     CPU *cpu = &nes->cpu;
-    
+
     cpu->sp = cpu->a & cpu->x;
 
     u8 H = (u8)((address & 0xFF00) >> 8);
@@ -1227,7 +1224,7 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
             {
                 pageCrossed = PAGE_CROSS(address, address + cpu->y);
             }
-            
+
             address += cpu->y;
             break;
         }
@@ -1248,7 +1245,7 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
 
             StepCPUCycles(nes, 1);
 
-            // zero-page addresses wrap around 0xFF, 
+            // zero-page addresses wrap around 0xFF,
             // so 0x00FF + 2 = 0x0001, not 0x0101 as you might expect
             address = (address + cpu->x) & 0x00FF;
 
@@ -1263,7 +1260,7 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
 
             StepCPUCycles(nes, 1);
 
-            // zero-page addresses wrap around 0xFF, 
+            // zero-page addresses wrap around 0xFF,
             // so 0x00FF + 2 = 0x0001, not 0x0101 as you might expect
             address = (address + cpu->y) & 0x00FF;
             break;
@@ -1295,8 +1292,8 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
             u8 operand = ReadCPUU8(nes, cpu->pc + 1);
 
             StepCPUCycles(nes, 1);
-            
-            // zero-page addresses wrap around 0xFF, 
+
+            // zero-page addresses wrap around 0xFF,
             // so 0x00FF + 2 = 0x0001, not 0x0101 as you might expect
             operand = (operand + cpu->x) & 0x00FF;
 
@@ -1338,7 +1335,7 @@ internal void ExecuteInstruction(NES *nes, CPUInstruction *instruction)
             {
                 pageCrossed = PAGE_CROSS(address, address + cpu->y);
             }
-            
+
             address += cpu->y;
             break;
         }

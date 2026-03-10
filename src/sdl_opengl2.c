@@ -51,15 +51,11 @@
 #define NK_SHADER_VERSION "#version 150\n"
 
 global s64 globalPerfCountFrequency;
-global b32 running;
-global b32 needs_refresh = TRUE;
 global char debugBuffer[256];
 global b32 hitRun;
 global b32 debugging = TRUE;
 global b32 stepping;
 global u16 breakpoint;
-global u16 readTo;
-global u16 writeTo;
 global b32 coarseButtons[8];
 global b32 oneCycleAtTime;
 global b32 debugMode;
@@ -311,80 +307,15 @@ internal inline char* DebugText(const char *fmt, ...)
 
 internal void InitDevice(struct Device *dev)
 {
-    /*GLint status;
-
-    static const GLchar *vertex_shader =
-        NK_SHADER_VERSION
-        "uniform mat4 ProjMtx;\n"
-        "in vec2 Position;\n"
-        "in vec2 TexCoord;\n"
-        "in vec4 Color;\n"
-        "out vec2 Frag_UV;\n"
-        "out vec4 Frag_Color;\n"
-        "void main() {\n"
-        "   Frag_UV = TexCoord;\n"
-        "   Frag_Color = Color;\n"
-        "   gl_Position = ProjMtx * vec4(Position.xy, 0, 1);\n"
-        "}\n";
-
-    static const GLchar *fragment_shader =
-        NK_SHADER_VERSION
-        "precision mediump float;\n"
-        "uniform sampler2D Texture;\n"
-        "in vec2 Frag_UV;\n"
-        "in vec4 Frag_Color;\n"
-        "out vec4 Out_Color;\n"
-        "void main(){\n"
-        "   Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
-        "}\n";*/
-
     nk_buffer_init_default(&dev->cmds);
-    /*dev->prog = glCreateProgram();
-    dev->vert_shdr = glCreateShader(GL_VERTEX_SHADER);
-    dev->frag_shdr = glCreateShader(GL_FRAGMENT_SHADER);*/
-    /*glShaderSource(dev->vert_shdr, 1, &vertex_shader, 0);
-    glShaderSource(dev->frag_shdr, 1, &fragment_shader, 0);
-    glCompileShader(dev->vert_shdr);
-    glCompileShader(dev->frag_shdr);
-    glGetShaderiv(dev->vert_shdr, GL_COMPILE_STATUS, &status);
-    assert(status == GL_TRUE);
-    glGetShaderiv(dev->frag_shdr, GL_COMPILE_STATUS, &status);
-    assert(status == GL_TRUE);
-    glAttachShader(dev->prog, dev->vert_shdr);
-    glAttachShader(dev->prog, dev->frag_shdr);
-    glLinkProgram(dev->prog);
-    glGetProgramiv(dev->prog, GL_LINK_STATUS, &status);
-    assert(status == GL_TRUE);*/
 
-    /*dev->uniform_tex = glGetUniformLocation(dev->prog, "Texture");
-    dev->uniform_proj = glGetUniformLocation(dev->prog, "ProjMtx");
-    dev->attrib_pos = glGetAttribLocation(dev->prog, "Position");
-    dev->attrib_uv = glGetAttribLocation(dev->prog, "TexCoord");
-    dev->attrib_col = glGetAttribLocation(dev->prog, "Color");*/
+    GLGenBuffers(1, &dev->vbo);
+    GLGenBuffers(1, &dev->ebo);
+    GLGenVertexArrays(1, &dev->vao);
 
-    {
-        /* buffer setup */
-        GLsizei vs = sizeof(struct nk_sdl_vertex);
-        size_t vp = offsetof(struct nk_sdl_vertex, position);
-        size_t vt = offsetof(struct nk_sdl_vertex, uv);
-        size_t vc = offsetof(struct nk_sdl_vertex, col);
-
-        GLGenBuffers(1, &dev->vbo);
-        GLGenBuffers(1, &dev->ebo);
-        GLGenVertexArrays(1, &dev->vao);
-
-        GLBindVertexArray(dev->vao);
-        GLBindBuffer(GL_ARRAY_BUFFER, dev->vbo);
-        GLBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dev->ebo);
-
-        /*glEnableVertexAttribArray((GLuint)dev->attrib_pos);
-        glEnableVertexAttribArray((GLuint)dev->attrib_uv);
-        glEnableVertexAttribArray((GLuint)dev->attrib_col);
-
-        glVertexAttribPointer((GLuint)dev->attrib_pos, 2, GL_FLOAT, GL_FALSE, vs, (void*)vp);
-        glVertexAttribPointer((GLuint)dev->attrib_uv, 2, GL_FLOAT, GL_FALSE, vs, (void*)vt);
-        glVertexAttribPointer((GLuint)dev->attrib_col, 4, GL_UNSIGNED_BYTE, GL_TRUE, vs, (void*)vc);*/
-    }
+    GLBindVertexArray(dev->vao);
+    GLBindBuffer(GL_ARRAY_BUFFER, dev->vbo);
+    GLBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dev->ebo);
 
     glBindTexture(GL_TEXTURE_2D, 0);
     GLBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -492,45 +423,6 @@ internal void DeleteTextures(Device *dev)
     }
 }
 
-internal void SDLAudioCallback(void* userdata, u8* buffer, s32 len)
-{
-    memset(buffer, 0, len);
-
-    if (nes)
-    {
-        APU *apu = &nes->apu;
-
-        f32 *sampleOut = (f32*)buffer;
-        for (s32 i = 0; i < len / APU_BYTES_PER_SAMPLE; i++)
-        {
-            f32 sampleValue = apu->buffer[i];
-            sampleOut[2 * i + 0] = sampleValue;
-            sampleOut[2 * i + 1] = sampleValue;
-        }
-    }
-
-    /*local s32 samplesPerSecond = 48000;
-    local s32 toneHz = 256;
-    local s32 wavePeriod = samplesPerSecond / toneHz;
-    local s32 bytesPerSample = sizeof(f32) * 2;
-    local s32 toneVolume = 3000;
-    local u32 wavePos = 0;
-
-    #define PI 3.14159265359f
-
-    f32 *sampleOut = (f32*)buffer;
-    for (s32 i = 0; i < len / bytesPerSample; i++)
-    {
-        f32 t = 2.0f * PI * (f32)wavePos / (f32)wavePeriod;
-        f32 sineValue = sinf(t);
-        f32 sampleValue = sineValue * toneVolume;
-        sampleOut[2 * i + 0] = sampleValue;
-        sampleOut[2 * i + 1] = sampleValue;
-
-        ++wavePos;
-    }*/
-}
-
 int main(int argc, char **argv)
 {
     /* Platform */
@@ -558,9 +450,14 @@ int main(int argc, char **argv)
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-    win = SDL_CreateWindow("Nes emulator",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
+    win = SDL_CreateWindow(
+        "Nes emulator",
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,
+        WINDOW_WIDTH,
+        WINDOW_HEIGHT,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI
+    );
     glContext = SDL_GL_CreateContext(win);
     SDL_GetWindowSize(win, &win_width, &win_height);
     LoadGLFunctions();
@@ -603,7 +500,7 @@ int main(int argc, char **argv)
     want.format = AUDIO_S16SYS;
     want.channels = 1;
     want.samples = 2048;
-    want.callback = NULL;// SDLAudioCallback;
+    want.callback = NULL;
 
     dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
     if (dev)
@@ -628,10 +525,6 @@ int main(int argc, char **argv)
     {
         SDL_Log("Failed to open SDL audio device: %s", SDL_GetError());
     }
-
-    // DEBUG: cleanup
-    shl_wave_file wave_file;
-    shl_wave_init( &wave_file, 48000, "nes_audio.wav", 0, 0);
 
     u64 startCounter = GetWallClock();
     dt = GetSecondsElapsed(initialCounter, startCounter);
@@ -689,7 +582,6 @@ int main(int argc, char **argv)
         if (nes)
         {
             CPU *cpu = &nes->cpu;
-            PPU *ppu = &nes->ppu;
             APU *apu = &nes->apu;
             const Uint8 *keyboard = SDL_GetKeyboardState(NULL);
 
@@ -799,9 +691,6 @@ int main(int argc, char **argv)
                     stepping = FALSE;
                 }
             }
-
-            // DEBUG: cleanup
-            shl_wave_write( &wave_file, apu->buffer, apu->bufferIndex, 1 );
 
             if (dev)
             {
@@ -1055,8 +944,6 @@ int main(int argc, char **argv)
 
             if (nes)
             {
-                CPU *cpu = &nes->cpu;
-                PPU *ppu = &nes->ppu;
                 GUI *gui = &nes->gui;
 
                 s32 width = 256, height = 240;
@@ -1070,7 +957,6 @@ int main(int argc, char **argv)
                 nk_layout_row_static(ctx, height, width, 1);
 
                 struct nk_command_buffer *canvas;
-                struct nk_input *input = &ctx->input;
                 canvas = nk_window_get_canvas(ctx);
 
                 struct nk_rect space;
@@ -1097,12 +983,12 @@ int main(int argc, char **argv)
         {
             if (nk_begin(ctx, "INSTRUCTIONS", nk_rect(10, 210, 290, 580), flags) && nes)
             {
-                CPU *cpu = &nes->cpu;
-                PPU *ppu = &nes->ppu;
+                CPU* cpu = &nes->cpu;
 
-                // REVISAR TAMBIEN ESTA SECCION DEL CODIGO PARA CUANDO SE PONGA UNA DIRECCION EN LA SECCION DE INSTRUCCTIONS
-                // SE VAYA A LA INSTRUCCION MAS CERCANA, Y NO COJA LA DIRECCION LITERAL, YA QUE PUEDE QUE EN ESA DIRECCION NO
-                // HAYA NINGUNA INSTRUCCION O SEA UN PARAMETRO
+                // NOTE: Also review this section of the code so that when an address is entered
+                // in the INSTRUCTIONS section, it jumps to the nearest instruction instead of using
+                // the literal address, since that address might not contain any instruction
+                // or could be a parameter.
 
                 local const float ratio[] = { 100, 100 };
                 local char text[12], text2[5];
@@ -1311,9 +1197,6 @@ int main(int argc, char **argv)
         {
             if (nk_begin(ctx, "MEMORY", nk_rect(310, 320, 425, 470), flags) && nes)
             {
-                CPU *cpu = &nes->cpu;
-                PPU *ppu = &nes->ppu;
-
                 enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
                 local s32 option = CPU_MEM;
 
@@ -1406,7 +1289,6 @@ int main(int argc, char **argv)
         {
             if (nk_begin(ctx, "VIDEO", nk_rect(745, 320, 445, 470), flags) && nes)
             {
-                CPU *cpu = &nes->cpu;
                 PPU *ppu = &nes->ppu;
                 GUI *gui = &nes->gui;
 
@@ -1989,11 +1871,9 @@ int main(int argc, char **argv)
         {
             if (nk_begin(ctx, "AUDIO", nk_rect(445, 220, 650, 430), flags | NK_WINDOW_SCALABLE) && nes)
             {
-                CPU *cpu = &nes->cpu;
                 APU *apu = &nes->apu;
 
                 struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
-                const struct nk_input *input = &ctx->input;
 
                 struct nk_rect space;
                 enum nk_widget_layout_states state;
@@ -2358,9 +2238,6 @@ int main(int argc, char **argv)
         dt = GetSecondsElapsed(startCounter, endCounter);
         startCounter = endCounter;
     }
-
-    // DEBUG: cleanup
-    shl_wave_flush ( &wave_file, SHL_TRUE );
 
     if (dev)
     {

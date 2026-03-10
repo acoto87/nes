@@ -20,7 +20,7 @@ internal void RenderPixel(NES *nes)
     // since the ppu render 1 pixel per scanline cycle, this refers to the x position in the screen
     u8 x = ppu->cycle;
 
-    // since there are 262 scanlines, but the screen size in NTSC is 240, 
+    // since there are 262 scanlines, but the screen size in NTSC is 240,
     // there are 21 scanlines that aren't part of the visible scanlines
     u8 y = ppu->scanline;
 
@@ -292,9 +292,7 @@ void CopyY(NES *nes)
 
 void StepPPU(NES *nes)
 {
-    CPU *cpu = &nes->cpu;
     PPU *ppu = &nes->ppu;
-    GUI *gui = &nes->gui;
 
     b32 renderBackground = GetBitFlag(ppu->mask, BACKGROUND_ENABLED_FLAG);
     b32 renderSprites = GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG);
@@ -499,11 +497,11 @@ void StepPPU(NES *nes)
 
         //if (ppu->cycle >= 1 && ppu->cycle <= 64)
         //{
-        //    // Cycles 1 - 64: Secondary OAM(32 - byte buffer for current sprites on scanline) is initialized to $FF - 
-        //    // attempting to read $2004 will return $FF. Internally, the clear operation is implemented by reading from 
+        //    // Cycles 1 - 64: Secondary OAM(32 - byte buffer for current sprites on scanline) is initialized to $FF -
+        //    // attempting to read $2004 will return $FF. Internally, the clear operation is implemented by reading from
         //    // the OAM and writing into the secondary OAM as usual, only a signal is active that makes the read always return $FF.
         //    //
-        //    // I think is one cycle for the reading and other for the writing. 
+        //    // I think is one cycle for the reading and other for the writing.
         //    // The read through $2004 should return 0xFF if the ppu is in this phase.
         //    // For now, I'll skip the reading part and only write 0xFF to oamMemory2.
 
@@ -561,7 +559,7 @@ void StepPPU(NES *nes)
 
         //            ppu->spriteCount++;
         //        }
-        //        
+        //
         //        ppu->spriteN++;
 
         //        if (ppu->spriteCount < 64)
@@ -578,7 +576,7 @@ void StepPPU(NES *nes)
         //                {
         //                    ppu->spriteN++;
 
-        //                    // The m increment is a hardware bug - if only n was incremented, 
+        //                    // The m increment is a hardware bug - if only n was incremented,
         //                    // the overflow flag would be set whenever more than 8 sprites were present on the same scanline, as expected.
         //                    ppu->spriteM++;
         //                }
