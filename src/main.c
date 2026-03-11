@@ -666,28 +666,36 @@ internal UiLayout ComputeUiLayout(s32 winWidth, s32 winHeight)
 
     // Left Column
     layout.fps = nk_rect(x0, top, colLeftW, 190);
-    layout.instructions = nk_rect(x0, top + 190 + gap, colLeftW, h - top - 190 - gap - bottom);
+    f32 instructionsH = h - top - 190 - gap - bottom;
+    if (instructionsH < 100.0f) instructionsH = 100.0f;
+    layout.instructions = nk_rect(x0, top + 190 + gap, colLeftW, instructionsH);
 
     // Mid Column
     layout.cpu = nk_rect(x1, top, colMidW, 180);
     layout.controller = nk_rect(x1, top + 180 + gap, colMidW, 120);
     
-    // Tools can span Mid and Right at the bottom if we want, but let's keep Tools in Right to save Mid for something else, OR Tools spans Mid and Right.
-    // Let's put Tools taking the remaining height of Mid and Right columns together!
-    f32 topRowH = 300.0f; // Height of PPU + SCREEN
+    // Top Right Row Height (PPU + SCREEN)
+    // Scale proportionally with window height, min 300, max maybe 600 or just proportional
+    f32 topRowH = (h - top - bottom) * 0.55f; 
+    if (topRowH < 300.0f) topRowH = 300.0f;
     
-    layout.ppu = nk_rect(x2, top, colRightW * 0.45f, topRowH);
-    layout.screen = nk_rect(x2 + colRightW * 0.45f + gap, top, colRightW * 0.55f - gap, topRowH);
+    layout.ppu = nk_rect(x2, top, colRightW * 0.35f, topRowH);
+    layout.screen = nk_rect(x2 + colRightW * 0.35f + gap, top, colRightW * 0.65f - gap, topRowH);
 
     // Tools
     f32 toolsY = top + topRowH + gap;
-    // Let's span tools from Mid column down to bottom? No, let's keep it under Mid + Right columns!
-    // Actually, Mid has empty space below Controller (top + 310). 
-    // If Tools starts at toolsY (310), it spans nicely.
+    // Ensure toolsY is at least below the controller panel
+    f32 minToolsY = top + 180 + gap + 120 + gap;
+    if (toolsY < minToolsY) toolsY = minToolsY;
+
+    f32 toolsViewH = h - toolsY - 65 - gap - bottom;
+    if (toolsViewH < 150.0f) toolsViewH = 150.0f;
+
     layout.toolsTabs = nk_rect(x1, toolsY, colMidW + gap + colRightW, 65);
-    layout.toolsView = nk_rect(x1, toolsY + 65 + gap, colMidW + gap + colRightW, h - toolsY - 65 - gap - bottom);
+    layout.toolsView = nk_rect(x1, toolsY + 65 + gap, colMidW + gap + colRightW, toolsViewH);
 
     return layout;
+
 }
 internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window *win, Device *device, const UiLayout *layout, f32 dt, f32 d1, f32 d2, u64 *initialCounter)
 {
@@ -1944,8 +1952,9 @@ int main(int argc, char **argv)
         SDL_WINDOWPOS_CENTERED,
         WINDOW_WIDTH,
         WINDOW_HEIGHT,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI
+        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE
     );
+    SDL_SetWindowMinimumSize(win, 1024, 768);
     glContext = SDL_GL_CreateContext(win);
     SDL_GetWindowSize(win, &win_width, &win_height);
     LoadGLFunctions();
@@ -2054,6 +2063,20 @@ int main(int argc, char **argv)
                 LoadFileIntoApp(win, evt.drop.file);
                 SDL_free(evt.drop.file);
                 continue;
+            }
+
+            if (evt.type == SDL_KEYDOWN)
+            {
+                if (evt.key.keysym.sym == SDLK_F11 || 
+                   (evt.key.keysym.sym == SDLK_RETURN && (evt.key.keysym.mod & KMOD_ALT)))
+                {
+                    Uint32 flags = SDL_GetWindowFlags(win);
+                    if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
+                        SDL_SetWindowFullscreen(win, 0);
+                    else
+                        SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                    continue;
+                }
             }
 
             nk_sdl_handle_event(&evt);
