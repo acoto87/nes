@@ -39,16 +39,16 @@ This file tracks the UI responsiveness + architecture refactor in phases.
 
 ### Phase 4 - Implement responsive workspace layout
 
-- [ ] Replace hard-coded panel coordinates with adaptive layout.
-- [ ] Keep NES screen aspect-correct letterboxing.
-- [ ] Organize debug panels into coherent groups/tabs.
-- [ ] Build + run smoke test + screenshot.
+- [x] Replace hard-coded panel coordinates with adaptive layout.
+- [x] Keep NES screen aspect-correct letterboxing.
+- [x] Organize debug panels into coherent groups/tabs.
+- [x] Build + run smoke test + screenshot.
 
 ### Phase 5 - Separate debug view rendering helpers
 
-- [ ] Extract video/audio visualization generation from widget code.
-- [ ] Reduce duplication in waveform and tile/sprite rendering paths.
-- [ ] Build + run smoke test + screenshot.
+- [x] Extract video/audio visualization generation from widget code.
+- [x] Reduce duplication in waveform and tile/sprite rendering paths.
+- [x] Build + run smoke test + screenshot.
 
 ### Phase 6 - Optional deeper decoupling of emulator and GUI buffers
 

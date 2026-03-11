@@ -87,6 +87,7 @@ struct UiState
     char instructionBreakpointText[5];
     s32 instructionBreakpointLen;
 
+    s32 debugToolTab;
     s32 memoryOption;
     char memoryAddressText[12];
     s32 memoryAddressLen;
@@ -116,6 +117,10 @@ global AppState app = {
         .debugging = TRUE,
     },
     .ui = {
+        .videoOption = 0,
+        .debugToolTab = 0,
+        .debugToggle = FALSE,
+        .debugMode = FALSE,
         .square1Enabled = TRUE,
         .square2Enabled = TRUE,
         .triangleEnabled = TRUE,
@@ -146,9 +151,8 @@ struct UiLayout
     struct nk_rect ppu;
     struct nk_rect screen;
     struct nk_rect instructions;
-    struct nk_rect memory;
-    struct nk_rect video;
-    struct nk_rect audio;
+    struct nk_rect toolsTabs;
+    struct nk_rect toolsView;
 };
 
 global PFNGLGENBUFFERSPROC GLGenBuffers;
@@ -631,84 +635,63 @@ internal UiLayout ComputeUiLayout(s32 winWidth, s32 winHeight)
     f32 w = (f32)winWidth;
     f32 h = (f32)winHeight;
 
+    if (!debugMode)
+    {
+        layout.screen = nk_rect(0, 0, w, h);
+        layout.fps = nk_rect(10, 10, 260, 190);
+        
+        layout.cpu = nk_rect(0, 0, 0, 0);
+        layout.controller = nk_rect(0, 0, 0, 0);
+        layout.ppu = nk_rect(0, 0, 0, 0);
+        layout.instructions = nk_rect(0, 0, 0, 0);
+        layout.toolsTabs = nk_rect(0, 0, 0, 0);
+        layout.toolsView = nk_rect(0, 0, 0, 0);
+        return layout;
+    }
+
     f32 gap = 10.0f;
     f32 left = 10.0f;
     f32 top = 10.0f;
     f32 right = 10.0f;
     f32 bottom = 10.0f;
 
-    if (!debugMode)
-    {
-        layout.fps = nk_rect(left, top, 290, 190);
-
-        f32 sx = layout.fps.x + layout.fps.w + gap;
-        f32 sy = top;
-        f32 sw = w - sx - right;
-        f32 sh = h - sy - bottom;
-
-        if (sw < 320) sw = 320;
-        if (sh < 240) sh = 240;
-
-        layout.screen = nk_rect(sx, sy, sw, sh);
-
-        layout.cpu = nk_rect(0, 0, 0, 0);
-        layout.controller = nk_rect(0, 0, 0, 0);
-        layout.ppu = nk_rect(0, 0, 0, 0);
-        layout.instructions = nk_rect(0, 0, 0, 0);
-        layout.memory = nk_rect(0, 0, 0, 0);
-        layout.video = nk_rect(0, 0, 0, 0);
-        layout.audio = nk_rect(0, 0, 0, 0);
-        return layout;
-    }
-
-    f32 colLeftW = MAX(260.0f, w * 0.23f);
-    f32 colRightW = MAX(330.0f, w * 0.37f);
-    f32 contentW = w - left - right;
-    if (colLeftW + colRightW + gap > contentW)
-    {
-        colLeftW = contentW * 0.34f;
-        colRightW = contentW * 0.42f;
-    }
-    f32 colMidW = contentW - colLeftW - colRightW - gap * 2.0f;
-    if (colMidW < 220)
-    {
-        colMidW = 220;
-    }
+    f32 colLeftW = 280.0f;
+    f32 colMidW = 280.0f;
+    f32 colRightW = w - colLeftW - colMidW - gap * 4.0f - right;
+    if (colRightW < 400.0f) colRightW = 400.0f;
 
     f32 x0 = left;
     f32 x1 = x0 + colLeftW + gap;
     f32 x2 = x1 + colMidW + gap;
 
-    f32 y = top;
+    // Left Column
+    layout.fps = nk_rect(x0, top, colLeftW, 190);
+    layout.instructions = nk_rect(x0, top + 190 + gap, colLeftW, h - top - 190 - gap - bottom);
 
-    layout.fps = nk_rect(x0, y, colLeftW, 190);
-    y += 190 + gap;
-    layout.instructions = nk_rect(x0, y, colLeftW, h - y - bottom);
+    // Mid Column
+    layout.cpu = nk_rect(x1, top, colMidW, 180);
+    layout.controller = nk_rect(x1, top + 180 + gap, colMidW, 120);
+    
+    // Tools can span Mid and Right at the bottom if we want, but let's keep Tools in Right to save Mid for something else, OR Tools spans Mid and Right.
+    // Let's put Tools taking the remaining height of Mid and Right columns together!
+    f32 topRowH = 300.0f; // Height of PPU + SCREEN
+    
+    layout.ppu = nk_rect(x2, top, colRightW * 0.45f, topRowH);
+    layout.screen = nk_rect(x2 + colRightW * 0.45f + gap, top, colRightW * 0.55f - gap, topRowH);
 
-    f32 y1 = top;
-    layout.cpu = nk_rect(x1, y1, colMidW, 170);
-    y1 += 170 + gap;
-    layout.controller = nk_rect(x1, y1, colMidW, 120);
-    y1 += 120 + gap;
-    layout.memory = nk_rect(x1, y1, colMidW, h - y1 - bottom);
-
-    f32 topRowH = MAX(300.0f, h * 0.36f);
-    if (topRowH > h - 220) topRowH = h - 220;
-    layout.ppu = nk_rect(x2, top, colRightW * 0.58f, topRowH);
-    layout.screen = nk_rect(x2 + layout.ppu.w + gap, top, colRightW - layout.ppu.w - gap, topRowH);
-
-    f32 y2 = top + topRowH + gap;
-    f32 remH = h - y2 - bottom;
-    f32 audioH = MAX(250.0f, remH * 0.48f);
-    if (audioH > remH - 120) audioH = remH - 120;
-    layout.audio = nk_rect(x2, y2, colRightW, audioH);
-    layout.video = nk_rect(x2, y2 + audioH + gap, colRightW, h - (y2 + audioH + gap) - bottom);
+    // Tools
+    f32 toolsY = top + topRowH + gap;
+    // Let's span tools from Mid column down to bottom? No, let's keep it under Mid + Right columns!
+    // Actually, Mid has empty space below Controller (top + 310). 
+    // If Tools starts at toolsY (310), it spans nicely.
+    layout.toolsTabs = nk_rect(x1, toolsY, colMidW + gap + colRightW, 65);
+    layout.toolsView = nk_rect(x1, toolsY + 65 + gap, colMidW + gap + colRightW, h - toolsY - 65 - gap - bottom);
 
     return layout;
 }
-
 internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window *win, Device *device, const UiLayout *layout, f32 dt, f32 d1, f32 d2, u64 *initialCounter)
 {
+    nk_window_set_bounds(ctx, "FPS INFO", layout->fps);
     if (nk_begin(ctx, "FPS INFO", layout->fps, flags))
     {
         nk_layout_row_dynamic(ctx, 20, 2);
@@ -807,7 +790,8 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
 
     if (debugMode)
     {
-        if (nk_begin(ctx, "CPU INFO", layout->cpu, flags) && nes)
+        nk_window_set_bounds(ctx, "CPU INFO", layout->cpu);
+    if (nk_begin(ctx, "CPU INFO", layout->cpu, flags) && nes)
         {
             CPU *cpu = &nes->cpu;
 
@@ -837,7 +821,8 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
 
     if (debugMode)
     {
-        if (nk_begin(ctx, "CONTROLLER 0", layout->controller, flags) && nes)
+        nk_window_set_bounds(ctx, "CONTROLLER 0", layout->controller);
+    if (nk_begin(ctx, "CONTROLLER 0", layout->controller, flags) && nes)
         {
             s32 buttons[8] =
             {
@@ -875,7 +860,8 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
 
     if (debugMode)
     {
-        if (nk_begin(ctx, "PPU INFO", layout->ppu, flags) && nes)
+        nk_window_set_bounds(ctx, "PPU INFO", layout->ppu);
+    if (nk_begin(ctx, "PPU INFO", layout->ppu, flags) && nes)
         {
             PPU *ppu = &nes->ppu;
 
@@ -905,7 +891,10 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
 
     struct nk_rect screenRect = layout->screen;
 
-    if (nk_begin(ctx, "SCREEN", screenRect, flags))
+    
+    nk_flags screenFlags = debugMode ? flags : (NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND);
+    nk_window_set_bounds(ctx, "SCREEN", screenRect);
+    if (nk_begin(ctx, "SCREEN", screenRect, screenFlags))
     {
         ctx->current->bounds = screenRect;
 
@@ -913,29 +902,51 @@ internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window 
         {
             GUI *gui = &nes->gui;
 
-            s32 width = 256, height = 240;
+            struct nk_rect content = nk_window_get_content_region(ctx);
+            f32 targetAspect = 256.0f / 240.0f;
+            f32 availW = content.w;
+            f32 availH = content.h;
 
-            if (!debugMode)
+            f32 drawW = availW;
+            f32 drawH = drawW / targetAspect;
+            if (drawH > availH)
             {
-                width *= 3;
-                height *= 3;
+                drawH = availH;
+                drawW = drawH * targetAspect;
             }
 
-            nk_layout_row_static(ctx, height, width, 1);
+            f32 padX = (availW - drawW) * 0.5f;
+            f32 padY = (availH - drawH) * 0.5f;
 
-            struct nk_command_buffer *canvas;
-            canvas = nk_window_get_canvas(ctx);
+            if (padY > 1)
+            {
+                nk_layout_row_dynamic(ctx, padY, 1);
+                nk_spacing(ctx, 1);
+            }
 
+            nk_layout_row_begin(ctx, NK_STATIC, drawH, 3);
+            if (padX > 1)
+            {
+                nk_layout_row_push(ctx, padX);
+                nk_spacing(ctx, 1);
+            }
+
+            nk_layout_row_push(ctx, drawW);
+
+            struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
             struct nk_rect space;
-            enum nk_widget_layout_states state;
-            state = nk_widget(&space, ctx);
+            enum nk_widget_layout_states state = nk_widget(&space, ctx);
+
+            if (padX > 1)
+            {
+                nk_layout_row_push(ctx, padX);
+                nk_spacing(ctx, 1);
+            }
+
+            nk_layout_row_end(ctx);
+
             if (state)
             {
-                if (state != NK_WIDGET_ROM)
-                {
-                    // update_your_widget_by_user_input(...);
-                }
-
                 glBindTexture(GL_TEXTURE_2D, device->screen.handle.id);
                 glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
                 glBindTexture(GL_TEXTURE_2D, 0);
@@ -954,6 +965,7 @@ internal void DrawInstructionsPanel(struct nk_context *ctx, nk_flags flags, cons
         return;
     }
 
+    nk_window_set_bounds(ctx, "INSTRUCTIONS", layout->instructions);
     if (nk_begin(ctx, "INSTRUCTIONS", layout->instructions, flags) && nes)
     {
         CPU* cpu = &nes->cpu;
@@ -1089,6 +1101,814 @@ internal void DrawInstructionsPanel(struct nk_context *ctx, nk_flags flags, cons
         }
     }
     nk_end(ctx);
+}
+
+
+internal void DrawOAM(struct nk_context *ctx, struct nk_command_buffer *canvas, const struct nk_input *input, struct nk_image *deviceOam, Color (*guiSprites)[128], Memory *oamMem, s32 spriteCount, s32 columns)
+{
+    PPU *ppu = &nes->ppu;
+    u8 spriteAddr = GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
+    u8 spriteSize = 8 * (GetBitFlag(ppu->control, SPRITE_SIZE_FLAG) + 1);
+    u16 baseAddress = 0x1000 * spriteAddr;
+
+    nk_layout_row_static(ctx, 16, 8, columns);
+
+    for (s32 index = 0; index < spriteCount; ++index)
+    {
+        u8 spriteY = ReadU8(oamMem, index * 4 + 0);
+        u8 spriteIdx = ReadU8(oamMem, index * 4 + 1);
+        u8 spriteAttr = ReadU8(oamMem, index * 4 + 2);
+        u8 spriteX = ReadU8(oamMem, index * 4 + 3);
+
+        if (spriteSize == 16)
+        {
+            baseAddress = 0x1000 * (spriteIdx & 1);
+            spriteIdx &= 0xFE;
+        }
+
+        u8 pixelHighBits = spriteAttr & 0x03;
+        b32 flipV = spriteAttr & 0x80;
+        b32 flipH = spriteAttr & 0x40;
+
+        for (s32 y = 0; y < spriteSize; ++y)
+        {
+            u8 rowOffset = y;
+            if (flipV) rowOffset = (spriteSize - 1) - rowOffset;
+
+            u8 row1 = GetSpritePixelRow(nes, baseAddress, spriteIdx, rowOffset, 0);
+            u8 row2 = GetSpritePixelRow(nes, baseAddress, spriteIdx, rowOffset, 1);
+
+            for (s32 x = 0; x < 8; ++x)
+            {
+                u8 colOffset = x;
+                if (flipH) colOffset = 7 - colOffset;
+
+                u32 paletteIndex = GetPixelColorBits(row1, row2, colOffset, pixelHighBits);
+                u32 colorIndex = ReadPPUU8(nes, 0x3F10 + paletteIndex);
+                Color color = systemPalette[colorIndex % 64];
+
+                guiSprites[index][y * 8 + x] = color;
+            }
+        }
+
+        struct nk_rect space;
+        enum nk_widget_layout_states state = nk_widget(&space, ctx);
+        if (state)
+        {
+            glBindTexture(GL_TEXTURE_2D, deviceOam[index].handle.id);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 16, GL_RGBA, GL_UNSIGNED_BYTE, guiSprites[index]);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            nk_draw_image(canvas, space, &deviceOam[index], nk_rgb(255, 255, 255));
+
+            if (nk_input_is_mouse_hovering_rect(input, space))
+            {
+                if (nk_tooltip_begin(ctx, 200))
+                {
+                    nk_layout_row_static(ctx, 64, 32, 1);
+
+                    state = nk_widget(&space, ctx);
+                    if (state) nk_draw_image(canvas, space, &deviceOam[index], nk_rgb(255, 255, 255));
+
+                    nk_layout_row_dynamic(ctx, 20, 2);
+                    nk_label(ctx, DebugText("Number: %02X", index), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("Tile:   %02X", spriteIdx), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("X:      %02X", spriteX), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("Color:  %02X", pixelHighBits), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("Y:      %02X", spriteY), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("Flags:  %s%s", (flipV ? "V" : ""), (flipH ? "H" : "")), NK_TEXT_LEFT);
+
+                    nk_tooltip_end(ctx);
+                }
+            }
+        }
+    }
+}
+
+internal void DrawAudioWaveform(struct nk_context *ctx, struct nk_command_buffer *canvas, s16 *buffer, s32 pointCount)
+{
+    const f32 rectHeight = 200.0f;
+    struct nk_color lineColor = nk_rgb(255, 0, 0);
+    const f32 lineThickness = 1.0f;
+    struct nk_rect space;
+
+    nk_layout_row_dynamic(ctx, rectHeight, 1);
+    enum nk_widget_layout_states state = nk_widget(&space, ctx);
+    if (state && pointCount > 0)
+    {
+        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
+        f32 horizontalSpacing = space.w / pointCount;
+
+        for (s32 i = 0; i < pointCount; i++)
+        {
+            f32 x = horizontalSpacing * i;
+            f32 y = rectHeight - buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
+            *(points + i) = nk_vec2(space.x + x, space.y + y);
+        }
+
+        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
+        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
+
+        Free(points);
+    }
+}
+
+internal void DrawToolsTabs(struct nk_context *ctx, nk_flags flags, const UiLayout *layout)
+{
+    if (!debugMode) return;
+
+    nk_window_set_bounds(ctx, "TOOLS", layout->toolsTabs);
+    if (nk_begin(ctx, "TOOLS", layout->toolsTabs, flags | NK_WINDOW_NO_SCROLLBAR) && nes)
+    {
+        enum { TOOL_MEMORY = 0, TOOL_VIDEO = 1, TOOL_AUDIO = 2 };
+        if (app.ui.debugToolTab < TOOL_MEMORY || app.ui.debugToolTab > TOOL_AUDIO)
+            app.ui.debugToolTab = TOOL_MEMORY;
+
+        nk_layout_row_dynamic(ctx, 24, 3);
+        app.ui.debugToolTab = nk_option_label(ctx, "MEMORY", app.ui.debugToolTab == TOOL_MEMORY) ? TOOL_MEMORY : app.ui.debugToolTab;
+        app.ui.debugToolTab = nk_option_label(ctx, "VIDEO", app.ui.debugToolTab == TOOL_VIDEO) ? TOOL_VIDEO : app.ui.debugToolTab;
+        app.ui.debugToolTab = nk_option_label(ctx, "AUDIO", app.ui.debugToolTab == TOOL_AUDIO) ? TOOL_AUDIO : app.ui.debugToolTab;
+    }
+    nk_end(ctx);
+}
+internal void DrawMemoryTool(struct nk_context *ctx, nk_flags flags, struct nk_rect bounds)
+{
+    if (!debugMode) return;
+
+            nk_window_set_bounds(ctx, "MEMORY", bounds);
+    if (nk_begin(ctx, "MEMORY", bounds, flags) && nes)
+            {
+                enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
+                const float ratio[] = { 80, 80, 80, 80 };
+
+                if (app.ui.memoryOption < CPU_MEM || app.ui.memoryOption > OAM2_MEM)
+                {
+                    app.ui.memoryOption = CPU_MEM;
+                }
+
+                nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
+                app.ui.memoryOption = nk_option_label(ctx, "CPU", app.ui.memoryOption == CPU_MEM) ? CPU_MEM : app.ui.memoryOption;
+                app.ui.memoryOption = nk_option_label(ctx, "PPU", app.ui.memoryOption == PPU_MEM) ? PPU_MEM : app.ui.memoryOption;
+                app.ui.memoryOption = nk_option_label(ctx, "OAM", app.ui.memoryOption == OAM_MEM) ? OAM_MEM : app.ui.memoryOption;
+                app.ui.memoryOption = nk_option_label(ctx, "OAM2", app.ui.memoryOption == OAM2_MEM) ? OAM2_MEM : app.ui.memoryOption;
+
+                u16 address = 0x0000;
+
+                nk_label(ctx, "Address: ", NK_TEXT_LEFT);
+                nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.memoryAddressText, &app.ui.memoryAddressLen, 12, nk_filter_hex);
+
+                if (app.ui.memoryAddressLen > 0)
+                {
+                    app.ui.memoryAddressText[app.ui.memoryAddressLen] = 0;
+                    address = (u16)strtol(app.ui.memoryAddressText, NULL, 16);
+                    if (address < 0x0000 || address > 0xFFFF)
+                    {
+                        address = 0x0000;
+                    }
+                }
+
+                nk_layout_row_dynamic(ctx, 20, 1);
+
+                if (app.ui.memoryOption == OAM_MEM)
+                {
+                    for (s32 i = 0; i < 16; ++i)
+                    {
+                        memset(debugBuffer, 0, sizeof(debugBuffer));
+
+                        s32 col = sprintf(debugBuffer, "%04X: ", i * 16);
+
+                        for (s32 j = 0; j < 16; ++j)
+                        {
+                            u8 v = ReadU8(&nes->oamMemory, i * 16 + j);
+                            col += sprintf(debugBuffer + col, " %02X", v);
+                        }
+
+                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+                    }
+                }
+                else if (app.ui.memoryOption == OAM2_MEM)
+                {
+                    for (s32 i = 0; i < 2; ++i)
+                    {
+                        memset(debugBuffer, 0, sizeof(debugBuffer));
+
+                        s32 col = sprintf(debugBuffer, "%04X: ", i * 16);
+
+                        for (s32 j = 0; j < 16; ++j)
+                        {
+                            u8 v = ReadU8(&nes->oamMemory2, i * 16 + j);
+                            col += sprintf(debugBuffer + col, " %02X", v);
+                        }
+
+                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+                    }
+                }
+                else
+                {
+                    for (s32 i = 0; i < 16; ++i)
+                    {
+                        memset(debugBuffer, 0, sizeof(debugBuffer));
+
+                        s32 col = sprintf(debugBuffer, "%04X: ", address + i * 16);
+
+                        for (s32 j = 0; j < 16; ++j)
+                        {
+                            u8 v = (app.ui.memoryOption == CPU_MEM)
+                                ? ReadCPUU8(nes, address + i * 16 + j)
+                                : ReadPPUU8(nes, address + i * 16 + j);
+
+                            col += sprintf(debugBuffer + col, " %02X", v);
+                        }
+
+                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+                    }
+                }
+            }
+            nk_end(ctx);
+        
+}
+internal void DrawVideoTool(struct nk_context *ctx, nk_flags flags, struct nk_rect bounds, struct Device *device, const struct nk_input *input)
+{
+    if (!debugMode) return;
+
+            nk_window_set_bounds(ctx, "VIDEO", bounds);
+    if (nk_begin(ctx, "VIDEO", bounds, flags) && nes)
+            {
+                PPU *ppu = &nes->ppu;
+                GUI *gui = &nes->gui;
+
+                struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
+                const struct nk_input *input = &ctx->input;
+
+                struct nk_rect space;
+                enum nk_widget_layout_states state;
+
+                enum options { PATTERNS_PALETTES_OAM, NAMETABLES };
+                const float ratio[] = { 200, 200 };
+
+                if (app.ui.videoOption < PATTERNS_PALETTES_OAM || app.ui.videoOption > NAMETABLES)
+                {
+                    app.ui.videoOption = PATTERNS_PALETTES_OAM;
+                }
+
+                nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
+                app.ui.videoOption = nk_option_label(ctx, "PATTERNS, PALETTES, OAM", app.ui.videoOption == PATTERNS_PALETTES_OAM) ? PATTERNS_PALETTES_OAM : app.ui.videoOption;
+                app.ui.videoOption = nk_option_label(ctx, "NAMETABLES", app.ui.videoOption == NAMETABLES) ? NAMETABLES : app.ui.videoOption;
+
+                if (app.ui.videoOption == PATTERNS_PALETTES_OAM)
+                {
+                    // PATTERNS
+                    {
+                        nk_layout_row_dynamic(ctx, 25, 1);
+                        nk_label(ctx, "PATTERNS", NK_TEXT_LEFT);
+
+                        nk_layout_row_static(ctx, 128, 128, 2);
+
+                        for (s32 index = 0; index < 2; ++index)
+                        {
+                            u16 baseAddress = index * 0x1000;
+
+                            for (s32 tileY = 0; tileY < 16; ++tileY)
+                            {
+                                for (s32 tileX = 0; tileX < 16; ++tileX)
+                                {
+                                    u16 patternIndex = tileY * 16 + tileX;
+
+                                    for (s32 y = 0; y < 8; ++y)
+                                    {
+                                        u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
+                                        u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
+
+                                        for (s32 x = 0; x < 8; ++x)
+                                        {
+                                            u8 h = ((row2 >> (7 - x)) & 0x1);
+                                            u8 l = ((row1 >> (7 - x)) & 0x1);
+                                            u32 paletteIndex = (h << 0x1) | l;
+                                            u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                            Color color = systemPalette[colorIndex % 64];
+
+                                            s32 pixelX = (tileX * 8 + x);
+                                            s32 pixelY = (tileY * 8 + y);
+                                            s32 pixel = pixelY * 128 + pixelX;
+
+                                            gui->patterns[index][pixel] = color;
+                                        }
+                                    }
+                                }
+                            }
+
+                            state = nk_widget(&space, ctx);
+                            if (state)
+                            {
+                                if (state != NK_WIDGET_ROM)
+                                {
+                                    // update_your_widget_by_user_input(...);
+                                }
+
+                                glBindTexture(GL_TEXTURE_2D, device->patterns[index].handle.id);
+                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, gui->patterns[index]);
+                                glBindTexture(GL_TEXTURE_2D, 0);
+
+                                nk_draw_image(canvas, space, &device->patterns[index], nk_rgb(255, 255, 255));
+
+                                if (nk_input_is_mouse_hovering_rect(input, space))
+                                {
+                                    if (nk_tooltip_begin(ctx, 200))
+                                    {
+                                        f32 mouseX = input->mouse.pos.x - space.x;
+                                        f32 mouseY = input->mouse.pos.y - space.y;
+                                        s32 tileX = mouseX / 8;
+                                        s32 tileY = mouseY / 8;
+
+                                        u16 patternIndex = tileY * 16 + tileX;
+
+                                        for (s32 y = 0; y < 8; ++y)
+                                        {
+                                            u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
+                                            u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
+
+                                            for (s32 x = 0; x < 8; ++x)
+                                            {
+                                                u8 h = ((row2 >> (7 - x)) & 0x1);
+                                                u8 l = ((row1 >> (7 - x)) & 0x1);
+                                                u32 paletteIndex = (h << 0x1) | l;
+                                                u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+                                                Color color = systemPalette[colorIndex % 64];
+
+                                                gui->patternHover[y * 8 + x] = color;
+                                            }
+                                        }
+
+                                        nk_layout_row_static(ctx, 32, 32, 1);
+
+                                        state = nk_widget(&space, ctx);
+                                        if (state)
+                                        {
+                                            glBindTexture(GL_TEXTURE_2D, device->patternHover.handle.id);
+                                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->patternHover);
+                                            glBindTexture(GL_TEXTURE_2D, 0);
+
+                                            nk_draw_image(canvas, space, &device->patternHover, nk_rgb(255, 255, 255));
+                                        }
+
+                                        nk_layout_row_dynamic(ctx, 20, 1);
+                                        nk_label(ctx, DebugText("Address: %04X", baseAddress + patternIndex * 16), NK_TEXT_LEFT);
+                                        nk_label(ctx, DebugText("Table:   %02X", index), NK_TEXT_LEFT);
+                                        nk_label(ctx, DebugText("Tile:    %02X", patternIndex), NK_TEXT_LEFT);
+
+                                        nk_tooltip_end(ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // PALETTES
+                    {
+                        nk_layout_row_dynamic(ctx, 25, 1);
+                        nk_label(ctx, "PALETTES", NK_TEXT_LEFT);
+
+                        nk_layout_row_static(ctx, 20, 20, 16);
+
+                        for (s32 index = 0; index < 2; ++index)
+                        {
+                            for (s32 i = 0; i < 16; ++i)
+                            {
+                                u16 address = 0x3F00 + (index * 0x10) + i;
+                                u8 colorIndex = ReadPPUU8(nes, address);
+                                Color color = systemPalette[colorIndex % 64];
+
+                                state = nk_widget(&space, ctx);
+                                if (state)
+                                {
+                                    if (state != NK_WIDGET_ROM)
+                                    {
+                                        // update_your_widget_by_user_input(...);
+                                    }
+
+                                    nk_fill_rect(canvas, space, 0, nk_rgb(color.r, color.g, color.b));
+
+                                    if (nk_input_is_mouse_hovering_rect(input, space))
+                                    {
+                                        if (nk_tooltip_begin(ctx, 200))
+                                        {
+                                            nk_layout_row_static(ctx, 32, 32, 1);
+
+                                            state = nk_widget(&space, ctx);
+                                            if (state)
+                                            {
+                                                nk_fill_rect(canvas, space, 0, nk_rgb(color.r, color.g, color.b));
+                                            }
+
+                                            nk_layout_row_dynamic(ctx, 20, 1);
+                                            nk_label(ctx, DebugText("Address: %04X", address), NK_TEXT_LEFT);
+                                            nk_label(ctx, DebugText("Color:   %02X", colorIndex), NK_TEXT_LEFT);
+                                            nk_label(ctx, DebugText("Offset:  %d", i % 4), NK_TEXT_LEFT);
+
+                                            nk_tooltip_end(ctx);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // OAM
+                    {
+                        nk_layout_row_dynamic(ctx, 25, 1);
+                        nk_label(ctx, "OAM", NK_TEXT_LEFT);
+                        DrawOAM(ctx, canvas, input, device->oam, (Color(*)[128])gui->sprites, &nes->oamMemory, 64, 16);
+                    }
+
+                    // OAM 2
+                    {
+                        DrawOAM(ctx, canvas, input, device->oam2, (Color(*)[128])gui->sprites2, &nes->oamMemory2, 8, 8);
+                    }
+
+                }
+                else if (app.ui.videoOption == NAMETABLES)
+                {
+                    enum options { H2000, H2400, H2800, H2C00 };
+                    const float ratio[] = { 80, 80, 80, 80, 80 };
+
+                    if (app.ui.nametableOption < H2000 || app.ui.nametableOption > H2C00)
+                    {
+                        app.ui.nametableOption = H2000;
+                    }
+
+                    nk_layout_row(ctx, NK_STATIC, 25, 5, ratio);
+                    app.ui.nametableOption = nk_option_label(ctx, "$2000", app.ui.nametableOption == H2000) ? H2000 : app.ui.nametableOption;
+                    app.ui.nametableOption = nk_option_label(ctx, "$2400", app.ui.nametableOption == H2400) ? H2400 : app.ui.nametableOption;
+                    app.ui.nametableOption = nk_option_label(ctx, "$2800", app.ui.nametableOption == H2800) ? H2800 : app.ui.nametableOption;
+                    app.ui.nametableOption = nk_option_label(ctx, "$2C00", app.ui.nametableOption == H2C00) ? H2C00 : app.ui.nametableOption;
+
+                    nk_checkbox_label(ctx, "PIX", &app.ui.showSeparatePixels);
+
+                    u16 address = 0x2000 + app.ui.nametableOption * 0x400;
+
+                    if (app.ui.showSeparatePixels)
+                    {
+                        nk_layout_row_static(ctx, 8, 8, 32);
+
+                        u16 baseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
+
+                        for (s32 tileY = 0; tileY < 30; ++tileY)
+                        {
+                            for (s32 tileX = 0; tileX < 32; ++tileX)
+                            {
+                                u16 tileIndex = tileY * 32 + tileX;
+                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
+
+                                u16 attributeX = tileX / 4;
+                                u16 attributeOffsetX = tileX % 4;
+
+                                u16 attributeY = tileY / 4;
+                                u16 attributeOffsetY = tileY % 4;
+
+                                u16 attributeIndex = attributeY * 8 + attributeX;
+                                u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
+
+                                // lookupValue is a number between 0 and 15,
+                                // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
+                                // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
+                                // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
+                                // for value 0x0C, 0x0D, 0x0E, 0x0F, we need to get the bits 11000000
+                                //
+                                u8 lookupValue = attributeTableLookup[attributeOffsetY][attributeOffsetX];
+                                u8 shiftValue = (lookupValue / 4) * 2;
+                                u8 highColorBits = (attributeByte >> shiftValue) & 0x03;
+
+                                for (s32 y = 0; y < 8; ++y)
+                                {
+                                    u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
+                                    u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
+
+                                    for (s32 x = 0; x < 8; ++x)
+                                    {
+                                        u8 h = ((row2 >> (7 - x)) & 0x1);
+                                        u8 l = ((row1 >> (7 - x)) & 0x1);
+                                        u8 v = (h << 0x1) | l;
+
+                                        u32 paletteIndex = (highColorBits << 2) | v;
+                                        u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+
+                                        // if the grayscale bit is set, then AND (&) with 0x30 to set
+                                        // any color in the palette to the grey ones
+                                        if (GetBitFlag(ppu->mask, COLOR_FLAG))
+                                        {
+                                            colorIndex &= 0x30;
+                                        }
+
+                                        Color color = systemPalette[colorIndex % 64];
+
+                                        // check the bits 5, 6, 7 to color emphasis
+                                        u8 colorMask = (ppu->mask & 0xE0) >> 5;
+                                        if (colorMask != 0)
+                                        {
+                                            ColorEmphasis(&color, colorMask);
+                                        }
+
+                                        s32 pixel = y * 8 + x;
+                                        gui->nametable2[tileX][tileY][pixel] = color;
+                                    }
+                                }
+
+                                state = nk_widget(&space, ctx);
+                                if (state)
+                                {
+                                    if (state != NK_WIDGET_ROM)
+                                    {
+                                        // update_your_widget_by_user_input(...);
+                                    }
+
+                                    glBindTexture(GL_TEXTURE_2D, device->nametable2[tileY * 32 + tileX].handle.id);
+                                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->nametable2[tileX][tileY]);
+                                    glBindTexture(GL_TEXTURE_2D, 0);
+
+                                    nk_draw_image(canvas, space, &device->nametable2[tileY * 32 + tileX], nk_rgb(255, 255, 255));
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        nk_layout_row_static(ctx, 240, 256, 1);
+
+                        u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
+
+                        for (s32 tileY = 0; tileY < 30; ++tileY)
+                        {
+                            for (s32 tileX = 0; tileX < 32; ++tileX)
+                            {
+                                u16 tileIndex = tileY * 32 + tileX;
+                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
+
+                                u16 attributeX = tileX / 4;
+                                u16 attributeOffsetX = tileX % 4;
+
+                                u16 attributeY = tileY / 4;
+                                u16 attributeOffsetY = tileY % 4;
+
+                                u16 attributeIndex = attributeY * 8 + attributeX;
+                                u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
+
+                                // lookupValue is a number between 0 and 15,
+                                // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
+                                // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
+                                // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
+                                // for value 0x0C, 0x0D, 0x0E, 0x0F, we need to get the bits 11000000
+                                //
+                                u8 lookupValue = attributeTableLookup[attributeOffsetY][attributeOffsetX];
+                                u8 shiftValue = (lookupValue / 4) * 2;
+                                u8 highColorBits = (attributeByte >> shiftValue) & 0x03;
+
+                                for (s32 y = 0; y < 8; ++y)
+                                {
+                                    u8 row1 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + y);
+                                    u8 row2 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + 8 + y);
+
+                                    for (s32 x = 0; x < 8; ++x)
+                                    {
+                                        u8 h = ((row2 >> (7 - x)) & 0x1);
+                                        u8 l = ((row1 >> (7 - x)) & 0x1);
+                                        u8 v = (h << 0x1) | l;
+
+                                        u32 paletteIndex = (highColorBits << 2) | v;
+                                        u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
+
+                                        // if the grayscale bit is set, then AND (&) with 0x30 to set
+                                        // any color in the palette to the grey ones
+                                        if (GetBitFlag(ppu->mask, COLOR_FLAG))
+                                        {
+                                            colorIndex &= 0x30;
+                                        }
+
+                                        Color color = systemPalette[colorIndex % 64];
+
+                                        // check the bits 5, 6, 7 to color emphasis
+                                        u8 colorMask = (ppu->mask & 0xE0) >> 5;
+                                        if (colorMask != 0)
+                                        {
+                                            ColorEmphasis(&color, colorMask);
+                                        }
+
+                                        s32 pixelX = (tileX * 8 + x);
+                                        s32 pixelY = (tileY * 8 + y);
+                                        s32 pixel = pixelY * 256 + pixelX;
+                                        gui->nametable[pixel] = color;
+                                    }
+                                }
+                            }
+                        }
+
+                        state = nk_widget(&space, ctx);
+                        if (state)
+                        {
+                            if (state != NK_WIDGET_ROM)
+                            {
+                                // update_your_widget_by_user_input(...);
+                            }
+
+                            glBindTexture(GL_TEXTURE_2D, device->nametable.handle.id);
+                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->nametable);
+                            glBindTexture(GL_TEXTURE_2D, 0);
+
+                            nk_draw_image(canvas, space, &device->nametable, nk_rgb(255, 255, 255));
+                        }
+                    }
+                }
+            }
+            nk_end(ctx);
+        
+}
+internal void DrawAudioTool(struct nk_context *ctx, nk_flags flags, struct nk_rect bounds)
+{
+    if (!debugMode) return;
+
+            nk_window_set_bounds(ctx, "AUDIO", bounds);
+    if (nk_begin(ctx, "AUDIO", bounds, flags | NK_WINDOW_SCALABLE) && nes)
+            {
+                APU *apu = &nes->apu;
+
+                struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
+
+                                
+                enum options { GENERAL, SQUARE1, SQUARE2, TRIANGLE, NOISE, DMC, BUFFER };
+                const float ratio[] = { 100, 100, 100, 100, 100 };
+
+                if (app.ui.audioOption < GENERAL || app.ui.audioOption > BUFFER)
+                {
+                    app.ui.audioOption = GENERAL;
+                }
+
+                nk_layout_row(ctx, NK_STATIC, 25, 5, ratio);
+                app.ui.audioOption = nk_option_label(ctx, "GENERAL", app.ui.audioOption == GENERAL) ? GENERAL : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "SQUARE 1", app.ui.audioOption == SQUARE1) ? SQUARE1 : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "SQUARE 2", app.ui.audioOption == SQUARE2) ? SQUARE2 : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "TRIANGLE", app.ui.audioOption == TRIANGLE) ? TRIANGLE : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "NOISE", app.ui.audioOption == NOISE) ? NOISE : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "DMC", app.ui.audioOption == DMC) ? DMC : app.ui.audioOption;
+                app.ui.audioOption = nk_option_label(ctx, "BUFFER", app.ui.audioOption == BUFFER) ? BUFFER : app.ui.audioOption;
+
+                if (app.ui.audioOption == GENERAL)
+                {
+                    nk_layout_row_dynamic(ctx, 25, 3);
+
+                    nk_label(ctx, DebugText("CYCLES:%lld", apu->cycles), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("FRAME MODE:%02X", apu->frameMode), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SAMPLE RATE:%04X", APU_SAMPLES_PER_SECOND), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("FRAME IRQ:%02X", !apu->inhibitIRQ), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("FRAME VALUE:%02X", apu->frameValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SAMPLE COUNTER:%02X", apu->sampleCounter), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("DMC IRQ:%02X", apu->dmcIRQ), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("FRAME COUNTER:%02X", apu->frameCounter), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("BUFFER INDEX:%04X", apu->bufferIndex), NK_TEXT_LEFT);
+
+                    nk_checkbox_label(ctx, "SQUARE1 ENABLED", &app.ui.square1Enabled);
+                    nk_checkbox_label(ctx, "SQUARE2 ENABLED", &app.ui.square2Enabled);
+                    nk_checkbox_label(ctx, "TRIANGLE ENABLED", &app.ui.triangleEnabled);
+                    nk_checkbox_label(ctx, "NOISE ENABLED", &app.ui.noiseEnabled);
+                    nk_checkbox_label(ctx, "DMC ENABLED", &app.ui.dmcEnabled);
+
+                    apu->pulse1.globalEnabled = app.ui.square1Enabled;
+                    apu->pulse2.globalEnabled = app.ui.square2Enabled;
+                    apu->triangle.globalEnabled = app.ui.triangleEnabled;
+                    apu->noise.globalEnabled = app.ui.noiseEnabled;
+                    apu->dmc.globalEnabled = app.ui.dmcEnabled;
+
+                    DrawAudioWaveform(ctx, canvas, apu->buffer, apu->bufferIndex);
+                }
+                else if (app.ui.audioOption == SQUARE1 || app.ui.audioOption == SQUARE2)
+                {
+                    APUPulse *pulse = app.ui.audioOption == SQUARE1 ? &apu->pulse1 : &apu->pulse2;
+
+                    nk_layout_row_dynamic(ctx, 25, 4);
+
+                    nk_label(ctx, DebugText("ENVELOPE ENABLED:%02X", pulse->envelopeEnabled), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SWEEP ENABLED:%02X", pulse->sweepEnabled), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("LEN ENABLED:%02X", pulse->lengthEnabled), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("ENABLED:%02X", pulse->enabled), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("ENVELOPE LOOP:%02X", pulse->envelopeLoop), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SWEEP NEGATE:%02X", pulse->sweepNegate), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("LEN VALUE:%02X", pulse->lengthValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CHANNEL:%02X", pulse->channel), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("ENVELOPE PERIOD:%02X", pulse->envelopePeriod), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SWEEP SHIFT:%02X", pulse->sweepShift), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", pulse->timerPeriod), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("DUTY MODE:%02X", pulse->dutyMode), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("ENVELOPE VALUE:%02X", pulse->envelopeValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SWEEP PERIOD:%02X", pulse->sweepPeriod), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER VALUE:%02X", pulse->timerValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("DUTY VALUE:%02X", pulse->dutyValue), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("ENVELOPE VOLUME:%02X", pulse->envelopeVolume), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("SWEEP VALUE:%02X", pulse->sweepValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", pulse->constantVolume), NK_TEXT_LEFT);
+
+                    DrawAudioWaveform(ctx, canvas, pulse->buffer, pulse->bufferIndex);
+                }
+                else if (app.ui.audioOption == TRIANGLE)
+                {
+                    APUTriangle *triangle = &apu->triangle;
+
+                    nk_layout_row_dynamic(ctx, 25, 3);
+
+                    nk_label(ctx, DebugText("COUNTER ENABLED:%02X", triangle->linearEnabled), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("LEN ENABLED:%02X", triangle->lengthEnabled), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", triangle->timerPeriod), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("COUNTER PERIOD:%02X", triangle->linearPeriod), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("LEN VALUE:%02X", triangle->lengthValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER VALUE:%02X", triangle->timerValue), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("COUNTER VALUE:%02X", triangle->linearValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TABLE INDEX:%02X", triangle->timerValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("ENABLED:%02X", triangle->enabled), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("COUNTER RELOAD:%02X", triangle->linearReload), NK_TEXT_LEFT);
+
+                    DrawAudioWaveform(ctx, canvas, triangle->buffer, triangle->bufferIndex);
+                }
+                else if (app.ui.audioOption == NOISE)
+                {
+                    APUNoise *noise = &apu->noise;
+
+                    nk_layout_row_dynamic(ctx, 25, 3);
+
+                    nk_label(ctx, DebugText("ENVELOPE ENABLED:%02X", noise->envelopeEnabled), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("ENVELOPE VALUE:%02X", noise->envelopeValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("LEN ENABLED:%02X", noise->lengthEnabled), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("ENVELOPE LOOP:%02X", noise->envelopeLoop), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", noise->timerPeriod), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("LEN VALUE:%02X", noise->lengthValue), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("ENVELOPE PERIOD:%02X", noise->envelopePeriod), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER VALUE:%02X", noise->timerValue), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("ENABLED:%02X", noise->enabled), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("ENVELOPE VOLUME:%02X", noise->envelopeVolume), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", noise->constantVolume), NK_TEXT_LEFT);
+
+                    DrawAudioWaveform(ctx, canvas, noise->buffer, noise->bufferIndex);
+                }
+                else if (app.ui.audioOption == DMC)
+                {
+                    APUDMC *dmc = &apu->dmc;
+
+                    nk_layout_row_dynamic(ctx, 25, 3);
+
+                    nk_label(ctx, DebugText("SAMPLE ADDRESS:%02X", dmc->sampleAddress), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CURRENT ADDRESS:%02X", dmc->currentAddress), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", dmc->timerPeriod), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("SAMPLE LENGTH:%02X", dmc->sampleLength), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("CURRENT LENGTH:%02X", dmc->currentLength), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("TIMER VALUE:%02X", dmc->timerValue), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("SHIFT REGISTER:%02X", dmc->shiftRegister), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("BIT COUNT:%02X", dmc->bitCount), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("VALUE:%02X", dmc->value), NK_TEXT_LEFT);
+
+                    nk_label(ctx, DebugText("IRQ:%02X", dmc->irq), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("LOOP:%02X", dmc->loop), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("ENABLED:%02X", dmc->enabled), NK_TEXT_LEFT);
+
+                    DrawAudioWaveform(ctx, canvas, dmc->buffer, dmc->bufferIndex);
+                }
+                else if (app.ui.audioOption == BUFFER)
+                {
+                    nk_layout_row_dynamic(ctx, 20, 1);
+
+                    for (s32 i = 0; i < APU_BUFFER_LENGTH / 16; ++i)
+                    {
+                        memset(debugBuffer, 0, sizeof(debugBuffer));
+
+                        s32 col = 0;
+
+                        for (s32 j = 0; j < 16; ++j)
+                        {
+                            f32 v = apu->buffer[i * 16 + j];
+
+                            if (j > 0)
+                            {
+                                col += sprintf(debugBuffer + col, " ");
+                            }
+
+                            col += sprintf(debugBuffer + col, "%.2f", v);
+                        }
+
+                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+                    }
+                }
+            }
+            nk_end(ctx);
+        
 }
 
 int main(int argc, char **argv)
@@ -1263,1023 +2083,19 @@ int main(int argc, char **argv)
 
         DrawInstructionsPanel(ctx, flags, &layout);
 
+        
+        DrawToolsTabs(ctx, flags, &layout);
         if (debugMode)
         {
-            if (nk_begin(ctx, "MEMORY", layout.memory, flags) && nes)
-            {
-                enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
-                const float ratio[] = { 80, 80, 80, 80 };
-
-                if (app.ui.memoryOption < CPU_MEM || app.ui.memoryOption > OAM2_MEM)
-                {
-                    app.ui.memoryOption = CPU_MEM;
-                }
-
-                nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
-                app.ui.memoryOption = nk_option_label(ctx, "CPU", app.ui.memoryOption == CPU_MEM) ? CPU_MEM : app.ui.memoryOption;
-                app.ui.memoryOption = nk_option_label(ctx, "PPU", app.ui.memoryOption == PPU_MEM) ? PPU_MEM : app.ui.memoryOption;
-                app.ui.memoryOption = nk_option_label(ctx, "OAM", app.ui.memoryOption == OAM_MEM) ? OAM_MEM : app.ui.memoryOption;
-                app.ui.memoryOption = nk_option_label(ctx, "OAM2", app.ui.memoryOption == OAM2_MEM) ? OAM2_MEM : app.ui.memoryOption;
-
-                u16 address = 0x0000;
-
-                nk_label(ctx, "Address: ", NK_TEXT_LEFT);
-                nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.memoryAddressText, &app.ui.memoryAddressLen, 12, nk_filter_hex);
-
-                if (app.ui.memoryAddressLen > 0)
-                {
-                    app.ui.memoryAddressText[app.ui.memoryAddressLen] = 0;
-                    address = (u16)strtol(app.ui.memoryAddressText, NULL, 16);
-                    if (address < 0x0000 || address > 0xFFFF)
-                    {
-                        address = 0x0000;
-                    }
-                }
-
-                nk_layout_row_dynamic(ctx, 20, 1);
-
-                if (app.ui.memoryOption == OAM_MEM)
-                {
-                    for (s32 i = 0; i < 16; ++i)
-                    {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                        s32 col = sprintf(debugBuffer, "%04X: ", i * 16);
-
-                        for (s32 j = 0; j < 16; ++j)
-                        {
-                            u8 v = ReadU8(&nes->oamMemory, i * 16 + j);
-                            col += sprintf(debugBuffer + col, " %02X", v);
-                        }
-
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
-                    }
-                }
-                else if (app.ui.memoryOption == OAM2_MEM)
-                {
-                    for (s32 i = 0; i < 2; ++i)
-                    {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                        s32 col = sprintf(debugBuffer, "%04X: ", i * 16);
-
-                        for (s32 j = 0; j < 16; ++j)
-                        {
-                            u8 v = ReadU8(&nes->oamMemory2, i * 16 + j);
-                            col += sprintf(debugBuffer + col, " %02X", v);
-                        }
-
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
-                    }
-                }
-                else
-                {
-                    for (s32 i = 0; i < 16; ++i)
-                    {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                        s32 col = sprintf(debugBuffer, "%04X: ", address + i * 16);
-
-                        for (s32 j = 0; j < 16; ++j)
-                        {
-                            u8 v = (app.ui.memoryOption == CPU_MEM)
-                                ? ReadCPUU8(nes, address + i * 16 + j)
-                                : ReadPPUU8(nes, address + i * 16 + j);
-
-                            col += sprintf(debugBuffer + col, " %02X", v);
-                        }
-
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
-                    }
-                }
-            }
-            nk_end(ctx);
+            if (app.ui.debugToolTab == 0) DrawMemoryTool(ctx, flags, layout.toolsView);
+            else if (app.ui.debugToolTab == 1) DrawVideoTool(ctx, flags, layout.toolsView, &device, &ctx->input);
+            else if (app.ui.debugToolTab == 2) DrawAudioTool(ctx, flags, layout.toolsView);
         }
 
-        if (debugMode)
-        {
-            if (nk_begin(ctx, "VIDEO", layout.video, flags) && nes)
-            {
-                PPU *ppu = &nes->ppu;
-                GUI *gui = &nes->gui;
 
-                struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
-                const struct nk_input *input = &ctx->input;
+        
 
-                struct nk_rect space;
-                enum nk_widget_layout_states state;
-
-                enum options { PATTERNS_PALETTES_OAM, NAMETABLES };
-                const float ratio[] = { 200, 200 };
-
-                if (app.ui.videoOption < PATTERNS_PALETTES_OAM || app.ui.videoOption > NAMETABLES)
-                {
-                    app.ui.videoOption = PATTERNS_PALETTES_OAM;
-                }
-
-                nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
-                app.ui.videoOption = nk_option_label(ctx, "PATTERNS, PALETTES, OAM", app.ui.videoOption == PATTERNS_PALETTES_OAM) ? PATTERNS_PALETTES_OAM : app.ui.videoOption;
-                app.ui.videoOption = nk_option_label(ctx, "NAMETABLES", app.ui.videoOption == NAMETABLES) ? NAMETABLES : app.ui.videoOption;
-
-                if (app.ui.videoOption == PATTERNS_PALETTES_OAM)
-                {
-                    // PATTERNS
-                    {
-                        nk_layout_row_dynamic(ctx, 25, 1);
-                        nk_label(ctx, "PATTERNS", NK_TEXT_LEFT);
-
-                        nk_layout_row_static(ctx, 128, 128, 2);
-
-                        for (s32 index = 0; index < 2; ++index)
-                        {
-                            u16 baseAddress = index * 0x1000;
-
-                            for (s32 tileY = 0; tileY < 16; ++tileY)
-                            {
-                                for (s32 tileX = 0; tileX < 16; ++tileX)
-                                {
-                                    u16 patternIndex = tileY * 16 + tileX;
-
-                                    for (s32 y = 0; y < 8; ++y)
-                                    {
-                                        u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
-                                        u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
-
-                                        for (s32 x = 0; x < 8; ++x)
-                                        {
-                                            u8 h = ((row2 >> (7 - x)) & 0x1);
-                                            u8 l = ((row1 >> (7 - x)) & 0x1);
-                                            u32 paletteIndex = (h << 0x1) | l;
-                                            u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-                                            Color color = systemPalette[colorIndex % 64];
-
-                                            s32 pixelX = (tileX * 8 + x);
-                                            s32 pixelY = (tileY * 8 + y);
-                                            s32 pixel = pixelY * 128 + pixelX;
-
-                                            gui->patterns[index][pixel] = color;
-                                        }
-                                    }
-                                }
-                            }
-
-                            state = nk_widget(&space, ctx);
-                            if (state)
-                            {
-                                if (state != NK_WIDGET_ROM)
-                                {
-                                    // update_your_widget_by_user_input(...);
-                                }
-
-                                glBindTexture(GL_TEXTURE_2D, device.patterns[index].handle.id);
-                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, gui->patterns[index]);
-                                glBindTexture(GL_TEXTURE_2D, 0);
-
-                                nk_draw_image(canvas, space, &device.patterns[index], nk_rgb(255, 255, 255));
-
-                                if (nk_input_is_mouse_hovering_rect(input, space))
-                                {
-                                    if (nk_tooltip_begin(ctx, 200))
-                                    {
-                                        f32 mouseX = input->mouse.pos.x - space.x;
-                                        f32 mouseY = input->mouse.pos.y - space.y;
-                                        s32 tileX = mouseX / 8;
-                                        s32 tileY = mouseY / 8;
-
-                                        u16 patternIndex = tileY * 16 + tileX;
-
-                                        for (s32 y = 0; y < 8; ++y)
-                                        {
-                                            u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
-                                            u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
-
-                                            for (s32 x = 0; x < 8; ++x)
-                                            {
-                                                u8 h = ((row2 >> (7 - x)) & 0x1);
-                                                u8 l = ((row1 >> (7 - x)) & 0x1);
-                                                u32 paletteIndex = (h << 0x1) | l;
-                                                u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-                                                Color color = systemPalette[colorIndex % 64];
-
-                                                gui->patternHover[y * 8 + x] = color;
-                                            }
-                                        }
-
-                                        nk_layout_row_static(ctx, 32, 32, 1);
-
-                                        state = nk_widget(&space, ctx);
-                                        if (state)
-                                        {
-                                            glBindTexture(GL_TEXTURE_2D, device.patternHover.handle.id);
-                                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->patternHover);
-                                            glBindTexture(GL_TEXTURE_2D, 0);
-
-                                            nk_draw_image(canvas, space, &device.patternHover, nk_rgb(255, 255, 255));
-                                        }
-
-                                        nk_layout_row_dynamic(ctx, 20, 1);
-                                        nk_label(ctx, DebugText("Address: %04X", baseAddress + patternIndex * 16), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Table:   %02X", index), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Tile:    %02X", patternIndex), NK_TEXT_LEFT);
-
-                                        nk_tooltip_end(ctx);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // PALETTES
-                    {
-                        nk_layout_row_dynamic(ctx, 25, 1);
-                        nk_label(ctx, "PALETTES", NK_TEXT_LEFT);
-
-                        nk_layout_row_static(ctx, 20, 20, 16);
-
-                        for (s32 index = 0; index < 2; ++index)
-                        {
-                            for (s32 i = 0; i < 16; ++i)
-                            {
-                                u16 address = 0x3F00 + (index * 0x10) + i;
-                                u8 colorIndex = ReadPPUU8(nes, address);
-                                Color color = systemPalette[colorIndex % 64];
-
-                                state = nk_widget(&space, ctx);
-                                if (state)
-                                {
-                                    if (state != NK_WIDGET_ROM)
-                                    {
-                                        // update_your_widget_by_user_input(...);
-                                    }
-
-                                    nk_fill_rect(canvas, space, 0, nk_rgb(color.r, color.g, color.b));
-
-                                    if (nk_input_is_mouse_hovering_rect(input, space))
-                                    {
-                                        if (nk_tooltip_begin(ctx, 200))
-                                        {
-                                            nk_layout_row_static(ctx, 32, 32, 1);
-
-                                            state = nk_widget(&space, ctx);
-                                            if (state)
-                                            {
-                                                nk_fill_rect(canvas, space, 0, nk_rgb(color.r, color.g, color.b));
-                                            }
-
-                                            nk_layout_row_dynamic(ctx, 20, 1);
-                                            nk_label(ctx, DebugText("Address: %04X", address), NK_TEXT_LEFT);
-                                            nk_label(ctx, DebugText("Color:   %02X", colorIndex), NK_TEXT_LEFT);
-                                            nk_label(ctx, DebugText("Offset:  %d", i % 4), NK_TEXT_LEFT);
-
-                                            nk_tooltip_end(ctx);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // OAM
-                    {
-                        nk_layout_row_dynamic(ctx, 25, 1);
-                        nk_label(ctx, "OAM", NK_TEXT_LEFT);
-
-                        u8 spriteAddr = GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
-                        u8 spriteSize = 8 * (GetBitFlag(ppu->control, SPRITE_SIZE_FLAG) + 1);
-                        u16 baseAddress = 0x1000 * spriteAddr;
-
-                        nk_layout_row_static(ctx, 16, 8, 16);
-
-                        for (s32 index = 0; index < 64; ++index)
-                        {
-                            u8 spriteY = ReadU8(&nes->oamMemory, index * 4 + 0);
-                            u8 spriteIdx = ReadU8(&nes->oamMemory, index * 4 + 1);
-                            u8 spriteAttr = ReadU8(&nes->oamMemory, index * 4 + 2);
-                            u8 spriteX = ReadU8(&nes->oamMemory, index * 4 + 3);
-
-                            if (spriteSize == 16)
-                            {
-                                // if the sprite size is 8x16 the pattern table is given by bit 0 of spriteIdx
-                                baseAddress = 0x1000 * (spriteIdx & 1);
-                                spriteIdx &= 0xFE;
-                            }
-
-                            // the bits 0-1 indicate the high bits of the pixel color
-                            u8 pixelHighBits = spriteAttr & 0x03;
-
-                            // the bit 7 indicate that the sprite should flip vertically
-                            b32 flipV = spriteAttr & 0x80;
-
-                            // the bit 6 indicate that the sprite should flip horizontally
-                            b32 flipH = spriteAttr & 0x40;
-
-                            for (s32 y = 0; y < spriteSize; ++y)
-                            {
-                                u8 rowOffset = y;
-
-                                if (flipV)
-                                {
-                                    rowOffset = (spriteSize - 1) - rowOffset;
-                                }
-
-                                u8 row1 = GetSpritePixelRow(nes, baseAddress, spriteIdx, rowOffset, 0);
-                                u8 row2 = GetSpritePixelRow(nes, baseAddress, spriteIdx, rowOffset, 1);
-
-                                for (s32 x = 0; x < 8; ++x)
-                                {
-                                    u8 colOffset = x;
-
-                                    if (flipH)
-                                    {
-                                        colOffset = 7 - colOffset;
-                                    }
-
-                                    u32 paletteIndex = GetPixelColorBits(row1, row2, colOffset, pixelHighBits);
-                                    u32 colorIndex = ReadPPUU8(nes, 0x3F10 + paletteIndex);
-                                    Color color = systemPalette[colorIndex % 64];
-
-                                    s32 pixelIndex = y * 8 + x;
-                                    gui->sprites[index][pixelIndex] = color;
-                                }
-                            }
-
-                            state = nk_widget(&space, ctx);
-                            if (state)
-                            {
-                                if (state != NK_WIDGET_ROM)
-                                {
-                                    // update_your_widget_by_user_input(...);
-                                }
-
-                                glBindTexture(GL_TEXTURE_2D, device.oam[index].handle.id);
-                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 16, GL_RGBA, GL_UNSIGNED_BYTE, gui->sprites[index]);
-                                glBindTexture(GL_TEXTURE_2D, 0);
-
-                                nk_draw_image(canvas, space, &device.oam[index], nk_rgb(255, 255, 255));
-
-                                if (nk_input_is_mouse_hovering_rect(input, space))
-                                {
-                                    if (nk_tooltip_begin(ctx, 200))
-                                    {
-                                        nk_layout_row_static(ctx, 64, 32, 1);
-
-                                        state = nk_widget(&space, ctx);
-                                        if (state)
-                                        {
-                                            nk_draw_image(canvas, space, &device.oam[index], nk_rgb(255, 255, 255));
-                                        }
-
-                                        nk_layout_row_dynamic(ctx, 20, 2);
-                                        nk_label(ctx, DebugText("Number: %02X", index), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Tile:   %02X", spriteIdx), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("X:      %02X", spriteX), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Color:  %02X", pixelHighBits), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Y:      %02X", spriteY), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Flags:  %s%s", (flipV ? "V" : ""), (flipH ? "H" : "")), NK_TEXT_LEFT);
-
-                                        nk_tooltip_end(ctx);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // OAM 2
-                    {
-                        u8 spriteAddr = GetBitFlag(ppu->control, SPRITE_ADDR_FLAG);
-                        u8 spriteSize = 8 * (GetBitFlag(ppu->control, SPRITE_SIZE_FLAG) + 1);
-                        u16 baseAddress = 0x1000 * spriteAddr;
-
-                        nk_layout_row_static(ctx, 16, 8, 8);
-
-                        for (s32 index = 0; index < 8; ++index)
-                        {
-                            u8 spriteY = ReadU8(&nes->oamMemory2, index * 4 + 0);
-                            u8 spriteIdx = ReadU8(&nes->oamMemory2, index * 4 + 1);
-                            u8 spriteAttr = ReadU8(&nes->oamMemory2, index * 4 + 2);
-                            u8 spriteX = ReadU8(&nes->oamMemory2, index * 4 + 3);
-
-                            if (spriteSize == 16)
-                            {
-                                // if the sprite size is 8x16 the pattern table is given by bit 0 of spriteIdx
-                                baseAddress = 0x1000 * (spriteIdx & 1);
-                                spriteIdx &= 0xFE;
-                            }
-
-                            // the bits 0-1 indicate the high bits of the pixel color
-                            u8 pixelHighBits = spriteAttr & 0x03;
-
-                            // the bit 7 indicate that the sprite should flip vertically
-                            b32 flipV = spriteAttr & 0x80;
-
-                            // the bit 6 indicate that the sprite should flip horizontally
-                            b32 flipH = spriteAttr & 0x40;
-
-                            for (s32 y = 0; y < spriteSize; ++y)
-                            {
-                                u8 rowOffset = y;
-
-                                // the bit 7 indicate that the sprite should flip vertically
-                                if (flipV)
-                                {
-                                    rowOffset = (spriteSize - 1) - rowOffset;
-                                }
-
-                                u8 row1 = GetSpritePixelRow(nes, baseAddress, spriteIdx, rowOffset, 0);
-                                u8 row2 = GetSpritePixelRow(nes, baseAddress, spriteIdx, rowOffset, 1);
-
-                                for (s32 x = 0; x < 8; ++x)
-                                {
-                                    u8 colOffset = x;
-
-                                    // the bit 6 indicate that the sprite should flip horizontally
-                                    if (flipH)
-                                    {
-                                        colOffset = 7 - colOffset;
-                                    }
-
-                                    u32 paletteIndex = GetPixelColorBits(row1, row2, colOffset, pixelHighBits);
-                                    u32 colorIndex = ReadPPUU8(nes, 0x3F10 + paletteIndex);
-                                    Color color = systemPalette[colorIndex % 64];
-
-                                    s32 pixelIndex = y * 8 + x;
-                                    gui->sprites2[index][pixelIndex] = color;
-                                }
-                            }
-
-                            state = nk_widget(&space, ctx);
-                            if (state)
-                            {
-                                if (state != NK_WIDGET_ROM)
-                                {
-                                    // update_your_widget_by_user_input(...);
-                                }
-
-                                glBindTexture(GL_TEXTURE_2D, device.oam2[index].handle.id);
-                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 16, GL_RGBA, GL_UNSIGNED_BYTE, gui->sprites2[index]);
-                                glBindTexture(GL_TEXTURE_2D, 0);
-
-                                nk_draw_image(canvas, space, &device.oam2[index], nk_rgb(255, 255, 255));
-
-                                if (nk_input_is_mouse_hovering_rect(input, space))
-                                {
-                                    if (nk_tooltip_begin(ctx, 200))
-                                    {
-                                        nk_layout_row_static(ctx, 64, 32, 1);
-
-                                        state = nk_widget(&space, ctx);
-                                        if (state)
-                                        {
-                                            nk_draw_image(canvas, space, &device.oam2[index], nk_rgb(255, 255, 255));
-                                        }
-
-                                        nk_layout_row_dynamic(ctx, 20, 2);
-                                        nk_label(ctx, DebugText("Number: %02X", index), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Tile:   %02X", spriteIdx), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("X:      %02X", spriteX), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Color:  %02X", pixelHighBits), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Y:      %02X", spriteY), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Flags:  %s%s", (flipV ? "V" : ""), (flipH ? "H" : "")), NK_TEXT_LEFT);
-
-                                        nk_tooltip_end(ctx);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                else if (app.ui.videoOption == NAMETABLES)
-                {
-                    enum options { H2000, H2400, H2800, H2C00 };
-                    const float ratio[] = { 80, 80, 80, 80, 80 };
-
-                    if (app.ui.nametableOption < H2000 || app.ui.nametableOption > H2C00)
-                    {
-                        app.ui.nametableOption = H2000;
-                    }
-
-                    nk_layout_row(ctx, NK_STATIC, 25, 5, ratio);
-                    app.ui.nametableOption = nk_option_label(ctx, "$2000", app.ui.nametableOption == H2000) ? H2000 : app.ui.nametableOption;
-                    app.ui.nametableOption = nk_option_label(ctx, "$2400", app.ui.nametableOption == H2400) ? H2400 : app.ui.nametableOption;
-                    app.ui.nametableOption = nk_option_label(ctx, "$2800", app.ui.nametableOption == H2800) ? H2800 : app.ui.nametableOption;
-                    app.ui.nametableOption = nk_option_label(ctx, "$2C00", app.ui.nametableOption == H2C00) ? H2C00 : app.ui.nametableOption;
-
-                    nk_checkbox_label(ctx, "PIX", &app.ui.showSeparatePixels);
-
-                    u16 address = 0x2000 + app.ui.nametableOption * 0x400;
-
-                    if (app.ui.showSeparatePixels)
-                    {
-                        nk_layout_row_static(ctx, 8, 8, 32);
-
-                        u16 baseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
-
-                        for (s32 tileY = 0; tileY < 30; ++tileY)
-                        {
-                            for (s32 tileX = 0; tileX < 32; ++tileX)
-                            {
-                                u16 tileIndex = tileY * 32 + tileX;
-                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
-
-                                u16 attributeX = tileX / 4;
-                                u16 attributeOffsetX = tileX % 4;
-
-                                u16 attributeY = tileY / 4;
-                                u16 attributeOffsetY = tileY % 4;
-
-                                u16 attributeIndex = attributeY * 8 + attributeX;
-                                u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
-
-                                // lookupValue is a number between 0 and 15,
-                                // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
-                                // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
-                                // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
-                                // for value 0x0C, 0x0D, 0x0E, 0x0F, we need to get the bits 11000000
-                                //
-                                u8 lookupValue = attributeTableLookup[attributeOffsetY][attributeOffsetX];
-                                u8 shiftValue = (lookupValue / 4) * 2;
-                                u8 highColorBits = (attributeByte >> shiftValue) & 0x03;
-
-                                for (s32 y = 0; y < 8; ++y)
-                                {
-                                    u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
-                                    u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
-
-                                    for (s32 x = 0; x < 8; ++x)
-                                    {
-                                        u8 h = ((row2 >> (7 - x)) & 0x1);
-                                        u8 l = ((row1 >> (7 - x)) & 0x1);
-                                        u8 v = (h << 0x1) | l;
-
-                                        u32 paletteIndex = (highColorBits << 2) | v;
-                                        u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-
-                                        // if the grayscale bit is set, then AND (&) with 0x30 to set
-                                        // any color in the palette to the grey ones
-                                        if (GetBitFlag(ppu->mask, COLOR_FLAG))
-                                        {
-                                            colorIndex &= 0x30;
-                                        }
-
-                                        Color color = systemPalette[colorIndex % 64];
-
-                                        // check the bits 5, 6, 7 to color emphasis
-                                        u8 colorMask = (ppu->mask & 0xE0) >> 5;
-                                        if (colorMask != 0)
-                                        {
-                                            ColorEmphasis(&color, colorMask);
-                                        }
-
-                                        s32 pixel = y * 8 + x;
-                                        gui->nametable2[tileX][tileY][pixel] = color;
-                                    }
-                                }
-
-                                state = nk_widget(&space, ctx);
-                                if (state)
-                                {
-                                    if (state != NK_WIDGET_ROM)
-                                    {
-                                        // update_your_widget_by_user_input(...);
-                                    }
-
-                                    glBindTexture(GL_TEXTURE_2D, device.nametable2[tileY * 32 + tileX].handle.id);
-                                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->nametable2[tileX][tileY]);
-                                    glBindTexture(GL_TEXTURE_2D, 0);
-
-                                    nk_draw_image(canvas, space, &device.nametable2[tileY * 32 + tileX], nk_rgb(255, 255, 255));
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        nk_layout_row_static(ctx, 240, 256, 1);
-
-                        u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
-
-                        for (s32 tileY = 0; tileY < 30; ++tileY)
-                        {
-                            for (s32 tileX = 0; tileX < 32; ++tileX)
-                            {
-                                u16 tileIndex = tileY * 32 + tileX;
-                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
-
-                                u16 attributeX = tileX / 4;
-                                u16 attributeOffsetX = tileX % 4;
-
-                                u16 attributeY = tileY / 4;
-                                u16 attributeOffsetY = tileY % 4;
-
-                                u16 attributeIndex = attributeY * 8 + attributeX;
-                                u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
-
-                                // lookupValue is a number between 0 and 15,
-                                // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
-                                // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
-                                // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
-                                // for value 0x0C, 0x0D, 0x0E, 0x0F, we need to get the bits 11000000
-                                //
-                                u8 lookupValue = attributeTableLookup[attributeOffsetY][attributeOffsetX];
-                                u8 shiftValue = (lookupValue / 4) * 2;
-                                u8 highColorBits = (attributeByte >> shiftValue) & 0x03;
-
-                                for (s32 y = 0; y < 8; ++y)
-                                {
-                                    u8 row1 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + y);
-                                    u8 row2 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + 8 + y);
-
-                                    for (s32 x = 0; x < 8; ++x)
-                                    {
-                                        u8 h = ((row2 >> (7 - x)) & 0x1);
-                                        u8 l = ((row1 >> (7 - x)) & 0x1);
-                                        u8 v = (h << 0x1) | l;
-
-                                        u32 paletteIndex = (highColorBits << 2) | v;
-                                        u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-
-                                        // if the grayscale bit is set, then AND (&) with 0x30 to set
-                                        // any color in the palette to the grey ones
-                                        if (GetBitFlag(ppu->mask, COLOR_FLAG))
-                                        {
-                                            colorIndex &= 0x30;
-                                        }
-
-                                        Color color = systemPalette[colorIndex % 64];
-
-                                        // check the bits 5, 6, 7 to color emphasis
-                                        u8 colorMask = (ppu->mask & 0xE0) >> 5;
-                                        if (colorMask != 0)
-                                        {
-                                            ColorEmphasis(&color, colorMask);
-                                        }
-
-                                        s32 pixelX = (tileX * 8 + x);
-                                        s32 pixelY = (tileY * 8 + y);
-                                        s32 pixel = pixelY * 256 + pixelX;
-                                        gui->nametable[pixel] = color;
-                                    }
-                                }
-                            }
-                        }
-
-                        state = nk_widget(&space, ctx);
-                        if (state)
-                        {
-                            if (state != NK_WIDGET_ROM)
-                            {
-                                // update_your_widget_by_user_input(...);
-                            }
-
-                            glBindTexture(GL_TEXTURE_2D, device.nametable.handle.id);
-                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->nametable);
-                            glBindTexture(GL_TEXTURE_2D, 0);
-
-                            nk_draw_image(canvas, space, &device.nametable, nk_rgb(255, 255, 255));
-                        }
-                    }
-                }
-            }
-            nk_end(ctx);
-        }
-
-        if (debugMode)
-        {
-            if (nk_begin(ctx, "AUDIO", layout.audio, flags | NK_WINDOW_SCALABLE) && nes)
-            {
-                APU *apu = &nes->apu;
-
-                struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
-
-                struct nk_rect space;
-                enum nk_widget_layout_states state;
-
-                enum options { GENERAL, SQUARE1, SQUARE2, TRIANGLE, NOISE, DMC, BUFFER };
-                const float ratio[] = { 100, 100, 100, 100, 100 };
-
-                if (app.ui.audioOption < GENERAL || app.ui.audioOption > BUFFER)
-                {
-                    app.ui.audioOption = GENERAL;
-                }
-
-                nk_layout_row(ctx, NK_STATIC, 25, 5, ratio);
-                app.ui.audioOption = nk_option_label(ctx, "GENERAL", app.ui.audioOption == GENERAL) ? GENERAL : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "SQUARE 1", app.ui.audioOption == SQUARE1) ? SQUARE1 : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "SQUARE 2", app.ui.audioOption == SQUARE2) ? SQUARE2 : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "TRIANGLE", app.ui.audioOption == TRIANGLE) ? TRIANGLE : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "NOISE", app.ui.audioOption == NOISE) ? NOISE : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "DMC", app.ui.audioOption == DMC) ? DMC : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "BUFFER", app.ui.audioOption == BUFFER) ? BUFFER : app.ui.audioOption;
-
-                if (app.ui.audioOption == GENERAL)
-                {
-                    nk_layout_row_dynamic(ctx, 25, 3);
-
-                    nk_label(ctx, DebugText("CYCLES:%lld", apu->cycles), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("FRAME MODE:%02X", apu->frameMode), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SAMPLE RATE:%04X", APU_SAMPLES_PER_SECOND), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("FRAME IRQ:%02X", !apu->inhibitIRQ), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("FRAME VALUE:%02X", apu->frameValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SAMPLE COUNTER:%02X", apu->sampleCounter), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("DMC IRQ:%02X", apu->dmcIRQ), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("FRAME COUNTER:%02X", apu->frameCounter), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("BUFFER INDEX:%04X", apu->bufferIndex), NK_TEXT_LEFT);
-
-                    nk_checkbox_label(ctx, "SQUARE1 ENABLED", &app.ui.square1Enabled);
-                    nk_checkbox_label(ctx, "SQUARE2 ENABLED", &app.ui.square2Enabled);
-                    nk_checkbox_label(ctx, "TRIANGLE ENABLED", &app.ui.triangleEnabled);
-                    nk_checkbox_label(ctx, "NOISE ENABLED", &app.ui.noiseEnabled);
-                    nk_checkbox_label(ctx, "DMC ENABLED", &app.ui.dmcEnabled);
-
-                    apu->pulse1.globalEnabled = app.ui.square1Enabled;
-                    apu->pulse2.globalEnabled = app.ui.square2Enabled;
-                    apu->triangle.globalEnabled = app.ui.triangleEnabled;
-                    apu->noise.globalEnabled = app.ui.noiseEnabled;
-                    apu->dmc.globalEnabled = app.ui.dmcEnabled;
-
-                    const f32 rectHeight = 200.0f;
-                    struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    const f32 lineThickness = 1.0f;
-
-                    nk_layout_row_dynamic(ctx, rectHeight, 1);
-
-                    state = nk_widget(&space, ctx);
-                    if (state)
-                    {
-                        if (state != NK_WIDGET_ROM)
-                        {
-                            // update_your_widget_by_user_input(...);
-                        }
-
-                        s32 pointCount = apu->bufferIndex;
-                        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
-
-                        f32 horizontalSpacing = space.w / pointCount;
-
-                        for (s32 i = 0; i < pointCount; i++)
-                        {
-                            f32 x = horizontalSpacing * i;
-                            f32 y = rectHeight - apu->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
-                            *(points + i) = nk_vec2(space.x + x, space.y + y);
-                        }
-
-                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
-                        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
-
-                        Free(points);
-                    }
-                }
-                else if (app.ui.audioOption == SQUARE1 || app.ui.audioOption == SQUARE2)
-                {
-                    APUPulse *pulse = app.ui.audioOption == SQUARE1 ? &apu->pulse1 : &apu->pulse2;
-
-                    nk_layout_row_dynamic(ctx, 25, 4);
-
-                    nk_label(ctx, DebugText("ENVELOPE ENABLED:%02X", pulse->envelopeEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP ENABLED:%02X", pulse->sweepEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN ENABLED:%02X", pulse->lengthEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENABLED:%02X", pulse->enabled), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE LOOP:%02X", pulse->envelopeLoop), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP NEGATE:%02X", pulse->sweepNegate), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN VALUE:%02X", pulse->lengthValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CHANNEL:%02X", pulse->channel), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE PERIOD:%02X", pulse->envelopePeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP SHIFT:%02X", pulse->sweepShift), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", pulse->timerPeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("DUTY MODE:%02X", pulse->dutyMode), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE VALUE:%02X", pulse->envelopeValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP PERIOD:%02X", pulse->sweepPeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER VALUE:%02X", pulse->timerValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("DUTY VALUE:%02X", pulse->dutyValue), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE VOLUME:%02X", pulse->envelopeVolume), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP VALUE:%02X", pulse->sweepValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", pulse->constantVolume), NK_TEXT_LEFT);
-
-                    const f32 rectHeight = 200.0f;
-                    struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    const f32 lineThickness = 1.0f;
-
-                    nk_layout_row_dynamic(ctx, rectHeight, 1);
-
-                    state = nk_widget(&space, ctx);
-                    if (state)
-                    {
-                        if (state != NK_WIDGET_ROM)
-                        {
-                            // update_your_widget_by_user_input(...);
-                        }
-
-                        s32 pointCount = pulse->bufferIndex;
-                        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
-
-                        f32 horizontalSpacing = space.w / pointCount;
-
-                        for (s32 i = 0; i < pointCount; i++)
-                        {
-                            f32 x = horizontalSpacing * i;
-                            f32 y = rectHeight - pulse->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
-                            *(points + i) = nk_vec2(space.x + x, space.y + y);
-                        }
-
-                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
-                        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
-
-                        Free(points);
-                    }
-                }
-                else if (app.ui.audioOption == TRIANGLE)
-                {
-                    APUTriangle *triangle = &apu->triangle;
-
-                    nk_layout_row_dynamic(ctx, 25, 3);
-
-                    nk_label(ctx, DebugText("COUNTER ENABLED:%02X", triangle->linearEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN ENABLED:%02X", triangle->lengthEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", triangle->timerPeriod), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("COUNTER PERIOD:%02X", triangle->linearPeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN VALUE:%02X", triangle->lengthValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER VALUE:%02X", triangle->timerValue), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("COUNTER VALUE:%02X", triangle->linearValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TABLE INDEX:%02X", triangle->timerValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENABLED:%02X", triangle->enabled), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("COUNTER RELOAD:%02X", triangle->linearReload), NK_TEXT_LEFT);
-
-                    const f32 rectHeight = 200.0f;
-                    struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    const f32 lineThickness = 1.0f;
-
-                    nk_layout_row_dynamic(ctx, rectHeight, 1);
-
-                    state = nk_widget(&space, ctx);
-                    if (state)
-                    {
-                        if (state != NK_WIDGET_ROM)
-                        {
-                            // update_your_widget_by_user_input(...);
-                        }
-
-                        s32 pointCount = triangle->bufferIndex;
-                        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
-
-                        f32 horizontalSpacing = space.w / pointCount;
-
-                        for (s32 i = 0; i < pointCount; i++)
-                        {
-                            f32 x = horizontalSpacing * i;
-                            f32 y = rectHeight - triangle->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
-                            *(points + i) = nk_vec2(space.x + x, space.y + y);
-                        }
-
-                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
-                        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
-
-                        Free(points);
-                    }
-                }
-                else if (app.ui.audioOption == NOISE)
-                {
-                    APUNoise *noise = &apu->noise;
-
-                    nk_layout_row_dynamic(ctx, 25, 3);
-
-                    nk_label(ctx, DebugText("ENVELOPE ENABLED:%02X", noise->envelopeEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENVELOPE VALUE:%02X", noise->envelopeValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN ENABLED:%02X", noise->lengthEnabled), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE LOOP:%02X", noise->envelopeLoop), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", noise->timerPeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN VALUE:%02X", noise->lengthValue), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE PERIOD:%02X", noise->envelopePeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER VALUE:%02X", noise->timerValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENABLED:%02X", noise->enabled), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE VOLUME:%02X", noise->envelopeVolume), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", noise->constantVolume), NK_TEXT_LEFT);
-
-                    const f32 rectHeight = 200.0f;
-                    struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    const f32 lineThickness = 1.0f;
-
-                    nk_layout_row_dynamic(ctx, rectHeight, 1);
-
-                    state = nk_widget(&space, ctx);
-                    if (state)
-                    {
-                        if (state != NK_WIDGET_ROM)
-                        {
-                            // update_your_widget_by_user_input(...);
-                        }
-
-                        s32 pointCount = noise->bufferIndex;
-                        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
-
-                        f32 horizontalSpacing = space.w / pointCount;
-
-                        for (s32 i = 0; i < pointCount; i++)
-                        {
-                            f32 x = horizontalSpacing * i;
-                            f32 y = rectHeight - noise->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
-                            *(points + i) = nk_vec2(space.x + x, space.y + y);
-                        }
-
-                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
-                        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
-
-                        Free(points);
-                    }
-                }
-                else if (app.ui.audioOption == DMC)
-                {
-                    APUDMC *dmc = &apu->dmc;
-
-                    nk_layout_row_dynamic(ctx, 25, 3);
-
-                    nk_label(ctx, DebugText("SAMPLE ADDRESS:%02X", dmc->sampleAddress), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CURRENT ADDRESS:%02X", dmc->currentAddress), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", dmc->timerPeriod), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("SAMPLE LENGTH:%02X", dmc->sampleLength), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CURRENT LENGTH:%02X", dmc->currentLength), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER VALUE:%02X", dmc->timerValue), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("SHIFT REGISTER:%02X", dmc->shiftRegister), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("BIT COUNT:%02X", dmc->bitCount), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("VALUE:%02X", dmc->value), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("IRQ:%02X", dmc->irq), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LOOP:%02X", dmc->loop), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENABLED:%02X", dmc->enabled), NK_TEXT_LEFT);
-
-                    const f32 rectHeight = 200.0f;
-                    struct nk_color lineColor = nk_rgb(255, 0, 0);
-                    const f32 lineThickness = 1.0f;
-
-                    nk_layout_row_dynamic(ctx, rectHeight, 1);
-
-                    state = nk_widget(&space, ctx);
-                    if (state)
-                    {
-                        if (state != NK_WIDGET_ROM)
-                        {
-                            // update_your_widget_by_user_input(...);
-                        }
-
-                        s32 pointCount = dmc->bufferIndex;
-                        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
-
-                        f32 horizontalSpacing = space.w / pointCount;
-
-                        for (s32 i = 0; i < pointCount; i++)
-                        {
-                            f32 x = horizontalSpacing * i;
-                            f32 y = rectHeight - dmc->buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
-                            *(points + i) = nk_vec2(space.x + x, space.y + y);
-                        }
-
-                        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
-                        nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
-
-                        Free(points);
-                    }
-                }
-                else if (app.ui.audioOption == BUFFER)
-                {
-                    nk_layout_row_dynamic(ctx, 20, 1);
-
-                    for (s32 i = 0; i < APU_BUFFER_LENGTH / 16; ++i)
-                    {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                        s32 col = 0;
-
-                        for (s32 j = 0; j < 16; ++j)
-                        {
-                            f32 v = apu->buffer[i * 16 + j];
-
-                            if (j > 0)
-                            {
-                                col += sprintf(debugBuffer + col, " ");
-                            }
-
-                            col += sprintf(debugBuffer + col, "%.2f", v);
-                        }
-
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
-                    }
-                }
-            }
-            nk_end(ctx);
-        }
+        
 
         /* Draw */
         {
