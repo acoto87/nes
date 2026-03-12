@@ -41,6 +41,30 @@
 #define SHL_WAVE_WRITER_IMPLEMENTATION
 #include "wave_writer.h"
 
+#define CLAY_IMPLEMENTATION
+#include "../external/clay/clay.h"
+
+/* Clay integration helpers */
+global const struct nk_user_font *g_clayNkFont = NULL;
+
+static Clay_Dimensions ClayMeasureText(Clay_StringSlice text, Clay_TextElementConfig *cfg, void *userData)
+{
+    (void)cfg;
+    const struct nk_user_font *font = (const struct nk_user_font *)userData;
+    if (!font || text.length <= 0)
+        return (Clay_Dimensions){ 0, 0 };
+    float w = font->width(font->userdata, font->height, text.chars, text.length);
+    return (Clay_Dimensions){ .width = w, .height = font->height };
+}
+
+static void ClayHandleError(Clay_ErrorData errorData)
+{
+    (void)errorData;
+    /* In a real app you'd log errorData.errorText.chars here */
+}
+
+global Clay_Context *g_clayCtx = NULL;
+
 #define MAX_VERTEX_MEMORY 512 * 1024
 #define MAX_ELEMENT_MEMORY 128 * 1024
 
@@ -76,6 +100,11 @@ struct UiState
     b32 coarseButtons[8];
     b32 oneCycleAtTime;
     b32 debugMode;
+    
+    b32 leftSidebarCollapsed;
+    b32 rightSidebarCollapsed;
+    s32 leftSidebarTab;
+    s32 rightSidebarTab;
 
     s32 fps;
     s32 fpsCount;
@@ -117,6 +146,8 @@ global AppState app = {
         .debugging = TRUE,
     },
     .ui = {
+        .leftSidebarTab = 0,
+        .rightSidebarTab = 0,
         .videoOption = 0,
         .debugToolTab = 0,
         .debugToggle = FALSE,
@@ -142,18 +173,7 @@ global AppState app = {
 #define loadedFilePath (app.runtime.loadedFilePath)
 #define saveFilePath (app.runtime.saveFilePath)
 
-typedef struct UiLayout UiLayout;
-struct UiLayout
-{
-    struct nk_rect fps;
-    struct nk_rect cpu;
-    struct nk_rect controller;
-    struct nk_rect ppu;
-    struct nk_rect screen;
-    struct nk_rect instructions;
-    struct nk_rect toolsTabs;
-    struct nk_rect toolsView;
-};
+typedef struct Device Device;
 
 global PFNGLGENBUFFERSPROC GLGenBuffers;
 global PFNGLDELETEBUFFERSPROC GLDeleteBuffers;
@@ -163,7 +183,6 @@ global PFNGLDELETEVERTEXARRAYSPROC GLDeleteVertexArrays;
 global PFNGLBINDVERTEXARRAYPROC GLBindVertexArray;
 global PFNGLGENERATEMIPMAPPROC GLGenerateMipmap;
 
-typedef struct Device Device;
 struct Device {
     struct nk_buffer cmds;
     GLuint vbo, vao, ebo;
@@ -629,489 +648,830 @@ internal void RunEmulatorFrame(struct nk_context *ctx, SDL_GameController *contr
     QueueAudioBuffer(apu, dev, audioStream);
 }
 
-internal UiLayout ComputeUiLayout(s32 winWidth, s32 winHeight)
-{
-    UiLayout layout;
-    f32 w = (f32)winWidth;
-    f32 h = (f32)winHeight;
+/* ── Clay custom element IDs ─────────────────────────────────────────────── */
+#define CLAY_CUSTOM_TOP_BAR       1
+#define CLAY_CUSTOM_LEFT_SIDEBAR  2
+#define CLAY_CUSTOM_SCREEN        3
+#define CLAY_CUSTOM_TOOLS_TABS    4
+#define CLAY_CUSTOM_TOOLS_VIEW    5
+#define CLAY_CUSTOM_RIGHT_SIDEBAR 6
+#define CLAY_CUSTOM_STATUS_BAR    7
 
-    if (!debugMode)
-    {
-        layout.screen = nk_rect(0, 0, w, h);
-        layout.fps = nk_rect(10, 10, 260, 190);
-        
-        layout.cpu = nk_rect(0, 0, 0, 0);
-        layout.controller = nk_rect(0, 0, 0, 0);
-        layout.ppu = nk_rect(0, 0, 0, 0);
-        layout.instructions = nk_rect(0, 0, 0, 0);
-        layout.toolsTabs = nk_rect(0, 0, 0, 0);
-        layout.toolsView = nk_rect(0, 0, 0, 0);
-        return layout;
+/* ── Palette ─────────────────────────────────────────────────────────────── */
+#define COL_BG         nk_rgba(0x0D,0x0D,0x0D,255)
+#define COL_PANEL      nk_rgba(0x11,0x11,0x11,255)
+#define COL_PANEL_ALT  nk_rgba(0x14,0x14,0x14,255)
+#define COL_BORDER     nk_rgba(0x22,0x22,0x22,255)
+#define COL_BORDER_HI  nk_rgba(0x2A,0x2A,0x2A,255)
+#define COL_TEXT       nk_rgba(0xC8,0xC8,0xC8,255)
+#define COL_TEXT_DIM   nk_rgba(0x66,0x66,0x66,255)
+#define COL_TEXT_HI    nk_rgba(0xEF,0xEF,0xEF,255)
+#define COL_ACCENT     nk_rgba(0x33,0xFF,0x66,255)
+#define COL_ACCENT_DK  nk_rgba(0x1A,0x8C,0x3A,255)
+#define COL_ACCENT_DIM nk_rgba(0x0D,0x3D,0x1F,255)
+#define COL_BTN        nk_rgba(0x1A,0x1A,0x1A,255)
+
+/* Clay color helper */
+static Clay_Color ClayRGBA(u8 r, u8 g, u8 b, u8 a) { Clay_Color c; c.r=(float)r; c.g=(float)g; c.b=(float)b; c.a=(float)a; return c; }
+#define CLAY_COL_BG          ClayRGBA(0x0D,0x0D,0x0D,255)
+#define CLAY_COL_PANEL       ClayRGBA(0x11,0x11,0x11,255)
+#define CLAY_COL_PANEL_ALT   ClayRGBA(0x14,0x14,0x14,255)
+#define CLAY_COL_BORDER      ClayRGBA(0x22,0x22,0x22,255)
+#define CLAY_COL_BORDER_HI   ClayRGBA(0x2A,0x2A,0x2A,255)
+#define CLAY_COL_TEXT        ClayRGBA(0xC8,0xC8,0xC8,255)
+#define CLAY_COL_TEXT_DIM    ClayRGBA(0x66,0x66,0x66,255)
+#define CLAY_COL_ACCENT      ClayRGBA(0x33,0xFF,0x66,255)
+#define CLAY_COL_ACCENT_DIM  ClayRGBA(0x0D,0x3D,0x1F,255)
+#define CLAY_COL_BTN         ClayRGBA(0x1A,0x1A,0x1A,255)
+#define CLAY_COL_STATUS_BG   ClayRGBA(0x33,0xFF,0x66,255)
+
+/* ── Forward declarations for interactive content drawers ─────────────────── */
+internal void DrawInstructionsContent(struct nk_context *ctx, Device *device);
+internal void DrawMemoryContent(struct nk_context *ctx);
+internal void DrawVideoContent(struct nk_context *ctx, struct Device *device, const struct nk_input *input);
+internal void DrawAudioContent(struct nk_context *ctx);
+
+/* ── Panel header helper ─────────────────────────────────────────────────── */
+internal void DrawPanelHeader(struct nk_context *ctx, const char *label)
+{
+    struct nk_color accent = COL_ACCENT;
+    struct nk_color dim    = COL_BORDER_HI;
+    nk_layout_row_template_begin(ctx, 18);
+    nk_layout_row_template_push_static(ctx, 160);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_end(ctx);
+
+    nk_label_colored(ctx, label, NK_TEXT_LEFT, accent);
+    nk_label_colored(ctx, "──────────────────────────────────────────", NK_TEXT_LEFT, dim);
+}
+
+/* ── BuildClayLayout: declare the full UI tree, return render commands ─────── */
+internal Clay_RenderCommandArray BuildClayLayout(s32 winWidth, s32 winHeight, f32 dt)
+{
+    float w = (float)winWidth;
+    float h = (float)winHeight;
+
+    Clay_SetLayoutDimensions((Clay_Dimensions){ w, h });
+
+    float topBarH    = 36.0f;
+    float statusBarH = 28.0f;
+    float gap        = 6.0f;
+    float colLeftW   = app.ui.leftSidebarCollapsed  ? 40.0f  : 200.0f;
+    float colRightW  = app.ui.rightSidebarCollapsed ? 40.0f  : 260.0f;
+
+    (void)dt;
+
+    Clay_BeginLayout();
+
+    /* Root: full window, top-to-bottom */
+    CLAY(CLAY_ID("Root"), {
+        .layout = {
+            .sizing          = { CLAY_SIZING_FIXED(w), CLAY_SIZING_FIXED(h) },
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+        },
+        .backgroundColor = CLAY_COL_BG,
+    }) {
+
+        /* ── Top bar ── */
+        CLAY(CLAY_ID("TopBar"), {
+            .layout = {
+                .sizing  = { CLAY_SIZING_GROW(0), CLAY_SIZING_FIXED(topBarH) },
+            },
+            .backgroundColor = CLAY_COL_PANEL,
+            .border = { .color = CLAY_COL_BORDER, .width = { .bottom = 1 } },
+            .custom = { .customData = (void*)(intptr_t)CLAY_CUSTOM_TOP_BAR },
+        }) {}
+
+        if (debugMode)
+        {
+            /* ── Workspace row ── */
+            CLAY(CLAY_ID("Workspace"), {
+                .layout = {
+                    .sizing          = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                    .padding         = { (uint16_t)gap, (uint16_t)gap, (uint16_t)gap, (uint16_t)gap },
+                    .childGap        = (uint16_t)gap,
+                },
+                .backgroundColor = CLAY_COL_BG,
+            }) {
+
+                /* Left sidebar */
+                CLAY(CLAY_ID("LeftSidebar"), {
+                    .layout = {
+                        .sizing = { CLAY_SIZING_FIXED(colLeftW), CLAY_SIZING_GROW(0) },
+                    },
+                    .backgroundColor = CLAY_COL_PANEL,
+                    .border = { .color = CLAY_COL_BORDER, .width = { .left=1,.right=1,.top=1,.bottom=1 } },
+                    .custom = { .customData = (void*)(intptr_t)CLAY_CUSTOM_LEFT_SIDEBAR },
+                }) {}
+
+                /* Center column */
+                CLAY(CLAY_ID("CenterCol"), {
+                    .layout = {
+                        .sizing          = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                        .childGap        = (uint16_t)gap,
+                    },
+                }) {
+                    float availH  = h - topBarH - gap * 2.0f;
+                    float screenH = availH * 0.55f;
+                    if (screenH < 240.0f) screenH = 240.0f;
+                    float tabsH   = 36.0f;
+                    float toolsH  = availH - screenH - tabsH - gap * 2.0f;
+                    if (toolsH < 60.0f) toolsH = 60.0f;
+
+                    CLAY(CLAY_ID("Screen"), {
+                        .layout = {
+                            .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_FIXED(screenH) },
+                        },
+                        .backgroundColor = { 0, 0, 0, 255 },
+                        .border = { .color = CLAY_COL_BORDER, .width = { .left=1,.right=1,.top=1,.bottom=1 } },
+                        .custom = { .customData = (void*)(intptr_t)CLAY_CUSTOM_SCREEN },
+                    }) {}
+
+                    CLAY(CLAY_ID("ToolsTabs"), {
+                        .layout = {
+                            .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_FIXED(tabsH) },
+                        },
+                        .backgroundColor = CLAY_COL_PANEL,
+                        .border = { .color = CLAY_COL_BORDER, .width = { .left=1,.right=1,.top=1,.bottom=1 } },
+                        .custom = { .customData = (void*)(intptr_t)CLAY_CUSTOM_TOOLS_TABS },
+                    }) {}
+
+                    CLAY(CLAY_ID("ToolsView"), {
+                        .layout = {
+                            .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_FIXED(toolsH) },
+                        },
+                        .backgroundColor = CLAY_COL_PANEL_ALT,
+                        .border = { .color = CLAY_COL_BORDER, .width = { .left=1,.right=1,.top=1,.bottom=1 } },
+                        .custom = { .customData = (void*)(intptr_t)CLAY_CUSTOM_TOOLS_VIEW },
+                    }) {}
+                }
+
+                /* Right sidebar */
+                CLAY(CLAY_ID("RightSidebar"), {
+                    .layout = {
+                        .sizing = { CLAY_SIZING_FIXED(colRightW), CLAY_SIZING_GROW(0) },
+                    },
+                    .backgroundColor = CLAY_COL_PANEL,
+                    .border = { .color = CLAY_COL_BORDER, .width = { .left=1,.right=1,.top=1,.bottom=1 } },
+                    .custom = { .customData = (void*)(intptr_t)CLAY_CUSTOM_RIGHT_SIDEBAR },
+                }) {}
+            }
+
+            /* Status bar */
+            CLAY(CLAY_ID("StatusBar"), {
+                .layout = {
+                    .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_FIXED(statusBarH) },
+                },
+                .backgroundColor = CLAY_COL_STATUS_BG,
+                .custom = { .customData = (void*)(intptr_t)CLAY_CUSTOM_STATUS_BAR },
+            }) {}
+        }
+        else
+        {
+            /* Non-debug: NES screen fills workspace */
+            CLAY(CLAY_ID("Screen"), {
+                .layout = {
+                    .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                },
+                .backgroundColor = { 0, 0, 0, 255 },
+                .custom = { .customData = (void*)(intptr_t)CLAY_CUSTOM_SCREEN },
+            }) {}
+
+            /* Status bar */
+            CLAY(CLAY_ID("StatusBar"), {
+                .layout = {
+                    .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_FIXED(statusBarH) },
+                },
+                .backgroundColor = CLAY_COL_STATUS_BG,
+                .custom = { .customData = (void*)(intptr_t)CLAY_CUSTOM_STATUS_BAR },
+            }) {}
+        }
     }
 
-    f32 gap = 10.0f;
-    f32 left = 10.0f;
-    f32 top = 10.0f;
-    f32 right = 10.0f;
-    f32 bottom = 10.0f;
-
-    f32 colLeftW = 280.0f;
-    f32 colMidW = 280.0f;
-    f32 colRightW = w - colLeftW - colMidW - gap * 4.0f - right;
-    if (colRightW < 400.0f) colRightW = 400.0f;
-
-    f32 x0 = left;
-    f32 x1 = x0 + colLeftW + gap;
-    f32 x2 = x1 + colMidW + gap;
-
-    // Left Column
-    layout.fps = nk_rect(x0, top, colLeftW, 190);
-    f32 instructionsH = h - top - 190 - gap - bottom;
-    if (instructionsH < 100.0f) instructionsH = 100.0f;
-    layout.instructions = nk_rect(x0, top + 190 + gap, colLeftW, instructionsH);
-
-    // Mid Column
-    layout.cpu = nk_rect(x1, top, colMidW, 180);
-    layout.controller = nk_rect(x1, top + 180 + gap, colMidW, 120);
-    
-    // Top Right Row Height (PPU + SCREEN)
-    // Scale proportionally with window height, min 300, max maybe 600 or just proportional
-    f32 topRowH = (h - top - bottom) * 0.55f; 
-    if (topRowH < 300.0f) topRowH = 300.0f;
-    
-    layout.ppu = nk_rect(x2, top, colRightW * 0.35f, topRowH);
-    layout.screen = nk_rect(x2 + colRightW * 0.35f + gap, top, colRightW * 0.65f - gap, topRowH);
-
-    // Tools
-    f32 toolsY = top + topRowH + gap;
-    // Ensure toolsY is at least below the controller panel
-    f32 minToolsY = top + 180 + gap + 120 + gap;
-    if (toolsY < minToolsY) toolsY = minToolsY;
-
-    f32 toolsViewH = h - toolsY - 65 - gap - bottom;
-    if (toolsViewH < 150.0f) toolsViewH = 150.0f;
-
-    layout.toolsTabs = nk_rect(x1, toolsY, colMidW + gap + colRightW, 65);
-    layout.toolsView = nk_rect(x1, toolsY + 65 + gap, colMidW + gap + colRightW, toolsViewH);
-
-    return layout;
-
+    return Clay_EndLayout();
 }
-internal void DrawMainPanels(struct nk_context *ctx, nk_flags flags, SDL_Window *win, Device *device, const UiLayout *layout, f32 dt, f32 d1, f32 d2, u64 *initialCounter)
-{
-    nk_window_set_bounds(ctx, "FPS INFO", layout->fps);
-    if (nk_begin(ctx, "FPS INFO", layout->fps, flags))
-    {
-        nk_layout_row_dynamic(ctx, 20, 2);
 
+/* ── Clay → Nuklear renderer ─────────────────────────────────────────────── */
+/*
+ * All rendering and interaction happens inside ONE fullscreen Nuklear window
+ * "CLAY_UI". This avoids NK_WINDOW_ROM issues that arise when overlapping
+ * windows are opened (Nuklear marks all but the topmost as read-only).
+ *
+ * Canvas draws (backgrounds/borders/text) are done first via the window canvas.
+ * Interactive zones are then rendered using nk_layout_space_push + nk_group_*.
+ * The SCREEN zone draws the NES image directly on the parent canvas using
+ * absolute coords obtained from nk_widget().
+ */
+
+/* Helper: draw zone content inside a group already begun by the caller */
+internal void DrawZoneContent_TopBar(
+    struct nk_context *ctx,
+    Device *device,
+    SDL_Window *win,
+    f32 dt, f32 d1, f32 d2,
+    u64 *initialCounter)
+{
+    (void)device; (void)d1; (void)d2;
+
+    /* FPS counter */
+    {
         u64 fpsCounter = SDL_GetPerformanceCounter();
         f32 fpsdt = GetSecondsElapsed(*initialCounter, fpsCounter);
-        if (fpsdt > 1)
-        {
-            *initialCounter = fpsCounter;
-            app.ui.fps = app.ui.fpsCount;
-            app.ui.fpsCount = 0;
-        }
-
+        if (fpsdt > 1.0f) { *initialCounter = fpsCounter; app.ui.fps = app.ui.fpsCount; app.ui.fpsCount = 0; }
         ++app.ui.fpsCount;
-
-        nk_label(ctx, DebugText("fps: %d", app.ui.fps), NK_TEXT_LEFT);
-        nk_label(ctx, DebugText("dt: %.4f", dt), NK_TEXT_LEFT);
-
-        nk_checkbox_label(ctx, "debug mode", &app.ui.debugToggle);
-        debugMode = app.ui.debugToggle;
-
-        if (debugMode)
-        {
-            nk_checkbox_label(ctx, "1 cycle", &app.ui.oneCycleToggle);
-            oneCycleAtTime = app.ui.oneCycleToggle;
-
-            nk_label(ctx, DebugText("d1: %.4f", d1), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("d2: %.4f", d2), NK_TEXT_LEFT);
-        }
-
-        nk_layout_row_dynamic(ctx, 20, 2);
-
-        if (nk_button_label(ctx, "Open"))
-        {
-            debugging = TRUE;
-            stepping = FALSE;
-
-            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
-                "Open ROM",
-                "Open a ROM by passing a file path on the command line or by dragging a .nes/.nsave file onto the window.",
-                win);
-        }
-
-        if (nk_button_label(ctx, "Save"))
-        {
-            if (nes)
-            {
-                debugging = TRUE;
-                stepping = FALSE;
-                if (saveFilePath[0])
-                {
-                    Save(nes, saveFilePath);
-                }
-                else
-                {
-                    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,
-                        "Save State",
-                        "Load a ROM first so the emulator can derive a save-state path.",
-                        win);
-                }
-            }
-        }
-
-        if (nk_button_label(ctx, "Run"))
-        {
-            hitRun = TRUE;
-            debugging = FALSE;
-            stepping = FALSE;
-        }
-
-        if (nk_button_label(ctx, "Reset"))
-        {
-            if (nes)
-            {
-                ResetNES(nes);
-                debugging = TRUE;
-            }
-        }
-
-        if (nk_button_label(ctx, "Pause"))
-        {
-            debugging = TRUE;
-            stepping = FALSE;
-        }
-
-        if (debugMode)
-        {
-            if (nk_button_label(ctx, "Step"))
-            {
-                debugging = TRUE;
-                stepping = TRUE;
-            }
-        }
     }
-    nk_end(ctx);
 
-    if (debugMode)
+    nk_layout_row_template_begin(ctx, 22);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_push_static(ctx, 50);
+    nk_layout_row_template_push_static(ctx, 70);
+    nk_layout_row_template_push_static(ctx, 50);
+    nk_layout_row_template_push_static(ctx, 50);
+    nk_layout_row_template_push_static(ctx, 70);
+    if (debugMode) { nk_layout_row_template_push_static(ctx, 90); nk_layout_row_template_push_static(ctx, 75); }
+    nk_layout_row_template_push_static(ctx, 70);
+    nk_layout_row_template_end(ctx);
+
     {
-        nk_window_set_bounds(ctx, "CPU INFO", layout->cpu);
-    if (nk_begin(ctx, "CPU INFO", layout->cpu, flags) && nes)
-        {
-            CPU *cpu = &nes->cpu;
-
-            nk_layout_row_dynamic(ctx, 20, 2);
-
-            nk_label(ctx, DebugText("%s:%02X", "A", cpu->a), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("%s:%02X", "P", cpu->p), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("%s:%02X", "X", cpu->x), NK_TEXT_LEFT);
-            nk_label(ctx, "N V   B D I Z C", NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("%s:%02X", "Y", cpu->y), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("%d %d %d %d %d %d %d %d",
-                GetBitFlag(cpu->p, NEGATIVE_FLAG) ? 1 : 0,
-                GetBitFlag(cpu->p, OVERFLOW_FLAG) ? 1 : 0,
-                GetBitFlag(cpu->p, EMPTY_FLAG) ? 1 : 0,
-                GetBitFlag(cpu->p, BREAK_FLAG) ? 1 : 0,
-                GetBitFlag(cpu->p, DECIMAL_FLAG) ? 1 : 0,
-                GetBitFlag(cpu->p, INTERRUPT_FLAG) ? 1 : 0,
-                GetBitFlag(cpu->p, ZERO_FLAG) ? 1 : 0,
-                GetBitFlag(cpu->p, CARRY_FLAG) ? 1 : 0), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("%2s:%02X", "SP", cpu->sp), NK_TEXT_LEFT);
-
-            nk_label(ctx, DebugText("%2s:%02X", "PC", cpu->pc), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("%s:%d", "CYCLES", cpu->cycles), NK_TEXT_LEFT);
-        }
-        nk_end(ctx);
+        const char *romName = "No ROM";
+        if (nes && loadedFilePath[0]) { const char *s = SDL_strrchr(loadedFilePath, '\\'); if (!s) s = SDL_strrchr(loadedFilePath, '/'); romName = s ? s + 1 : loadedFilePath; }
+        nk_label_colored(ctx, romName, NK_TEXT_LEFT, COL_TEXT_DIM);
     }
 
-    if (debugMode)
-    {
-        nk_window_set_bounds(ctx, "CONTROLLER 0", layout->controller);
-    if (nk_begin(ctx, "CONTROLLER 0", layout->controller, flags) && nes)
-        {
-            s32 buttons[8] =
-            {
-                GetButton(nes, 0, BUTTON_LEFT),
-                GetButton(nes, 0, BUTTON_UP),
-                GetButton(nes, 0, BUTTON_RIGHT),
-                GetButton(nes, 0, BUTTON_DOWN),
-                GetButton(nes, 0, BUTTON_SELECT),
-                GetButton(nes, 0, BUTTON_START),
-                GetButton(nes, 0, BUTTON_B),
-                GetButton(nes, 0, BUTTON_A)
-            };
-
-            nk_layout_row_static(ctx, 20, 20, 2);
-            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
-            nk_checkbox_label(ctx, "", &buttons[1]);
-
-            nk_layout_row_static(ctx, 20, 20, 9);
-            nk_checkbox_label(ctx, "", &buttons[0]);
-            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
-            nk_checkbox_label(ctx, "", &buttons[2]);
-            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
-            nk_checkbox_label(ctx, "", &buttons[4]);
-            nk_checkbox_label(ctx, "", &buttons[5]);
-            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
-            nk_checkbox_label(ctx, "", &buttons[6]);
-            nk_checkbox_label(ctx, "", &buttons[7]);
-
-            nk_layout_row_static(ctx, 20, 20, 2);
-            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
-            nk_checkbox_label(ctx, "", &buttons[3]);
-        }
-        nk_end(ctx);
-    }
-
-    if (debugMode)
-    {
-        nk_window_set_bounds(ctx, "PPU INFO", layout->ppu);
-    if (nk_begin(ctx, "PPU INFO", layout->ppu, flags) && nes)
-        {
-            PPU *ppu = &nes->ppu;
-
-            nk_layout_row_dynamic(ctx, 20, 2);
-
-            nk_label(ctx, DebugText("CTRL (0x2000):%02X", ppu->control), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("SCANLINE:%3d", ppu->scanline), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("MASK (0x2001):%02X", ppu->mask), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("CYCLE:%3d", ppu->cycle), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("STAT (0x2002):%02X", ppu->status), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("CYCLES:%lld", ppu->totalCycles), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("SPRA (0x2003):%02X", ppu->oamAddress), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("FRAMES:%lld", ppu->frameCount), NK_TEXT_LEFT);
-
-            nk_layout_row_dynamic(ctx, 20, 1);
-            nk_label(ctx, DebugText("SPRD (0x2004):%02X", ppu->oamData), NK_TEXT_LEFT);
-
-            nk_label(ctx, DebugText("SCRR (0x2005):%02X", ppu->scroll), NK_TEXT_LEFT);
-
-            nk_label(ctx, DebugText("MEMA (0x2006):%02X", ppu->address), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("    %s:%04X  %s:%04X", "v", ppu->v, "t", ppu->t), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("    %s:%04X  %s:%01X", "x", ppu->x, "w", ppu->w), NK_TEXT_LEFT);
-            nk_label(ctx, DebugText("MEMD (0x2007):%02X", ppu->data), NK_TEXT_LEFT);
-        }
-        nk_end(ctx);
-    }
-
-    struct nk_rect screenRect = layout->screen;
-
-    
-    nk_flags screenFlags = debugMode ? flags : (NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND);
-    nk_window_set_bounds(ctx, "SCREEN", screenRect);
-    if (nk_begin(ctx, "SCREEN", screenRect, screenFlags))
-    {
-        ctx->current->bounds = screenRect;
-
-        if (nes)
-        {
-            GUI *gui = &nes->gui;
-
-            struct nk_rect content = nk_window_get_content_region(ctx);
-            f32 targetAspect = 256.0f / 240.0f;
-            f32 availW = content.w;
-            f32 availH = content.h;
-
-            f32 drawW = availW;
-            f32 drawH = drawW / targetAspect;
-            if (drawH > availH)
-            {
-                drawH = availH;
-                drawW = drawH * targetAspect;
-            }
-
-            f32 padX = (availW - drawW) * 0.5f;
-            f32 padY = (availH - drawH) * 0.5f;
-
-            if (padY > 1)
-            {
-                nk_layout_row_dynamic(ctx, padY, 1);
-                nk_spacing(ctx, 1);
-            }
-
-            nk_layout_row_begin(ctx, NK_STATIC, drawH, 3);
-            if (padX > 1)
-            {
-                nk_layout_row_push(ctx, padX);
-                nk_spacing(ctx, 1);
-            }
-
-            nk_layout_row_push(ctx, drawW);
-
-            struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
-            struct nk_rect space;
-            enum nk_widget_layout_states state = nk_widget(&space, ctx);
-
-            if (padX > 1)
-            {
-                nk_layout_row_push(ctx, padX);
-                nk_spacing(ctx, 1);
-            }
-
-            nk_layout_row_end(ctx);
-
-            if (state)
-            {
-                glBindTexture(GL_TEXTURE_2D, device->screen.handle.id);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
-                glBindTexture(GL_TEXTURE_2D, 0);
-
-                nk_draw_image(canvas, space, &device->screen, nk_rgb(255, 255, 255));
-            }
+    if (nk_button_label(ctx, "Open")) { debugging = TRUE; stepping = FALSE; SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Open ROM", "Drag & drop a .nes or .nsave file onto the window.", win); }
+    if (nk_button_label(ctx, debugging ? "Run" : "Pause")) {
+        if (!nes) {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Run", "Load a ROM first.", win);
+        } else if (debugging) {
+            hitRun = TRUE; debugging = FALSE; stepping = FALSE;
+        } else {
+            debugging = TRUE; stepping = FALSE;
         }
     }
-    nk_end(ctx);
+    if (nk_button_label(ctx, "Reset")) { if (nes) { ResetNES(nes); debugging = TRUE; } }
+    if (nk_button_label(ctx, "Save"))  { if (nes) { debugging = TRUE; stepping = FALSE; if (saveFilePath[0]) Save(nes, saveFilePath); else SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Save", "Load a ROM first.", win); } }
+
+    nk_label_colored(ctx, DebugText("FPS %d", app.ui.fps), NK_TEXT_CENTERED, COL_TEXT_DIM);
+    if (debugMode) { nk_label_colored(ctx, DebugText("dt %.4f", dt), NK_TEXT_CENTERED, COL_TEXT_DIM); nk_checkbox_label(ctx, "1cyc", &app.ui.oneCycleToggle); oneCycleAtTime = app.ui.oneCycleToggle; }
+    nk_checkbox_label(ctx, "Debug", &app.ui.debugToggle);
+    debugMode = app.ui.debugToggle;
 }
 
-internal void DrawInstructionsPanel(struct nk_context *ctx, nk_flags flags, const UiLayout *layout)
+internal void DrawZoneContent_LeftSidebar(struct nk_context *ctx, f32 d1, f32 d2)
 {
-    if (!debugMode)
+    if (app.ui.leftSidebarCollapsed)
     {
+        nk_layout_row_dynamic(ctx, 28, 1);
+        if (nk_button_label(ctx, ">")) app.ui.leftSidebarCollapsed = FALSE;
+        nk_layout_row_dynamic(ctx, 22, 1);
+        if (nk_option_label(ctx, "S", app.ui.leftSidebarTab == 0)) app.ui.leftSidebarTab = 0;
+        if (nk_option_label(ctx, "B", app.ui.leftSidebarTab == 1)) app.ui.leftSidebarTab = 1;
+        return;
+    }
+    DrawPanelHeader(ctx, "SYSTEM");
+    nk_layout_row_template_begin(ctx, 22);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_push_static(ctx, 24);
+    nk_layout_row_template_end(ctx);
+    if (nk_option_label(ctx, "SYSTEM", app.ui.leftSidebarTab == 0)) app.ui.leftSidebarTab = 0;
+    if (nk_option_label(ctx, "BREAK",  app.ui.leftSidebarTab == 1)) app.ui.leftSidebarTab = 1;
+    if (nk_button_label(ctx, "<")) app.ui.leftSidebarCollapsed = TRUE;
+    if (!nes) return;
+
+    if (app.ui.leftSidebarTab == 0)
+    {
+        if (nk_tree_push(ctx, NK_TREE_TAB, "Controls", NK_MAXIMIZED))
+        {
+            nk_layout_row_dynamic(ctx, 20, 2);
+            if (nk_button_label(ctx, debugging ? "Run" : "Pause")) {
+                if (nes) { if (debugging) { hitRun = TRUE; debugging = FALSE; stepping = FALSE; } else { debugging = TRUE; stepping = FALSE; } }
+            }
+            if (nk_button_label(ctx, "Step")) { if (nes) { debugging = TRUE; stepping = TRUE; } }
+            nk_label(ctx, DebugText("d1: %.4f", d1), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("d2: %.4f", d2), NK_TEXT_LEFT);
+            nk_tree_pop(ctx);
+        }
+        if (nk_tree_push(ctx, NK_TREE_TAB, "CPU", NK_MAXIMIZED))
+        {
+            CPU *cpu = &nes->cpu;
+            nk_layout_row_dynamic(ctx, 18, 2);
+            nk_label_colored(ctx, DebugText("PC:%04X", cpu->pc), NK_TEXT_LEFT, COL_ACCENT);
+            nk_label_colored(ctx, DebugText("SP:%02X",  cpu->sp), NK_TEXT_LEFT, COL_ACCENT);
+            nk_label_colored(ctx, DebugText("A: %02X",  cpu->a),  NK_TEXT_LEFT, COL_ACCENT);
+            nk_label_colored(ctx, DebugText("X: %02X",  cpu->x),  NK_TEXT_LEFT, COL_ACCENT);
+            nk_label_colored(ctx, DebugText("Y: %02X",  cpu->y),  NK_TEXT_LEFT, COL_ACCENT);
+            nk_label_colored(ctx, DebugText("P: %02X",  cpu->p),  NK_TEXT_LEFT, COL_ACCENT);
+            nk_layout_row_dynamic(ctx, 18, 1);
+            nk_label(ctx, "N V - B D I Z C", NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("%d %d %d %d %d %d %d %d",
+                GetBitFlag(cpu->p, NEGATIVE_FLAG) ? 1:0, GetBitFlag(cpu->p, OVERFLOW_FLAG) ? 1:0,
+                GetBitFlag(cpu->p, EMPTY_FLAG)    ? 1:0, GetBitFlag(cpu->p, BREAK_FLAG)    ? 1:0,
+                GetBitFlag(cpu->p, DECIMAL_FLAG)  ? 1:0, GetBitFlag(cpu->p, INTERRUPT_FLAG)? 1:0,
+                GetBitFlag(cpu->p, ZERO_FLAG)     ? 1:0, GetBitFlag(cpu->p, CARRY_FLAG)    ? 1:0), NK_TEXT_LEFT);
+            nk_layout_row_dynamic(ctx, 18, 1);
+            nk_label(ctx, DebugText("CYCLES: %d", cpu->cycles), NK_TEXT_LEFT);
+            nk_tree_pop(ctx);
+        }
+        if (nk_tree_push(ctx, NK_TREE_TAB, "PPU", NK_MINIMIZED))
+        {
+            PPU *ppu = &nes->ppu;
+            nk_layout_row_dynamic(ctx, 18, 2);
+            nk_label(ctx, DebugText("CTRL:%02X",  ppu->control),    NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("SL:%3d",     ppu->scanline),   NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("MASK:%02X",  ppu->mask),       NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("CYC:%3d",    ppu->cycle),      NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("STAT:%02X",  ppu->status),     NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("FRM:%lld",   ppu->frameCount), NK_TEXT_LEFT);
+            nk_tree_pop(ctx);
+        }
+        if (nk_tree_push(ctx, NK_TREE_TAB, "Controller", NK_MINIMIZED))
+        {
+            s32 buttons[8] = { GetButton(nes,0,BUTTON_LEFT), GetButton(nes,0,BUTTON_UP), GetButton(nes,0,BUTTON_RIGHT), GetButton(nes,0,BUTTON_DOWN), GetButton(nes,0,BUTTON_SELECT), GetButton(nes,0,BUTTON_START), GetButton(nes,0,BUTTON_B), GetButton(nes,0,BUTTON_A) };
+            nk_layout_row_static(ctx, 18, 18, 2); nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE); nk_checkbox_label(ctx, "", &buttons[1]);
+            nk_layout_row_static(ctx, 18, 18, 9);
+            nk_checkbox_label(ctx, "", &buttons[0]); nk_checkbox_label(ctx, "", &buttons[3]); nk_checkbox_label(ctx, "", &buttons[2]);
+            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+            nk_checkbox_label(ctx, "Sel", &buttons[4]); nk_checkbox_label(ctx, "St", &buttons[5]);
+            nk_label(ctx, "", NK_TEXT_ALIGN_MIDDLE);
+            nk_checkbox_label(ctx, "B", &buttons[6]); nk_checkbox_label(ctx, "A", &buttons[7]);
+            nk_tree_pop(ctx);
+        }
+    }
+    else
+    {
+        if (nk_tree_push(ctx, NK_TREE_TAB, "Breakpoint", NK_MAXIMIZED))
+        {
+            CPU *cpu = &nes->cpu;
+            nk_layout_row_dynamic(ctx, 18, 1);
+            nk_label(ctx, DebugText("PC: %04X", cpu->pc), NK_TEXT_LEFT);
+            nk_label(ctx, DebugText("BP: %04X", breakpoint), NK_TEXT_LEFT);
+            nk_layout_row_dynamic(ctx, 24, 1);
+            nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.instructionBreakpointText, &app.ui.instructionBreakpointLen, 5, nk_filter_hex);
+            if (app.ui.instructionBreakpointLen > 0) { app.ui.instructionBreakpointText[app.ui.instructionBreakpointLen] = 0; breakpoint = (u16)strtol(app.ui.instructionBreakpointText, NULL, 16); }
+            nk_layout_row_dynamic(ctx, 24, 2);
+            if (nk_button_label(ctx, "Run"))  { if (nes) { hitRun = TRUE; debugging = FALSE; stepping = FALSE; } }
+            if (nk_button_label(ctx, "Step")) { if (nes) { debugging = TRUE; stepping = TRUE; } }
+            nk_tree_pop(ctx);
+        }
+    }
+}
+
+internal void DrawZoneContent_ToolsTabs(struct nk_context *ctx)
+{
+    if (!nes) return;
+    nk_layout_row_template_begin(ctx, 22);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_push_static(ctx, 60);
+    nk_layout_row_template_push_static(ctx, 70);
+    nk_layout_row_template_push_static(ctx, 80);
+    nk_layout_row_template_end(ctx);
+    if (nk_option_label(ctx, "INSTRUCTIONS", app.ui.debugToolTab == 0)) app.ui.debugToolTab = 0;
+    if (nk_option_label(ctx, "MEMORY",       app.ui.debugToolTab == 1)) app.ui.debugToolTab = 1;
+    if (nk_button_label(ctx, "Step"))       { if (nes) { debugging = TRUE; stepping = TRUE; } }
+    if (nk_button_label(ctx, "Step Over"))  { if (nes) { debugging = TRUE; stepping = TRUE; } }
+    if (nk_button_label(ctx, "Run to Here")){ if (nes) { hitRun = TRUE; debugging = FALSE; stepping = FALSE; } }
+}
+
+internal void DrawZoneContent_RightSidebar(struct nk_context *ctx, Device *device)
+{
+    if (app.ui.rightSidebarCollapsed)
+    {
+        nk_layout_row_dynamic(ctx, 28, 1);
+        if (nk_button_label(ctx, "<")) app.ui.rightSidebarCollapsed = FALSE;
+        nk_layout_row_dynamic(ctx, 22, 1);
+        if (nk_option_label(ctx, "V", app.ui.rightSidebarTab == 0)) app.ui.rightSidebarTab = 0;
+        if (nk_option_label(ctx, "A", app.ui.rightSidebarTab == 1)) app.ui.rightSidebarTab = 1;
+        return;
+    }
+    if (!nes) return;
+    DrawPanelHeader(ctx, "VIDEO / AUDIO");
+    nk_layout_row_template_begin(ctx, 22);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_push_static(ctx, 24);
+    nk_layout_row_template_end(ctx);
+    if (nk_option_label(ctx, "VIDEO", app.ui.rightSidebarTab == 0)) app.ui.rightSidebarTab = 0;
+    if (nk_option_label(ctx, "AUDIO", app.ui.rightSidebarTab == 1)) app.ui.rightSidebarTab = 1;
+    if (nk_button_label(ctx, ">")) app.ui.rightSidebarCollapsed = TRUE;
+    if (app.ui.rightSidebarTab == 0) DrawVideoContent(ctx, device, NULL);
+    else                             DrawAudioContent(ctx);
+}
+
+internal void DrawZoneContent_StatusBar(struct nk_context *ctx)
+{
+    nk_layout_row_template_begin(ctx, 18);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_push_static(ctx, 80);
+    nk_layout_row_template_push_static(ctx, 160);
+    nk_layout_row_template_push_static(ctx, 80);
+    nk_layout_row_template_end(ctx);
+    struct nk_color dark = nk_rgba(0x0D, 0x0D, 0x0D, 255);
+    nk_label_colored(ctx,
+        nes ? DebugText("  %s  PC $%04X  Mapper %d  NTSC", debugging ? "PAUSED" : "RUNNING", nes->cpu.pc, nes->cartridge.mapper) : "  No ROM loaded",
+        NK_TEXT_LEFT, dark);
+    nk_label_colored(ctx, "Drag & drop", NK_TEXT_CENTERED, dark);
+    nk_label_colored(ctx, "WASD + A/S keys", NK_TEXT_CENTERED, dark);
+    nk_label_colored(ctx, "v0.1.0", NK_TEXT_RIGHT, dark);
+}
+
+/* ── Walk Clay render commands and dispatch ─────────────────────────────── */
+internal void Clay_NkRender(
+    struct nk_context *ctx,
+    Clay_RenderCommandArray cmds,
+    s32 winW, s32 winH,
+    Device *device,
+    SDL_Window *win,
+    f32 dt, f32 d1, f32 d2,
+    u64 *initialCounter)
+{
+    struct nk_rect fullscreen = nk_rect(0, 0, (float)winW, (float)winH);
+    /* One fullscreen window — no scrollbar, no title, background so it stays
+       behind any Nuklear popups/tooltips.  All zones live inside this single
+       window to avoid the NK_WINDOW_ROM read-only-mode bug that occurs when
+       multiple overlapping windows are stacked. */
+    nk_flags uiFlags = NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND;
+
+    nk_window_set_bounds(ctx, "CLAY_UI", fullscreen);
+    if (!nk_begin(ctx, "CLAY_UI", fullscreen, uiFlags))
+    {
+        nk_end(ctx);
         return;
     }
 
-    nk_window_set_bounds(ctx, "INSTRUCTIONS", layout->instructions);
-    if (nk_begin(ctx, "INSTRUCTIONS", layout->instructions, flags) && nes)
+    struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
+
+    /* ── Pass 1: draw Clay background rectangles / borders / text ── */
+    for (int i = 0; i < cmds.length; ++i)
     {
-        CPU* cpu = &nes->cpu;
-        const float ratio[] = { 100, 100 };
-
-        nk_layout_row(ctx, NK_STATIC, 25, 3, ratio);
-        nk_label(ctx, "  Address: ", NK_TEXT_LEFT);
-        nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.instructionAddressText, &app.ui.instructionAddressLen, 12, nk_filter_hex);
-
-        nk_layout_row(ctx, NK_STATIC, 25, 3, ratio);
-        nk_label(ctx, "  Breakpoint: ", NK_TEXT_LEFT);
-        nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.instructionBreakpointText, &app.ui.instructionBreakpointLen, 5, nk_filter_hex);
-
-        nk_layout_row_dynamic(ctx, 20, 1);
-
-        u16 pc = cpu->pc;
-        if (app.ui.instructionAddressLen > 0)
+        Clay_RenderCommand *cmd = Clay_RenderCommandArray_Get(&cmds, i);
+        struct nk_rect r = nk_rect(cmd->boundingBox.x, cmd->boundingBox.y,
+                                   cmd->boundingBox.width, cmd->boundingBox.height);
+        switch (cmd->commandType)
         {
-            app.ui.instructionAddressText[app.ui.instructionAddressLen] = 0;
-            pc = (u16)strtol(app.ui.instructionAddressText, NULL, 16);
-            if (pc < 0x8000 || pc > 0xFFFF)
-            {
-                pc = cpu->pc;
-            }
+        case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
+        {
+            Clay_Color c = cmd->renderData.rectangle.backgroundColor;
+            if (c.a < 1.0f) break;
+            nk_fill_rect(canvas, r, cmd->renderData.rectangle.cornerRadius.topLeft,
+                nk_rgba((nk_byte)c.r,(nk_byte)c.g,(nk_byte)c.b,(nk_byte)c.a));
+            break;
         }
-
-        if (app.ui.instructionBreakpointLen > 0)
+        case CLAY_RENDER_COMMAND_TYPE_BORDER:
         {
-            app.ui.instructionBreakpointText[app.ui.instructionBreakpointLen] = 0;
-            breakpoint = (u16)strtol(app.ui.instructionBreakpointText, NULL, 16);
+            Clay_BorderRenderData bc = cmd->renderData.border;
+            Clay_Color c = bc.color;
+            if (c.a < 1.0f) break;
+            struct nk_color nc = nk_rgba((nk_byte)c.r,(nk_byte)c.g,(nk_byte)c.b,(nk_byte)c.a);
+            if (bc.width.top    > 0) nk_fill_rect(canvas, nk_rect(r.x, r.y,                           r.w,                  (float)bc.width.top),    0, nc);
+            if (bc.width.bottom > 0) nk_fill_rect(canvas, nk_rect(r.x, r.y+r.h-bc.width.bottom,       r.w,                  (float)bc.width.bottom), 0, nc);
+            if (bc.width.left   > 0) nk_fill_rect(canvas, nk_rect(r.x, r.y,                           (float)bc.width.left, r.h),                    0, nc);
+            if (bc.width.right  > 0) nk_fill_rect(canvas, nk_rect(r.x+r.w-bc.width.right, r.y,        (float)bc.width.right,r.h),                    0, nc);
+            break;
         }
-
-        for (s32 i = 0; i < 100; ++i)
+        case CLAY_RENDER_COMMAND_TYPE_TEXT:
         {
-            memset(debugBuffer, 0, sizeof(debugBuffer));
-
-            u8 opcode = ReadCPUU8(nes, pc);
-            CPUInstruction *instruction = &cpuInstructions[opcode];
-            s32 col = 0;
-            b32 currentInstr = (pc == cpu->pc);
-            b32 breakpointHit = (pc == breakpoint);
-
-            col += currentInstr
-                ? (breakpointHit
-                    ? sprintf(debugBuffer, "O>%04X %02X", pc, instruction->opcode)
-                    : sprintf(debugBuffer, "> %04X %02X", pc, instruction->opcode))
-                : (breakpointHit
-                    ? sprintf(debugBuffer, "O %04X %02X", pc, instruction->opcode)
-                    : sprintf(debugBuffer, "  %04X %02X", pc, instruction->opcode));
-
-            switch (instruction->bytesCount)
-            {
-                case 2:
-                    col += sprintf(debugBuffer + col, " %02X", ReadCPUU8(nes, pc + 1));
-                    break;
-                case 3:
-                    col += sprintf(debugBuffer + col, " %02X %02X", ReadCPUU8(nes, pc + 1), ReadCPUU8(nes, pc + 2));
-                    break;
-                default:
-                    break;
-            }
-
-            memset(debugBuffer + col, ' ', 18 - col);
-            col = 18;
-            col += sprintf(debugBuffer + col, "%s", GetInstructionStr(instruction->instruction));
-
-            switch (instruction->addressingMode)
-            {
-                case AM_IMM:
-                    col += sprintf(debugBuffer + col, " #$%02X", ReadCPUU8(nes, pc + 1));
-                    break;
-                case AM_ABS:
-                {
-                    u8 lo = ReadCPUU8(nes, pc + 1);
-                    u8 hi = ReadCPUU8(nes, pc + 2);
-                    col += sprintf(debugBuffer + col, " $%04X", (hi << 8) | lo);
-                    break;
-                }
-                case AM_ABX:
-                {
-                    u8 lo = ReadCPUU8(nes, pc + 1);
-                    u8 hi = ReadCPUU8(nes, pc + 2);
-                    col += sprintf(debugBuffer + col, " $%04X, X", (hi << 8) | lo);
-                    break;
-                }
-                case AM_ABY:
-                {
-                    u8 lo = ReadCPUU8(nes, pc + 1);
-                    u8 hi = ReadCPUU8(nes, pc + 2);
-                    col += sprintf(debugBuffer + col, " $%04X, Y", (hi << 8) | lo);
-                    break;
-                }
-                case AM_ZPA:
-                    col += sprintf(debugBuffer + col, " $%02X", ReadCPUU8(nes, pc + 1));
-                    break;
-                case AM_ZPX:
-                    col += sprintf(debugBuffer + col, " $%02X, X", ReadCPUU8(nes, pc + 1));
-                    break;
-                case AM_ZPY:
-                    col += sprintf(debugBuffer + col, " $%02X, Y", ReadCPUU8(nes, pc + 1));
-                    break;
-                case AM_IND:
-                {
-                    u8 lo = ReadCPUU8(nes, pc + 1);
-                    u8 hi = ReadCPUU8(nes, pc + 2);
-                    col += sprintf(debugBuffer + col, " ($%04X)", (hi << 8) | lo);
-                    break;
-                }
-                case AM_IZX:
-                    col += sprintf(debugBuffer + col, " ($%02X, X)", ReadCPUU8(nes, pc + 1));
-                    break;
-                case AM_IZY:
-                    col += sprintf(debugBuffer + col, " ($%02X), Y", ReadCPUU8(nes, pc + 1));
-                    break;
-                case AM_REL:
-                {
-                    s8 address = (s8)ReadCPUU8(nes, pc + 1);
-                    u16 jumpAddress = pc + instruction->bytesCount + address;
-                    col += sprintf(debugBuffer + col, " $%04X", jumpAddress);
-                    break;
-                }
-                default:
-                    break;
-            }
-
-            if (instruction->instruction == CPU_RTS)
-            {
-                col += sprintf(debugBuffer + col, " -------------");
-            }
-
-            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
-            pc += instruction->bytesCount;
+            Clay_Color c = cmd->renderData.text.textColor;
+            if (g_clayNkFont && cmd->renderData.text.stringContents.length > 0)
+                nk_draw_text(canvas, r,
+                    cmd->renderData.text.stringContents.chars,
+                    cmd->renderData.text.stringContents.length,
+                    g_clayNkFont, nk_rgba(0,0,0,0),
+                    nk_rgba((nk_byte)c.r,(nk_byte)c.g,(nk_byte)c.b,(nk_byte)c.a));
+            break;
+        }
+        case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START: nk_push_scissor(canvas, r);          break;
+        case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END:   nk_push_scissor(canvas, fullscreen); break;
+        default: break;
         }
     }
+
+    /* ── Pass 2: render interactive zones using layout_space + groups ── */
+    /* Count CUSTOM commands so we can size the layout_space correctly */
+    int customCount = 0;
+    for (int i = 0; i < cmds.length; ++i)
+        if (Clay_RenderCommandArray_Get(&cmds, i)->commandType == CLAY_RENDER_COMMAND_TYPE_CUSTOM)
+            ++customCount;
+
+    if (customCount > 0)
+    {
+        nk_layout_space_begin(ctx, NK_STATIC, (float)winH, customCount);
+
+        for (int i = 0; i < cmds.length; ++i)
+        {
+            Clay_RenderCommand *cmd = Clay_RenderCommandArray_Get(&cmds, i);
+            if (cmd->commandType != CLAY_RENDER_COMMAND_TYPE_CUSTOM) continue;
+
+            int zoneId = (int)(intptr_t)cmd->renderData.custom.customData;
+            /* bounds relative to the window (which starts at 0,0) */
+            struct nk_rect b = nk_rect(
+                cmd->boundingBox.x, cmd->boundingBox.y,
+                cmd->boundingBox.width, cmd->boundingBox.height);
+
+            nk_layout_space_push(ctx, b);
+
+            switch (zoneId)
+            {
+            /* ── SCREEN: draw NES image directly on canvas, no group needed ── */
+            case CLAY_CUSTOM_SCREEN:
+            {
+                if (nes)
+                {
+                    struct nk_rect space;
+                    enum nk_widget_layout_states state = nk_widget(&space, ctx);
+                    if (state)
+                    {
+                        GUI *gui = &nes->gui;
+                        f32 aspect = 256.0f / 240.0f;
+                        f32 drawW = space.w, drawH = space.w / aspect;
+                        if (drawH > space.h) { drawH = space.h; drawW = drawH * aspect; }
+                        f32 ox = space.x + (space.w - drawW) * 0.5f;
+                        f32 oy = space.y + (space.h - drawH) * 0.5f;
+                        struct nk_rect dst = nk_rect(ox, oy, drawW, drawH);
+
+                        glBindTexture(GL_TEXTURE_2D, device->screen.handle.id);
+                        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
+                        glBindTexture(GL_TEXTURE_2D, 0);
+                        nk_draw_image(canvas, dst, &device->screen, nk_rgb(255,255,255));
+                    }
+                }
+                else
+                {
+                    /* consume the space so layout stays consistent */
+                    nk_spacing(ctx, 1);
+                }
+                break;
+            }
+
+            /* ── TOP BAR ── */
+            case CLAY_CUSTOM_TOP_BAR:
+            {
+                nk_flags gf = NK_WINDOW_NO_SCROLLBAR;
+                if (nk_group_begin(ctx, "grp_topbar", gf))
+                {
+                    DrawZoneContent_TopBar(ctx, device, win, dt, d1, d2, initialCounter);
+                    nk_group_end(ctx);
+                }
+                break;
+            }
+
+            /* ── LEFT SIDEBAR ── */
+            case CLAY_CUSTOM_LEFT_SIDEBAR:
+            {
+                if (nk_group_begin(ctx, "grp_leftsidebar", 0))
+                {
+                    DrawZoneContent_LeftSidebar(ctx, d1, d2);
+                    nk_group_end(ctx);
+                }
+                break;
+            }
+
+            /* ── TOOLS TABS ── */
+            case CLAY_CUSTOM_TOOLS_TABS:
+            {
+                if (nk_group_begin(ctx, "grp_toolstabs", NK_WINDOW_NO_SCROLLBAR))
+                {
+                    DrawZoneContent_ToolsTabs(ctx);
+                    nk_group_end(ctx);
+                }
+                break;
+            }
+
+            /* ── TOOLS VIEW ── */
+            case CLAY_CUSTOM_TOOLS_VIEW:
+            {
+                const char *gname = (app.ui.debugToolTab == 0) ? "grp_instructions" : "grp_memory";
+                if (nk_group_begin(ctx, gname, 0))
+                {
+                    if (nes)
+                    {
+                        if (app.ui.debugToolTab == 0) DrawInstructionsContent(ctx, device);
+                        else                          DrawMemoryContent(ctx);
+                    }
+                    else
+                    {
+                        nk_layout_row_dynamic(ctx, 24, 1);
+                        nk_label_colored(ctx, "Load a ROM to inspect instructions and memory.", NK_TEXT_LEFT, COL_TEXT_DIM);
+                    }
+                    nk_group_end(ctx);
+                }
+                break;
+            }
+
+            /* ── RIGHT SIDEBAR ── */
+            case CLAY_CUSTOM_RIGHT_SIDEBAR:
+            {
+                if (nk_group_begin(ctx, "grp_rightsidebar", 0))
+                {
+                    DrawZoneContent_RightSidebar(ctx, device);
+                    nk_group_end(ctx);
+                }
+                break;
+            }
+
+            /* ── STATUS BAR ── */
+            case CLAY_CUSTOM_STATUS_BAR:
+            {
+                {
+                    struct nk_style_item oldBg = ctx->style.window.fixed_background;
+                    ctx->style.window.fixed_background = nk_style_item_color(nk_rgba(0, 0, 0, 0));
+                    if (nk_group_begin(ctx, "grp_statusbar", NK_WINDOW_NO_SCROLLBAR))
+                    {
+                        DrawZoneContent_StatusBar(ctx);
+                        nk_group_end(ctx);
+                    }
+                    ctx->style.window.fixed_background = oldBg;
+                }
+                break;
+            }
+
+            default:
+                nk_spacing(ctx, 1);
+                break;
+            }
+        }
+
+        nk_layout_space_end(ctx);
+    }
+
     nk_end(ctx);
 }
 
 
+
+/* ── DrawInstructionsContent: disassembly list ─────────────────────────── */
+internal void DrawInstructionsContent(struct nk_context *ctx, Device *device)
+{
+    (void)device;
+    if (!nes) return;
+
+    CPU *cpu = &nes->cpu;
+    const float ratio[] = { 80, 120 };
+
+    DrawPanelHeader(ctx, "INSTRUCTIONS");
+
+    nk_layout_row(ctx, NK_STATIC, 22, 2, ratio);
+    nk_label(ctx, "Address:", NK_TEXT_LEFT);
+    nk_edit_string(ctx, NK_EDIT_SIMPLE,
+        app.ui.instructionAddressText, &app.ui.instructionAddressLen,
+        12, nk_filter_hex);
+
+    nk_layout_row(ctx, NK_STATIC, 22, 2, ratio);
+    nk_label(ctx, "Breakpoint:", NK_TEXT_LEFT);
+    nk_edit_string(ctx, NK_EDIT_SIMPLE,
+        app.ui.instructionBreakpointText, &app.ui.instructionBreakpointLen,
+        5, nk_filter_hex);
+
+    nk_layout_row_dynamic(ctx, 18, 1);
+
+    u16 pc = cpu->pc;
+    if (app.ui.instructionAddressLen > 0)
+    {
+        app.ui.instructionAddressText[app.ui.instructionAddressLen] = 0;
+        u16 parsed = (u16)strtol(app.ui.instructionAddressText, NULL, 16);
+        if (parsed >= 0x8000) pc = parsed;
+    }
+
+    if (app.ui.instructionBreakpointLen > 0)
+    {
+        app.ui.instructionBreakpointText[app.ui.instructionBreakpointLen] = 0;
+        breakpoint = (u16)strtol(app.ui.instructionBreakpointText, NULL, 16);
+    }
+
+    for (s32 i = 0; i < 100; ++i)
+    {
+        memset(debugBuffer, 0, sizeof(debugBuffer));
+
+        u8 opcode = ReadCPUU8(nes, pc);
+        CPUInstruction *instruction = &cpuInstructions[opcode];
+        s32 col = 0;
+        b32 currentInstr  = (pc == cpu->pc);
+        b32 breakpointHit = (pc == breakpoint);
+
+        col += currentInstr
+            ? (breakpointHit
+                ? sprintf(debugBuffer, "O>%04X %02X", pc, instruction->opcode)
+                : sprintf(debugBuffer, "> %04X %02X", pc, instruction->opcode))
+            : (breakpointHit
+                ? sprintf(debugBuffer, "O %04X %02X", pc, instruction->opcode)
+                : sprintf(debugBuffer, "  %04X %02X", pc, instruction->opcode));
+
+        switch (instruction->bytesCount)
+        {
+            case 2: col += sprintf(debugBuffer + col, " %02X", ReadCPUU8(nes, pc + 1)); break;
+            case 3: col += sprintf(debugBuffer + col, " %02X %02X", ReadCPUU8(nes, pc + 1), ReadCPUU8(nes, pc + 2)); break;
+            default: break;
+        }
+
+        memset(debugBuffer + col, ' ', 18 - col);
+        col = 18;
+        col += sprintf(debugBuffer + col, "%s", GetInstructionStr(instruction->instruction));
+
+        switch (instruction->addressingMode)
+        {
+            case AM_IMM: col += sprintf(debugBuffer + col, " #$%02X", ReadCPUU8(nes, pc + 1)); break;
+            case AM_ABS: { u8 lo = ReadCPUU8(nes, pc+1); u8 hi = ReadCPUU8(nes, pc+2); col += sprintf(debugBuffer + col, " $%04X", (hi<<8)|lo); break; }
+            case AM_ABX: { u8 lo = ReadCPUU8(nes, pc+1); u8 hi = ReadCPUU8(nes, pc+2); col += sprintf(debugBuffer + col, " $%04X,X", (hi<<8)|lo); break; }
+            case AM_ABY: { u8 lo = ReadCPUU8(nes, pc+1); u8 hi = ReadCPUU8(nes, pc+2); col += sprintf(debugBuffer + col, " $%04X,Y", (hi<<8)|lo); break; }
+            case AM_ZPA: col += sprintf(debugBuffer + col, " $%02X", ReadCPUU8(nes, pc+1)); break;
+            case AM_ZPX: col += sprintf(debugBuffer + col, " $%02X,X", ReadCPUU8(nes, pc+1)); break;
+            case AM_ZPY: col += sprintf(debugBuffer + col, " $%02X,Y", ReadCPUU8(nes, pc+1)); break;
+            case AM_IND: { u8 lo = ReadCPUU8(nes, pc+1); u8 hi = ReadCPUU8(nes, pc+2); col += sprintf(debugBuffer + col, " ($%04X)", (hi<<8)|lo); break; }
+            case AM_IZX: col += sprintf(debugBuffer + col, " ($%02X,X)", ReadCPUU8(nes, pc+1)); break;
+            case AM_IZY: col += sprintf(debugBuffer + col, " ($%02X),Y", ReadCPUU8(nes, pc+1)); break;
+            case AM_REL: { s8 rel = (s8)ReadCPUU8(nes, pc+1); col += sprintf(debugBuffer + col, " $%04X", (u16)(pc + instruction->bytesCount + rel)); break; }
+            default: break;
+        }
+
+        if (instruction->instruction == CPU_RTS)
+            col += sprintf(debugBuffer + col, " ----");
+
+        if (currentInstr)
+            nk_label_colored(ctx, debugBuffer, NK_TEXT_LEFT, COL_ACCENT);
+        else if (breakpointHit)
+            nk_label_colored(ctx, debugBuffer, NK_TEXT_LEFT, nk_rgba(0xFF,0x44,0x44,255));
+        else
+            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+
+        pc += instruction->bytesCount;
+    }
+}
+
+/* ── DrawMemoryContent: raw memory dump ─────────────────────────────────── */
+internal void DrawMemoryContent(struct nk_context *ctx)
+{
+    if (!nes) return;
+
+    DrawPanelHeader(ctx, "MEMORY");
+
+    enum mem_options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
+    const float ratio[] = { 80, 80, 80, 80 };
+
+    if (app.ui.memoryOption < CPU_MEM || app.ui.memoryOption > OAM2_MEM)
+        app.ui.memoryOption = CPU_MEM;
+
+    nk_layout_row(ctx, NK_STATIC, 22, 4, ratio);
+    app.ui.memoryOption = nk_option_label(ctx, "CPU",  app.ui.memoryOption == CPU_MEM)  ? CPU_MEM  : app.ui.memoryOption;
+    app.ui.memoryOption = nk_option_label(ctx, "PPU",  app.ui.memoryOption == PPU_MEM)  ? PPU_MEM  : app.ui.memoryOption;
+    app.ui.memoryOption = nk_option_label(ctx, "OAM",  app.ui.memoryOption == OAM_MEM)  ? OAM_MEM  : app.ui.memoryOption;
+    app.ui.memoryOption = nk_option_label(ctx, "OAM2", app.ui.memoryOption == OAM2_MEM) ? OAM2_MEM : app.ui.memoryOption;
+
+    const float ar[] = { 80, 120 };
+    nk_layout_row(ctx, NK_STATIC, 22, 2, ar);
+    nk_label(ctx, "Address:", NK_TEXT_LEFT);
+    nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.memoryAddressText, &app.ui.memoryAddressLen, 12, nk_filter_hex);
+
+    u16 address = 0x0000;
+    if (app.ui.memoryAddressLen > 0)
+    {
+        app.ui.memoryAddressText[app.ui.memoryAddressLen] = 0;
+        address = (u16)strtol(app.ui.memoryAddressText, NULL, 16);
+    }
+
+    nk_layout_row_dynamic(ctx, 18, 1);
+
+    if (app.ui.memoryOption == OAM_MEM)
+    {
+        for (s32 i = 0; i < 16; ++i)
+        {
+            memset(debugBuffer, 0, sizeof(debugBuffer));
+            s32 col = sprintf(debugBuffer, "%04X:", i * 16);
+            for (s32 j = 0; j < 16; ++j) col += sprintf(debugBuffer + col, " %02X", ReadU8(&nes->oamMemory, i*16+j));
+            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+        }
+    }
+    else if (app.ui.memoryOption == OAM2_MEM)
+    {
+        for (s32 i = 0; i < 2; ++i)
+        {
+            memset(debugBuffer, 0, sizeof(debugBuffer));
+            s32 col = sprintf(debugBuffer, "%04X:", i * 16);
+            for (s32 j = 0; j < 16; ++j) col += sprintf(debugBuffer + col, " %02X", ReadU8(&nes->oamMemory2, i*16+j));
+            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+        }
+    }
+    else
+    {
+        for (s32 i = 0; i < 16; ++i)
+        {
+            memset(debugBuffer, 0, sizeof(debugBuffer));
+            s32 col = sprintf(debugBuffer, "%04X:", address + i * 16);
+            for (s32 j = 0; j < 16; ++j)
+            {
+                u8 v = (app.ui.memoryOption == CPU_MEM)
+                    ? ReadCPUU8(nes, address + i*16 + j)
+                    : ReadPPUU8(nes, address + i*16 + j);
+                col += sprintf(debugBuffer + col, " %02X", v);
+            }
+            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+        }
+    }
+}
+
+/* ── DrawOAM (shared helper) ─────────────────────────────────────────────── */
 internal void DrawOAM(struct nk_context *ctx, struct nk_command_buffer *canvas, const struct nk_input *input, struct nk_image *deviceOam, Color (*guiSprites)[128], Memory *oamMem, s32 spriteCount, s32 columns)
 {
     PPU *ppu = &nes->ppu;
@@ -1123,10 +1483,10 @@ internal void DrawOAM(struct nk_context *ctx, struct nk_command_buffer *canvas, 
 
     for (s32 index = 0; index < spriteCount; ++index)
     {
-        u8 spriteY = ReadU8(oamMem, index * 4 + 0);
-        u8 spriteIdx = ReadU8(oamMem, index * 4 + 1);
+        u8 spriteY    = ReadU8(oamMem, index * 4 + 0);
+        u8 spriteIdx  = ReadU8(oamMem, index * 4 + 1);
         u8 spriteAttr = ReadU8(oamMem, index * 4 + 2);
-        u8 spriteX = ReadU8(oamMem, index * 4 + 3);
+        u8 spriteX    = ReadU8(oamMem, index * 4 + 3);
 
         if (spriteSize == 16)
         {
@@ -1142,20 +1502,15 @@ internal void DrawOAM(struct nk_context *ctx, struct nk_command_buffer *canvas, 
         {
             u8 rowOffset = y;
             if (flipV) rowOffset = (spriteSize - 1) - rowOffset;
-
             u8 row1 = GetSpritePixelRow(nes, baseAddress, spriteIdx, rowOffset, 0);
             u8 row2 = GetSpritePixelRow(nes, baseAddress, spriteIdx, rowOffset, 1);
-
             for (s32 x = 0; x < 8; ++x)
             {
                 u8 colOffset = x;
                 if (flipH) colOffset = 7 - colOffset;
-
                 u32 paletteIndex = GetPixelColorBits(row1, row2, colOffset, pixelHighBits);
-                u32 colorIndex = ReadPPUU8(nes, 0x3F10 + paletteIndex);
-                Color color = systemPalette[colorIndex % 64];
-
-                guiSprites[index][y * 8 + x] = color;
+                u32 colorIndex   = ReadPPUU8(nes, 0x3F10 + paletteIndex);
+                guiSprites[index][y * 8 + x] = systemPalette[colorIndex % 64];
             }
         }
 
@@ -1166,26 +1521,22 @@ internal void DrawOAM(struct nk_context *ctx, struct nk_command_buffer *canvas, 
             glBindTexture(GL_TEXTURE_2D, deviceOam[index].handle.id);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 16, GL_RGBA, GL_UNSIGNED_BYTE, guiSprites[index]);
             glBindTexture(GL_TEXTURE_2D, 0);
-
             nk_draw_image(canvas, space, &deviceOam[index], nk_rgb(255, 255, 255));
 
-            if (nk_input_is_mouse_hovering_rect(input, space))
+            if (input && nk_input_is_mouse_hovering_rect(input, space))
             {
                 if (nk_tooltip_begin(ctx, 200))
                 {
                     nk_layout_row_static(ctx, 64, 32, 1);
-
                     state = nk_widget(&space, ctx);
-                    if (state) nk_draw_image(canvas, space, &deviceOam[index], nk_rgb(255, 255, 255));
-
-                    nk_layout_row_dynamic(ctx, 20, 2);
-                    nk_label(ctx, DebugText("Number: %02X", index), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("Tile:   %02X", spriteIdx), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("X:      %02X", spriteX), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("Color:  %02X", pixelHighBits), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("Y:      %02X", spriteY), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("Flags:  %s%s", (flipV ? "V" : ""), (flipH ? "H" : "")), NK_TEXT_LEFT);
-
+                    if (state) nk_draw_image(canvas, space, &deviceOam[index], nk_rgb(255,255,255));
+                    nk_layout_row_dynamic(ctx, 18, 2);
+                    nk_label(ctx, DebugText("Num: %02X", index),         NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("Tile: %02X", spriteIdx),    NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("X: %02X", spriteX),         NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("Y: %02X", spriteY),         NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("Pal: %02X", pixelHighBits), NK_TEXT_LEFT);
+                    nk_label(ctx, DebugText("Fl: %s%s", flipV?"V":"", flipH?"H":""), NK_TEXT_LEFT);
                     nk_tooltip_end(ctx);
                 }
             }
@@ -1193,730 +1544,368 @@ internal void DrawOAM(struct nk_context *ctx, struct nk_command_buffer *canvas, 
     }
 }
 
+/* ── DrawAudioWaveform (shared helper) ───────────────────────────────────── */
 internal void DrawAudioWaveform(struct nk_context *ctx, struct nk_command_buffer *canvas, s16 *buffer, s32 pointCount)
 {
-    const f32 rectHeight = 200.0f;
-    struct nk_color lineColor = nk_rgb(255, 0, 0);
-    const f32 lineThickness = 1.0f;
+    const f32 rectHeight  = 120.0f;
+    struct nk_color lineColor = nk_rgb(0x33, 0xFF, 0x66);
+    const f32 lineThickness   = 1.0f;
     struct nk_rect space;
 
     nk_layout_row_dynamic(ctx, rectHeight, 1);
     enum nk_widget_layout_states state = nk_widget(&space, ctx);
     if (state && pointCount > 0)
     {
-        struct nk_vec2 *points = (struct nk_vec2*) Allocate(pointCount * sizeof(struct nk_vec2));
-        f32 horizontalSpacing = space.w / pointCount;
-
+        struct nk_vec2 *points = (struct nk_vec2 *)Allocate(pointCount * sizeof(struct nk_vec2));
+        f32 hspacing = space.w / pointCount;
         for (s32 i = 0; i < pointCount; i++)
         {
-            f32 x = horizontalSpacing * i;
+            f32 x = hspacing * i;
             f32 y = rectHeight - buffer[i] * rectHeight / APU_AMPLIFIER_VALUE;
             *(points + i) = nk_vec2(space.x + x, space.y + y);
         }
-
-        nk_stroke_rect(canvas, space, 0, 2, nk_rgb(0x41, 0x41, 0x41));
+        nk_stroke_rect(canvas, space, 0, 1, COL_BORDER_HI);
         nk_stroke_polyline(canvas, (f32*)points, pointCount, lineThickness, lineColor);
-
         Free(points);
     }
 }
 
-internal void DrawToolsTabs(struct nk_context *ctx, nk_flags flags, const UiLayout *layout)
+/* ── DrawVideoContent: patterns/palettes/OAM/nametables ─────────────────── */
+internal void DrawVideoContent(struct nk_context *ctx, struct Device *device, const struct nk_input *input)
 {
-    if (!debugMode) return;
+    if (!nes) return;
 
-    nk_window_set_bounds(ctx, "TOOLS", layout->toolsTabs);
-    if (nk_begin(ctx, "TOOLS", layout->toolsTabs, flags | NK_WINDOW_NO_SCROLLBAR) && nes)
+    PPU *ppu = &nes->ppu;
+    GUI *gui = &nes->gui;
+    struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
+    struct nk_rect space;
+    enum nk_widget_layout_states state;
+
+    enum video_options { PATTERNS_PALETTES_OAM, NAMETABLES };
+    const float ratio[] = { 200, 200 };
+
+    if (app.ui.videoOption < PATTERNS_PALETTES_OAM || app.ui.videoOption > NAMETABLES)
+        app.ui.videoOption = PATTERNS_PALETTES_OAM;
+
+    nk_layout_row(ctx, NK_STATIC, 22, 2, ratio);
+    app.ui.videoOption = nk_option_label(ctx, "PATTERNS/PALETTES/OAM", app.ui.videoOption == PATTERNS_PALETTES_OAM) ? PATTERNS_PALETTES_OAM : app.ui.videoOption;
+    app.ui.videoOption = nk_option_label(ctx, "NAMETABLES",             app.ui.videoOption == NAMETABLES)            ? NAMETABLES            : app.ui.videoOption;
+
+    if (app.ui.videoOption == PATTERNS_PALETTES_OAM)
     {
-        enum { TOOL_MEMORY = 0, TOOL_VIDEO = 1, TOOL_AUDIO = 2 };
-        if (app.ui.debugToolTab < TOOL_MEMORY || app.ui.debugToolTab > TOOL_AUDIO)
-            app.ui.debugToolTab = TOOL_MEMORY;
+        /* PATTERNS */
+        nk_layout_row_dynamic(ctx, 18, 1);
+        nk_label_colored(ctx, "PATTERNS", NK_TEXT_LEFT, COL_TEXT_DIM);
+        nk_layout_row_static(ctx, 128, 128, 2);
 
-        nk_layout_row_dynamic(ctx, 24, 3);
-        app.ui.debugToolTab = nk_option_label(ctx, "MEMORY", app.ui.debugToolTab == TOOL_MEMORY) ? TOOL_MEMORY : app.ui.debugToolTab;
-        app.ui.debugToolTab = nk_option_label(ctx, "VIDEO", app.ui.debugToolTab == TOOL_VIDEO) ? TOOL_VIDEO : app.ui.debugToolTab;
-        app.ui.debugToolTab = nk_option_label(ctx, "AUDIO", app.ui.debugToolTab == TOOL_AUDIO) ? TOOL_AUDIO : app.ui.debugToolTab;
-    }
-    nk_end(ctx);
-}
-internal void DrawMemoryTool(struct nk_context *ctx, nk_flags flags, struct nk_rect bounds)
-{
-    if (!debugMode) return;
-
-            nk_window_set_bounds(ctx, "MEMORY", bounds);
-    if (nk_begin(ctx, "MEMORY", bounds, flags) && nes)
+        for (s32 index = 0; index < 2; ++index)
+        {
+            u16 baseAddress = index * 0x1000;
+            for (s32 tileY = 0; tileY < 16; ++tileY)
             {
-                enum options { CPU_MEM, PPU_MEM, OAM_MEM, OAM2_MEM };
-                const float ratio[] = { 80, 80, 80, 80 };
-
-                if (app.ui.memoryOption < CPU_MEM || app.ui.memoryOption > OAM2_MEM)
+                for (s32 tileX = 0; tileX < 16; ++tileX)
                 {
-                    app.ui.memoryOption = CPU_MEM;
-                }
-
-                nk_layout_row(ctx, NK_STATIC, 25, 4, ratio);
-                app.ui.memoryOption = nk_option_label(ctx, "CPU", app.ui.memoryOption == CPU_MEM) ? CPU_MEM : app.ui.memoryOption;
-                app.ui.memoryOption = nk_option_label(ctx, "PPU", app.ui.memoryOption == PPU_MEM) ? PPU_MEM : app.ui.memoryOption;
-                app.ui.memoryOption = nk_option_label(ctx, "OAM", app.ui.memoryOption == OAM_MEM) ? OAM_MEM : app.ui.memoryOption;
-                app.ui.memoryOption = nk_option_label(ctx, "OAM2", app.ui.memoryOption == OAM2_MEM) ? OAM2_MEM : app.ui.memoryOption;
-
-                u16 address = 0x0000;
-
-                nk_label(ctx, "Address: ", NK_TEXT_LEFT);
-                nk_edit_string(ctx, NK_EDIT_SIMPLE, app.ui.memoryAddressText, &app.ui.memoryAddressLen, 12, nk_filter_hex);
-
-                if (app.ui.memoryAddressLen > 0)
-                {
-                    app.ui.memoryAddressText[app.ui.memoryAddressLen] = 0;
-                    address = (u16)strtol(app.ui.memoryAddressText, NULL, 16);
-                    if (address < 0x0000 || address > 0xFFFF)
+                    u16 patternIndex = tileY * 16 + tileX;
+                    for (s32 y = 0; y < 8; ++y)
                     {
-                        address = 0x0000;
-                    }
-                }
-
-                nk_layout_row_dynamic(ctx, 20, 1);
-
-                if (app.ui.memoryOption == OAM_MEM)
-                {
-                    for (s32 i = 0; i < 16; ++i)
-                    {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                        s32 col = sprintf(debugBuffer, "%04X: ", i * 16);
-
-                        for (s32 j = 0; j < 16; ++j)
+                        u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
+                        u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
+                        for (s32 x = 0; x < 8; ++x)
                         {
-                            u8 v = ReadU8(&nes->oamMemory, i * 16 + j);
-                            col += sprintf(debugBuffer + col, " %02X", v);
+                            u8 h = ((row2 >> (7-x)) & 0x1);
+                            u8 l = ((row1 >> (7-x)) & 0x1);
+                            u32 pi = (h << 1) | l;
+                            u32 ci = ReadPPUU8(nes, 0x3F00 + pi);
+                            gui->patterns[index][(tileY*8+y)*128 + (tileX*8+x)] = systemPalette[ci % 64];
                         }
-
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
-                    }
-                }
-                else if (app.ui.memoryOption == OAM2_MEM)
-                {
-                    for (s32 i = 0; i < 2; ++i)
-                    {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                        s32 col = sprintf(debugBuffer, "%04X: ", i * 16);
-
-                        for (s32 j = 0; j < 16; ++j)
-                        {
-                            u8 v = ReadU8(&nes->oamMemory2, i * 16 + j);
-                            col += sprintf(debugBuffer + col, " %02X", v);
-                        }
-
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
-                    }
-                }
-                else
-                {
-                    for (s32 i = 0; i < 16; ++i)
-                    {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                        s32 col = sprintf(debugBuffer, "%04X: ", address + i * 16);
-
-                        for (s32 j = 0; j < 16; ++j)
-                        {
-                            u8 v = (app.ui.memoryOption == CPU_MEM)
-                                ? ReadCPUU8(nes, address + i * 16 + j)
-                                : ReadPPUU8(nes, address + i * 16 + j);
-
-                            col += sprintf(debugBuffer + col, " %02X", v);
-                        }
-
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
                     }
                 }
             }
-            nk_end(ctx);
-        
-}
-internal void DrawVideoTool(struct nk_context *ctx, nk_flags flags, struct nk_rect bounds, struct Device *device, const struct nk_input *input)
-{
-    if (!debugMode) return;
-
-            nk_window_set_bounds(ctx, "VIDEO", bounds);
-    if (nk_begin(ctx, "VIDEO", bounds, flags) && nes)
+            state = nk_widget(&space, ctx);
+            if (state)
             {
-                PPU *ppu = &nes->ppu;
-                GUI *gui = &nes->gui;
+                glBindTexture(GL_TEXTURE_2D, device->patterns[index].handle.id);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, gui->patterns[index]);
+                glBindTexture(GL_TEXTURE_2D, 0);
+                nk_draw_image(canvas, space, &device->patterns[index], nk_rgb(255,255,255));
 
-                struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
-                const struct nk_input *input = &ctx->input;
-
-                struct nk_rect space;
-                enum nk_widget_layout_states state;
-
-                enum options { PATTERNS_PALETTES_OAM, NAMETABLES };
-                const float ratio[] = { 200, 200 };
-
-                if (app.ui.videoOption < PATTERNS_PALETTES_OAM || app.ui.videoOption > NAMETABLES)
+                if (input && nk_input_is_mouse_hovering_rect(input, space))
                 {
-                    app.ui.videoOption = PATTERNS_PALETTES_OAM;
-                }
-
-                nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
-                app.ui.videoOption = nk_option_label(ctx, "PATTERNS, PALETTES, OAM", app.ui.videoOption == PATTERNS_PALETTES_OAM) ? PATTERNS_PALETTES_OAM : app.ui.videoOption;
-                app.ui.videoOption = nk_option_label(ctx, "NAMETABLES", app.ui.videoOption == NAMETABLES) ? NAMETABLES : app.ui.videoOption;
-
-                if (app.ui.videoOption == PATTERNS_PALETTES_OAM)
-                {
-                    // PATTERNS
+                    if (nk_tooltip_begin(ctx, 200))
                     {
-                        nk_layout_row_dynamic(ctx, 25, 1);
-                        nk_label(ctx, "PATTERNS", NK_TEXT_LEFT);
-
-                        nk_layout_row_static(ctx, 128, 128, 2);
-
-                        for (s32 index = 0; index < 2; ++index)
+                        f32 mx = input->mouse.pos.x - space.x;
+                        f32 my = input->mouse.pos.y - space.y;
+                        u16 pi = (s32)(my/8)*16 + (s32)(mx/8);
+                        for (s32 y = 0; y < 8; ++y)
                         {
-                            u16 baseAddress = index * 0x1000;
-
-                            for (s32 tileY = 0; tileY < 16; ++tileY)
+                            u8 r1 = ReadPPUU8(nes, baseAddress + pi*16 + y);
+                            u8 r2 = ReadPPUU8(nes, baseAddress + pi*16 + 8 + y);
+                            for (s32 x = 0; x < 8; ++x)
                             {
-                                for (s32 tileX = 0; tileX < 16; ++tileX)
-                                {
-                                    u16 patternIndex = tileY * 16 + tileX;
-
-                                    for (s32 y = 0; y < 8; ++y)
-                                    {
-                                        u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
-                                        u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
-
-                                        for (s32 x = 0; x < 8; ++x)
-                                        {
-                                            u8 h = ((row2 >> (7 - x)) & 0x1);
-                                            u8 l = ((row1 >> (7 - x)) & 0x1);
-                                            u32 paletteIndex = (h << 0x1) | l;
-                                            u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-                                            Color color = systemPalette[colorIndex % 64];
-
-                                            s32 pixelX = (tileX * 8 + x);
-                                            s32 pixelY = (tileY * 8 + y);
-                                            s32 pixel = pixelY * 128 + pixelX;
-
-                                            gui->patterns[index][pixel] = color;
-                                        }
-                                    }
-                                }
-                            }
-
-                            state = nk_widget(&space, ctx);
-                            if (state)
-                            {
-                                if (state != NK_WIDGET_ROM)
-                                {
-                                    // update_your_widget_by_user_input(...);
-                                }
-
-                                glBindTexture(GL_TEXTURE_2D, device->patterns[index].handle.id);
-                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, gui->patterns[index]);
-                                glBindTexture(GL_TEXTURE_2D, 0);
-
-                                nk_draw_image(canvas, space, &device->patterns[index], nk_rgb(255, 255, 255));
-
-                                if (nk_input_is_mouse_hovering_rect(input, space))
-                                {
-                                    if (nk_tooltip_begin(ctx, 200))
-                                    {
-                                        f32 mouseX = input->mouse.pos.x - space.x;
-                                        f32 mouseY = input->mouse.pos.y - space.y;
-                                        s32 tileX = mouseX / 8;
-                                        s32 tileY = mouseY / 8;
-
-                                        u16 patternIndex = tileY * 16 + tileX;
-
-                                        for (s32 y = 0; y < 8; ++y)
-                                        {
-                                            u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
-                                            u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
-
-                                            for (s32 x = 0; x < 8; ++x)
-                                            {
-                                                u8 h = ((row2 >> (7 - x)) & 0x1);
-                                                u8 l = ((row1 >> (7 - x)) & 0x1);
-                                                u32 paletteIndex = (h << 0x1) | l;
-                                                u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-                                                Color color = systemPalette[colorIndex % 64];
-
-                                                gui->patternHover[y * 8 + x] = color;
-                                            }
-                                        }
-
-                                        nk_layout_row_static(ctx, 32, 32, 1);
-
-                                        state = nk_widget(&space, ctx);
-                                        if (state)
-                                        {
-                                            glBindTexture(GL_TEXTURE_2D, device->patternHover.handle.id);
-                                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->patternHover);
-                                            glBindTexture(GL_TEXTURE_2D, 0);
-
-                                            nk_draw_image(canvas, space, &device->patternHover, nk_rgb(255, 255, 255));
-                                        }
-
-                                        nk_layout_row_dynamic(ctx, 20, 1);
-                                        nk_label(ctx, DebugText("Address: %04X", baseAddress + patternIndex * 16), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Table:   %02X", index), NK_TEXT_LEFT);
-                                        nk_label(ctx, DebugText("Tile:    %02X", patternIndex), NK_TEXT_LEFT);
-
-                                        nk_tooltip_end(ctx);
-                                    }
-                                }
+                                u8 h = ((r2>>(7-x))&1); u8 l = ((r1>>(7-x))&1);
+                                gui->patternHover[y*8+x] = systemPalette[ReadPPUU8(nes,0x3F00+((h<<1)|l))%64];
                             }
                         }
-                    }
-
-                    // PALETTES
-                    {
-                        nk_layout_row_dynamic(ctx, 25, 1);
-                        nk_label(ctx, "PALETTES", NK_TEXT_LEFT);
-
-                        nk_layout_row_static(ctx, 20, 20, 16);
-
-                        for (s32 index = 0; index < 2; ++index)
-                        {
-                            for (s32 i = 0; i < 16; ++i)
-                            {
-                                u16 address = 0x3F00 + (index * 0x10) + i;
-                                u8 colorIndex = ReadPPUU8(nes, address);
-                                Color color = systemPalette[colorIndex % 64];
-
-                                state = nk_widget(&space, ctx);
-                                if (state)
-                                {
-                                    if (state != NK_WIDGET_ROM)
-                                    {
-                                        // update_your_widget_by_user_input(...);
-                                    }
-
-                                    nk_fill_rect(canvas, space, 0, nk_rgb(color.r, color.g, color.b));
-
-                                    if (nk_input_is_mouse_hovering_rect(input, space))
-                                    {
-                                        if (nk_tooltip_begin(ctx, 200))
-                                        {
-                                            nk_layout_row_static(ctx, 32, 32, 1);
-
-                                            state = nk_widget(&space, ctx);
-                                            if (state)
-                                            {
-                                                nk_fill_rect(canvas, space, 0, nk_rgb(color.r, color.g, color.b));
-                                            }
-
-                                            nk_layout_row_dynamic(ctx, 20, 1);
-                                            nk_label(ctx, DebugText("Address: %04X", address), NK_TEXT_LEFT);
-                                            nk_label(ctx, DebugText("Color:   %02X", colorIndex), NK_TEXT_LEFT);
-                                            nk_label(ctx, DebugText("Offset:  %d", i % 4), NK_TEXT_LEFT);
-
-                                            nk_tooltip_end(ctx);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // OAM
-                    {
-                        nk_layout_row_dynamic(ctx, 25, 1);
-                        nk_label(ctx, "OAM", NK_TEXT_LEFT);
-                        DrawOAM(ctx, canvas, input, device->oam, (Color(*)[128])gui->sprites, &nes->oamMemory, 64, 16);
-                    }
-
-                    // OAM 2
-                    {
-                        DrawOAM(ctx, canvas, input, device->oam2, (Color(*)[128])gui->sprites2, &nes->oamMemory2, 8, 8);
-                    }
-
-                }
-                else if (app.ui.videoOption == NAMETABLES)
-                {
-                    enum options { H2000, H2400, H2800, H2C00 };
-                    const float ratio[] = { 80, 80, 80, 80, 80 };
-
-                    if (app.ui.nametableOption < H2000 || app.ui.nametableOption > H2C00)
-                    {
-                        app.ui.nametableOption = H2000;
-                    }
-
-                    nk_layout_row(ctx, NK_STATIC, 25, 5, ratio);
-                    app.ui.nametableOption = nk_option_label(ctx, "$2000", app.ui.nametableOption == H2000) ? H2000 : app.ui.nametableOption;
-                    app.ui.nametableOption = nk_option_label(ctx, "$2400", app.ui.nametableOption == H2400) ? H2400 : app.ui.nametableOption;
-                    app.ui.nametableOption = nk_option_label(ctx, "$2800", app.ui.nametableOption == H2800) ? H2800 : app.ui.nametableOption;
-                    app.ui.nametableOption = nk_option_label(ctx, "$2C00", app.ui.nametableOption == H2C00) ? H2C00 : app.ui.nametableOption;
-
-                    nk_checkbox_label(ctx, "PIX", &app.ui.showSeparatePixels);
-
-                    u16 address = 0x2000 + app.ui.nametableOption * 0x400;
-
-                    if (app.ui.showSeparatePixels)
-                    {
-                        nk_layout_row_static(ctx, 8, 8, 32);
-
-                        u16 baseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
-
-                        for (s32 tileY = 0; tileY < 30; ++tileY)
-                        {
-                            for (s32 tileX = 0; tileX < 32; ++tileX)
-                            {
-                                u16 tileIndex = tileY * 32 + tileX;
-                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
-
-                                u16 attributeX = tileX / 4;
-                                u16 attributeOffsetX = tileX % 4;
-
-                                u16 attributeY = tileY / 4;
-                                u16 attributeOffsetY = tileY % 4;
-
-                                u16 attributeIndex = attributeY * 8 + attributeX;
-                                u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
-
-                                // lookupValue is a number between 0 and 15,
-                                // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
-                                // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
-                                // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
-                                // for value 0x0C, 0x0D, 0x0E, 0x0F, we need to get the bits 11000000
-                                //
-                                u8 lookupValue = attributeTableLookup[attributeOffsetY][attributeOffsetX];
-                                u8 shiftValue = (lookupValue / 4) * 2;
-                                u8 highColorBits = (attributeByte >> shiftValue) & 0x03;
-
-                                for (s32 y = 0; y < 8; ++y)
-                                {
-                                    u8 row1 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + y);
-                                    u8 row2 = ReadPPUU8(nes, baseAddress + patternIndex * 16 + 8 + y);
-
-                                    for (s32 x = 0; x < 8; ++x)
-                                    {
-                                        u8 h = ((row2 >> (7 - x)) & 0x1);
-                                        u8 l = ((row1 >> (7 - x)) & 0x1);
-                                        u8 v = (h << 0x1) | l;
-
-                                        u32 paletteIndex = (highColorBits << 2) | v;
-                                        u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-
-                                        // if the grayscale bit is set, then AND (&) with 0x30 to set
-                                        // any color in the palette to the grey ones
-                                        if (GetBitFlag(ppu->mask, COLOR_FLAG))
-                                        {
-                                            colorIndex &= 0x30;
-                                        }
-
-                                        Color color = systemPalette[colorIndex % 64];
-
-                                        // check the bits 5, 6, 7 to color emphasis
-                                        u8 colorMask = (ppu->mask & 0xE0) >> 5;
-                                        if (colorMask != 0)
-                                        {
-                                            ColorEmphasis(&color, colorMask);
-                                        }
-
-                                        s32 pixel = y * 8 + x;
-                                        gui->nametable2[tileX][tileY][pixel] = color;
-                                    }
-                                }
-
-                                state = nk_widget(&space, ctx);
-                                if (state)
-                                {
-                                    if (state != NK_WIDGET_ROM)
-                                    {
-                                        // update_your_widget_by_user_input(...);
-                                    }
-
-                                    glBindTexture(GL_TEXTURE_2D, device->nametable2[tileY * 32 + tileX].handle.id);
-                                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->nametable2[tileX][tileY]);
-                                    glBindTexture(GL_TEXTURE_2D, 0);
-
-                                    nk_draw_image(canvas, space, &device->nametable2[tileY * 32 + tileX], nk_rgb(255, 255, 255));
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        nk_layout_row_static(ctx, 240, 256, 1);
-
-                        u16 backgroundBaseAddress = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
-
-                        for (s32 tileY = 0; tileY < 30; ++tileY)
-                        {
-                            for (s32 tileX = 0; tileX < 32; ++tileX)
-                            {
-                                u16 tileIndex = tileY * 32 + tileX;
-                                u8 patternIndex = ReadPPUU8(nes, address + tileIndex);
-
-                                u16 attributeX = tileX / 4;
-                                u16 attributeOffsetX = tileX % 4;
-
-                                u16 attributeY = tileY / 4;
-                                u16 attributeOffsetY = tileY % 4;
-
-                                u16 attributeIndex = attributeY * 8 + attributeX;
-                                u8 attributeByte = ReadPPUU8(nes, address + 0x3C0 + attributeIndex);
-
-                                // lookupValue is a number between 0 and 15,
-                                // for value 0x00, 0x01, 0x02, 0x03, we need to get the bits 00000011
-                                // for value 0x04, 0x05, 0x06, 0x07, we need to get the bits 00001100
-                                // for value 0x08, 0x09, 0x0A, 0x0B, we need to get the bits 00110000
-                                // for value 0x0C, 0x0D, 0x0E, 0x0F, we need to get the bits 11000000
-                                //
-                                u8 lookupValue = attributeTableLookup[attributeOffsetY][attributeOffsetX];
-                                u8 shiftValue = (lookupValue / 4) * 2;
-                                u8 highColorBits = (attributeByte >> shiftValue) & 0x03;
-
-                                for (s32 y = 0; y < 8; ++y)
-                                {
-                                    u8 row1 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + y);
-                                    u8 row2 = ReadPPUU8(nes, backgroundBaseAddress + patternIndex * 16 + 8 + y);
-
-                                    for (s32 x = 0; x < 8; ++x)
-                                    {
-                                        u8 h = ((row2 >> (7 - x)) & 0x1);
-                                        u8 l = ((row1 >> (7 - x)) & 0x1);
-                                        u8 v = (h << 0x1) | l;
-
-                                        u32 paletteIndex = (highColorBits << 2) | v;
-                                        u32 colorIndex = ReadPPUU8(nes, 0x3F00 + paletteIndex);
-
-                                        // if the grayscale bit is set, then AND (&) with 0x30 to set
-                                        // any color in the palette to the grey ones
-                                        if (GetBitFlag(ppu->mask, COLOR_FLAG))
-                                        {
-                                            colorIndex &= 0x30;
-                                        }
-
-                                        Color color = systemPalette[colorIndex % 64];
-
-                                        // check the bits 5, 6, 7 to color emphasis
-                                        u8 colorMask = (ppu->mask & 0xE0) >> 5;
-                                        if (colorMask != 0)
-                                        {
-                                            ColorEmphasis(&color, colorMask);
-                                        }
-
-                                        s32 pixelX = (tileX * 8 + x);
-                                        s32 pixelY = (tileY * 8 + y);
-                                        s32 pixel = pixelY * 256 + pixelX;
-                                        gui->nametable[pixel] = color;
-                                    }
-                                }
-                            }
-                        }
-
+                        nk_layout_row_static(ctx, 32, 32, 1);
                         state = nk_widget(&space, ctx);
                         if (state)
                         {
-                            if (state != NK_WIDGET_ROM)
-                            {
-                                // update_your_widget_by_user_input(...);
-                            }
-
-                            glBindTexture(GL_TEXTURE_2D, device->nametable.handle.id);
-                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->nametable);
+                            glBindTexture(GL_TEXTURE_2D, device->patternHover.handle.id);
+                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, gui->patternHover);
                             glBindTexture(GL_TEXTURE_2D, 0);
-
-                            nk_draw_image(canvas, space, &device->nametable, nk_rgb(255, 255, 255));
+                            nk_draw_image(canvas, space, &device->patternHover, nk_rgb(255,255,255));
                         }
+                        nk_layout_row_dynamic(ctx, 18, 1);
+                        nk_label(ctx, DebugText("Addr: %04X", baseAddress + pi*16), NK_TEXT_LEFT);
+                        nk_label(ctx, DebugText("Table: %d  Tile: %02X", index, pi), NK_TEXT_LEFT);
+                        nk_tooltip_end(ctx);
                     }
                 }
             }
-            nk_end(ctx);
-        
-}
-internal void DrawAudioTool(struct nk_context *ctx, nk_flags flags, struct nk_rect bounds)
-{
-    if (!debugMode) return;
+        }
 
-            nk_window_set_bounds(ctx, "AUDIO", bounds);
-    if (nk_begin(ctx, "AUDIO", bounds, flags | NK_WINDOW_SCALABLE) && nes)
+        /* PALETTES */
+        nk_layout_row_dynamic(ctx, 18, 1);
+        nk_label_colored(ctx, "PALETTES", NK_TEXT_LEFT, COL_TEXT_DIM);
+        nk_layout_row_static(ctx, 18, 18, 16);
+        for (s32 index = 0; index < 2; ++index)
+        {
+            for (s32 i = 0; i < 16; ++i)
             {
-                APU *apu = &nes->apu;
-
-                struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
-
-                                
-                enum options { GENERAL, SQUARE1, SQUARE2, TRIANGLE, NOISE, DMC, BUFFER };
-                const float ratio[] = { 100, 100, 100, 100, 100 };
-
-                if (app.ui.audioOption < GENERAL || app.ui.audioOption > BUFFER)
+                u16 addr = 0x3F00 + (index * 0x10) + i;
+                u8 ci = ReadPPUU8(nes, addr);
+                Color color = systemPalette[ci % 64];
+                state = nk_widget(&space, ctx);
+                if (state)
                 {
-                    app.ui.audioOption = GENERAL;
-                }
-
-                nk_layout_row(ctx, NK_STATIC, 25, 5, ratio);
-                app.ui.audioOption = nk_option_label(ctx, "GENERAL", app.ui.audioOption == GENERAL) ? GENERAL : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "SQUARE 1", app.ui.audioOption == SQUARE1) ? SQUARE1 : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "SQUARE 2", app.ui.audioOption == SQUARE2) ? SQUARE2 : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "TRIANGLE", app.ui.audioOption == TRIANGLE) ? TRIANGLE : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "NOISE", app.ui.audioOption == NOISE) ? NOISE : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "DMC", app.ui.audioOption == DMC) ? DMC : app.ui.audioOption;
-                app.ui.audioOption = nk_option_label(ctx, "BUFFER", app.ui.audioOption == BUFFER) ? BUFFER : app.ui.audioOption;
-
-                if (app.ui.audioOption == GENERAL)
-                {
-                    nk_layout_row_dynamic(ctx, 25, 3);
-
-                    nk_label(ctx, DebugText("CYCLES:%lld", apu->cycles), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("FRAME MODE:%02X", apu->frameMode), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SAMPLE RATE:%04X", APU_SAMPLES_PER_SECOND), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("FRAME IRQ:%02X", !apu->inhibitIRQ), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("FRAME VALUE:%02X", apu->frameValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SAMPLE COUNTER:%02X", apu->sampleCounter), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("DMC IRQ:%02X", apu->dmcIRQ), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("FRAME COUNTER:%02X", apu->frameCounter), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("BUFFER INDEX:%04X", apu->bufferIndex), NK_TEXT_LEFT);
-
-                    nk_checkbox_label(ctx, "SQUARE1 ENABLED", &app.ui.square1Enabled);
-                    nk_checkbox_label(ctx, "SQUARE2 ENABLED", &app.ui.square2Enabled);
-                    nk_checkbox_label(ctx, "TRIANGLE ENABLED", &app.ui.triangleEnabled);
-                    nk_checkbox_label(ctx, "NOISE ENABLED", &app.ui.noiseEnabled);
-                    nk_checkbox_label(ctx, "DMC ENABLED", &app.ui.dmcEnabled);
-
-                    apu->pulse1.globalEnabled = app.ui.square1Enabled;
-                    apu->pulse2.globalEnabled = app.ui.square2Enabled;
-                    apu->triangle.globalEnabled = app.ui.triangleEnabled;
-                    apu->noise.globalEnabled = app.ui.noiseEnabled;
-                    apu->dmc.globalEnabled = app.ui.dmcEnabled;
-
-                    DrawAudioWaveform(ctx, canvas, apu->buffer, apu->bufferIndex);
-                }
-                else if (app.ui.audioOption == SQUARE1 || app.ui.audioOption == SQUARE2)
-                {
-                    APUPulse *pulse = app.ui.audioOption == SQUARE1 ? &apu->pulse1 : &apu->pulse2;
-
-                    nk_layout_row_dynamic(ctx, 25, 4);
-
-                    nk_label(ctx, DebugText("ENVELOPE ENABLED:%02X", pulse->envelopeEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP ENABLED:%02X", pulse->sweepEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN ENABLED:%02X", pulse->lengthEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENABLED:%02X", pulse->enabled), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE LOOP:%02X", pulse->envelopeLoop), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP NEGATE:%02X", pulse->sweepNegate), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN VALUE:%02X", pulse->lengthValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CHANNEL:%02X", pulse->channel), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE PERIOD:%02X", pulse->envelopePeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP SHIFT:%02X", pulse->sweepShift), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", pulse->timerPeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("DUTY MODE:%02X", pulse->dutyMode), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE VALUE:%02X", pulse->envelopeValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP PERIOD:%02X", pulse->sweepPeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER VALUE:%02X", pulse->timerValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("DUTY VALUE:%02X", pulse->dutyValue), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE VOLUME:%02X", pulse->envelopeVolume), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("SWEEP VALUE:%02X", pulse->sweepValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", pulse->constantVolume), NK_TEXT_LEFT);
-
-                    DrawAudioWaveform(ctx, canvas, pulse->buffer, pulse->bufferIndex);
-                }
-                else if (app.ui.audioOption == TRIANGLE)
-                {
-                    APUTriangle *triangle = &apu->triangle;
-
-                    nk_layout_row_dynamic(ctx, 25, 3);
-
-                    nk_label(ctx, DebugText("COUNTER ENABLED:%02X", triangle->linearEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN ENABLED:%02X", triangle->lengthEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", triangle->timerPeriod), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("COUNTER PERIOD:%02X", triangle->linearPeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN VALUE:%02X", triangle->lengthValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER VALUE:%02X", triangle->timerValue), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("COUNTER VALUE:%02X", triangle->linearValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TABLE INDEX:%02X", triangle->timerValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENABLED:%02X", triangle->enabled), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("COUNTER RELOAD:%02X", triangle->linearReload), NK_TEXT_LEFT);
-
-                    DrawAudioWaveform(ctx, canvas, triangle->buffer, triangle->bufferIndex);
-                }
-                else if (app.ui.audioOption == NOISE)
-                {
-                    APUNoise *noise = &apu->noise;
-
-                    nk_layout_row_dynamic(ctx, 25, 3);
-
-                    nk_label(ctx, DebugText("ENVELOPE ENABLED:%02X", noise->envelopeEnabled), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENVELOPE VALUE:%02X", noise->envelopeValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN ENABLED:%02X", noise->lengthEnabled), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE LOOP:%02X", noise->envelopeLoop), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", noise->timerPeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LEN VALUE:%02X", noise->lengthValue), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE PERIOD:%02X", noise->envelopePeriod), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER VALUE:%02X", noise->timerValue), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENABLED:%02X", noise->enabled), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("ENVELOPE VOLUME:%02X", noise->envelopeVolume), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CONSTANT VOLUME:%02X", noise->constantVolume), NK_TEXT_LEFT);
-
-                    DrawAudioWaveform(ctx, canvas, noise->buffer, noise->bufferIndex);
-                }
-                else if (app.ui.audioOption == DMC)
-                {
-                    APUDMC *dmc = &apu->dmc;
-
-                    nk_layout_row_dynamic(ctx, 25, 3);
-
-                    nk_label(ctx, DebugText("SAMPLE ADDRESS:%02X", dmc->sampleAddress), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CURRENT ADDRESS:%02X", dmc->currentAddress), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER PERIOD:%02X", dmc->timerPeriod), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("SAMPLE LENGTH:%02X", dmc->sampleLength), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("CURRENT LENGTH:%02X", dmc->currentLength), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("TIMER VALUE:%02X", dmc->timerValue), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("SHIFT REGISTER:%02X", dmc->shiftRegister), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("BIT COUNT:%02X", dmc->bitCount), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("VALUE:%02X", dmc->value), NK_TEXT_LEFT);
-
-                    nk_label(ctx, DebugText("IRQ:%02X", dmc->irq), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("LOOP:%02X", dmc->loop), NK_TEXT_LEFT);
-                    nk_label(ctx, DebugText("ENABLED:%02X", dmc->enabled), NK_TEXT_LEFT);
-
-                    DrawAudioWaveform(ctx, canvas, dmc->buffer, dmc->bufferIndex);
-                }
-                else if (app.ui.audioOption == BUFFER)
-                {
-                    nk_layout_row_dynamic(ctx, 20, 1);
-
-                    for (s32 i = 0; i < APU_BUFFER_LENGTH / 16; ++i)
+                    nk_fill_rect(canvas, space, 0, nk_rgb(color.r, color.g, color.b));
+                    if (input && nk_input_is_mouse_hovering_rect(input, space))
                     {
-                        memset(debugBuffer, 0, sizeof(debugBuffer));
-
-                        s32 col = 0;
-
-                        for (s32 j = 0; j < 16; ++j)
+                        if (nk_tooltip_begin(ctx, 160))
                         {
-                            f32 v = apu->buffer[i * 16 + j];
-
-                            if (j > 0)
-                            {
-                                col += sprintf(debugBuffer + col, " ");
-                            }
-
-                            col += sprintf(debugBuffer + col, "%.2f", v);
+                            nk_layout_row_static(ctx, 24, 24, 1);
+                            state = nk_widget(&space, ctx);
+                            if (state) nk_fill_rect(canvas, space, 0, nk_rgb(color.r, color.g, color.b));
+                            nk_layout_row_dynamic(ctx, 18, 1);
+                            nk_label(ctx, DebugText("%04X  idx=%02X  off=%d", addr, ci, i%4), NK_TEXT_LEFT);
+                            nk_tooltip_end(ctx);
                         }
-
-                        nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
                     }
                 }
             }
-            nk_end(ctx);
-        
+        }
+
+        /* OAM */
+        nk_layout_row_dynamic(ctx, 18, 1);
+        nk_label_colored(ctx, "OAM", NK_TEXT_LEFT, COL_TEXT_DIM);
+        DrawOAM(ctx, canvas, input, device->oam,  (Color(*)[128])gui->sprites,  &nes->oamMemory,  64, 16);
+        DrawOAM(ctx, canvas, input, device->oam2, (Color(*)[128])gui->sprites2, &nes->oamMemory2,  8,  8);
+    }
+    else /* NAMETABLES */
+    {
+        enum nt_options { H2000, H2400, H2800, H2C00 };
+        const float ntr[] = { 70, 70, 70, 70, 50 };
+
+        if (app.ui.nametableOption < H2000 || app.ui.nametableOption > H2C00)
+            app.ui.nametableOption = H2000;
+
+        nk_layout_row(ctx, NK_STATIC, 22, 5, ntr);
+        app.ui.nametableOption = nk_option_label(ctx, "$2000", app.ui.nametableOption == H2000) ? H2000 : app.ui.nametableOption;
+        app.ui.nametableOption = nk_option_label(ctx, "$2400", app.ui.nametableOption == H2400) ? H2400 : app.ui.nametableOption;
+        app.ui.nametableOption = nk_option_label(ctx, "$2800", app.ui.nametableOption == H2800) ? H2800 : app.ui.nametableOption;
+        app.ui.nametableOption = nk_option_label(ctx, "$2C00", app.ui.nametableOption == H2C00) ? H2C00 : app.ui.nametableOption;
+        nk_checkbox_label(ctx, "PIX", &app.ui.showSeparatePixels);
+
+        u16 address = 0x2000 + app.ui.nametableOption * 0x400;
+
+        if (app.ui.showSeparatePixels)
+        {
+            nk_layout_row_static(ctx, 8, 8, 32);
+            u16 bgBase = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
+            for (s32 tileY = 0; tileY < 30; ++tileY)
+            {
+                for (s32 tileX = 0; tileX < 32; ++tileX)
+                {
+                    u16 tileIndex    = tileY * 32 + tileX;
+                    u8  patternIndex = ReadPPUU8(nes, address + tileIndex);
+                    u16 attrX = tileX/4, attrOffX = tileX%4;
+                    u16 attrY = tileY/4, attrOffY = tileY%4;
+                    u8  attrByte = ReadPPUU8(nes, address + 0x3C0 + attrY*8 + attrX);
+                    u8  lv = attributeTableLookup[attrOffY][attrOffX];
+                    u8  hcb = (attrByte >> ((lv/4)*2)) & 0x03;
+                    for (s32 y = 0; y < 8; ++y)
+                    {
+                        u8 r1 = ReadPPUU8(nes, bgBase + patternIndex*16 + y);
+                        u8 r2 = ReadPPUU8(nes, bgBase + patternIndex*16 + 8 + y);
+                        for (s32 x = 0; x < 8; ++x)
+                        {
+                            u8 h = ((r2>>(7-x))&1); u8 l = ((r1>>(7-x))&1);
+                            u8 v = (h<<1)|l;
+                            u32 ci = ReadPPUU8(nes, 0x3F00 + ((hcb<<2)|v));
+                            if (GetBitFlag(ppu->mask, COLOR_FLAG)) ci &= 0x30;
+                            Color color = systemPalette[ci % 64];
+                            u8 cm = (ppu->mask & 0xE0) >> 5;
+                            if (cm) ColorEmphasis(&color, cm);
+                            gui->nametable2[tileX][tileY][y*8+x] = color;
+                        }
+                    }
+                    state = nk_widget(&space, ctx);
+                    if (state)
+                    {
+                        glBindTexture(GL_TEXTURE_2D, device->nametable2[tileY*32+tileX].handle.id);
+                        glTexSubImage2D(GL_TEXTURE_2D,0,0,0,8,8,GL_RGBA,GL_UNSIGNED_BYTE, gui->nametable2[tileX][tileY]);
+                        glBindTexture(GL_TEXTURE_2D, 0);
+                        nk_draw_image(canvas, space, &device->nametable2[tileY*32+tileX], nk_rgb(255,255,255));
+                    }
+                }
+            }
+        }
+        else
+        {
+            nk_layout_row_static(ctx, 240, 256, 1);
+            u16 bgBase = 0x1000 * GetBitFlag(ppu->control, BACKGROUND_ADDR_FLAG);
+            for (s32 tileY = 0; tileY < 30; ++tileY)
+            {
+                for (s32 tileX = 0; tileX < 32; ++tileX)
+                {
+                    u16 tileIndex    = tileY * 32 + tileX;
+                    u8  patternIndex = ReadPPUU8(nes, address + tileIndex);
+                    u16 attrX = tileX/4, attrOffX = tileX%4;
+                    u16 attrY = tileY/4, attrOffY = tileY%4;
+                    u8  attrByte = ReadPPUU8(nes, address + 0x3C0 + attrY*8 + attrX);
+                    u8  lv = attributeTableLookup[attrOffY][attrOffX];
+                    u8  hcb = (attrByte >> ((lv/4)*2)) & 0x03;
+                    for (s32 y = 0; y < 8; ++y)
+                    {
+                        u8 r1 = ReadPPUU8(nes, bgBase + patternIndex*16 + y);
+                        u8 r2 = ReadPPUU8(nes, bgBase + patternIndex*16 + 8 + y);
+                        for (s32 x = 0; x < 8; ++x)
+                        {
+                            u8 h = ((r2>>(7-x))&1); u8 l = ((r1>>(7-x))&1);
+                            u8 v = (h<<1)|l;
+                            u32 ci = ReadPPUU8(nes, 0x3F00 + ((hcb<<2)|v));
+                            if (GetBitFlag(ppu->mask, COLOR_FLAG)) ci &= 0x30;
+                            Color color = systemPalette[ci % 64];
+                            u8 cm = (ppu->mask & 0xE0) >> 5;
+                            if (cm) ColorEmphasis(&color, cm);
+                            gui->nametable[(tileY*8+y)*256 + (tileX*8+x)] = color;
+                        }
+                    }
+                }
+            }
+            state = nk_widget(&space, ctx);
+            if (state)
+            {
+                glBindTexture(GL_TEXTURE_2D, device->nametable.handle.id);
+                glTexSubImage2D(GL_TEXTURE_2D,0,0,0,256,240,GL_RGBA,GL_UNSIGNED_BYTE, gui->nametable);
+                glBindTexture(GL_TEXTURE_2D, 0);
+                nk_draw_image(canvas, space, &device->nametable, nk_rgb(255,255,255));
+            }
+        }
+    }
+}
+
+/* ── DrawAudioContent ────────────────────────────────────────────────────── */
+internal void DrawAudioContent(struct nk_context *ctx)
+{
+    if (!nes) return;
+
+    APU *apu = &nes->apu;
+    struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
+
+    enum audio_options { GENERAL, SQUARE1, SQUARE2, TRIANGLE_OPT, NOISE_OPT, DMC_OPT, BUFFER_OPT };
+    const float ratio[] = { 80, 80, 80, 80, 80 };
+
+    if (app.ui.audioOption < GENERAL || app.ui.audioOption > BUFFER_OPT)
+        app.ui.audioOption = GENERAL;
+
+    nk_layout_row(ctx, NK_STATIC, 22, 5, ratio);
+    app.ui.audioOption = nk_option_label(ctx, "GENERAL",  app.ui.audioOption == GENERAL)       ? GENERAL       : app.ui.audioOption;
+    app.ui.audioOption = nk_option_label(ctx, "SQ1",      app.ui.audioOption == SQUARE1)        ? SQUARE1       : app.ui.audioOption;
+    app.ui.audioOption = nk_option_label(ctx, "SQ2",      app.ui.audioOption == SQUARE2)        ? SQUARE2       : app.ui.audioOption;
+    app.ui.audioOption = nk_option_label(ctx, "TRI",      app.ui.audioOption == TRIANGLE_OPT)   ? TRIANGLE_OPT  : app.ui.audioOption;
+    app.ui.audioOption = nk_option_label(ctx, "NOISE",    app.ui.audioOption == NOISE_OPT)      ? NOISE_OPT     : app.ui.audioOption;
+    const float ratio2[] = { 60, 60 };
+    nk_layout_row(ctx, NK_STATIC, 22, 2, ratio2);
+    app.ui.audioOption = nk_option_label(ctx, "DMC",      app.ui.audioOption == DMC_OPT)        ? DMC_OPT       : app.ui.audioOption;
+    app.ui.audioOption = nk_option_label(ctx, "BUF",      app.ui.audioOption == BUFFER_OPT)     ? BUFFER_OPT    : app.ui.audioOption;
+
+    if (app.ui.audioOption == GENERAL)
+    {
+        nk_layout_row_dynamic(ctx, 18, 3);
+        nk_label(ctx, DebugText("CYC:%lld",  apu->cycles),           NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("MODE:%02X", apu->frameMode),        NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("RATE:%d",   APU_SAMPLES_PER_SECOND),NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("IRQ:%02X",  !apu->inhibitIRQ),      NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("FVAL:%02X", apu->frameValue),       NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("SCNT:%02X", apu->sampleCounter),    NK_TEXT_LEFT);
+        nk_layout_row_dynamic(ctx, 18, 2);
+        nk_checkbox_label(ctx, "SQ1",  &app.ui.square1Enabled);
+        nk_checkbox_label(ctx, "SQ2",  &app.ui.square2Enabled);
+        nk_checkbox_label(ctx, "TRI",  &app.ui.triangleEnabled);
+        nk_checkbox_label(ctx, "NOISE",&app.ui.noiseEnabled);
+        nk_checkbox_label(ctx, "DMC",  &app.ui.dmcEnabled);
+        apu->pulse1.globalEnabled    = app.ui.square1Enabled;
+        apu->pulse2.globalEnabled    = app.ui.square2Enabled;
+        apu->triangle.globalEnabled  = app.ui.triangleEnabled;
+        apu->noise.globalEnabled     = app.ui.noiseEnabled;
+        apu->dmc.globalEnabled       = app.ui.dmcEnabled;
+        DrawAudioWaveform(ctx, canvas, apu->buffer, apu->bufferIndex);
+    }
+    else if (app.ui.audioOption == SQUARE1 || app.ui.audioOption == SQUARE2)
+    {
+        APUPulse *pulse = (app.ui.audioOption == SQUARE1) ? &apu->pulse1 : &apu->pulse2;
+        nk_layout_row_dynamic(ctx, 18, 3);
+        nk_label(ctx, DebugText("ENV_EN:%02X", pulse->envelopeEnabled), NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("SWP_EN:%02X", pulse->sweepEnabled),    NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("LEN_EN:%02X", pulse->lengthEnabled),   NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("DUTY:%02X",   pulse->dutyMode),        NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("PERIOD:%02X", pulse->timerPeriod),     NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("LEN:%02X",    pulse->lengthValue),     NK_TEXT_LEFT);
+        DrawAudioWaveform(ctx, canvas, pulse->buffer, pulse->bufferIndex);
+    }
+    else if (app.ui.audioOption == TRIANGLE_OPT)
+    {
+        APUTriangle *tri = &apu->triangle;
+        nk_layout_row_dynamic(ctx, 18, 3);
+        nk_label(ctx, DebugText("LIN_EN:%02X", tri->linearEnabled), NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("LEN_EN:%02X", tri->lengthEnabled), NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("PERIOD:%02X", tri->timerPeriod),   NK_TEXT_LEFT);
+        DrawAudioWaveform(ctx, canvas, tri->buffer, tri->bufferIndex);
+    }
+    else if (app.ui.audioOption == NOISE_OPT)
+    {
+        APUNoise *noise = &apu->noise;
+        nk_layout_row_dynamic(ctx, 18, 3);
+        nk_label(ctx, DebugText("ENV_EN:%02X", noise->envelopeEnabled), NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("PERIOD:%02X", noise->timerPeriod),     NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("LEN:%02X",    noise->lengthValue),     NK_TEXT_LEFT);
+        DrawAudioWaveform(ctx, canvas, noise->buffer, noise->bufferIndex);
+    }
+    else if (app.ui.audioOption == DMC_OPT)
+    {
+        APUDMC *dmc = &apu->dmc;
+        nk_layout_row_dynamic(ctx, 18, 3);
+        nk_label(ctx, DebugText("ADDR:%02X",   dmc->sampleAddress),  NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("LEN:%02X",    dmc->sampleLength),   NK_TEXT_LEFT);
+        nk_label(ctx, DebugText("PERIOD:%02X", dmc->timerPeriod),    NK_TEXT_LEFT);
+        DrawAudioWaveform(ctx, canvas, dmc->buffer, dmc->bufferIndex);
+    }
+    else if (app.ui.audioOption == BUFFER_OPT)
+    {
+        nk_layout_row_dynamic(ctx, 18, 1);
+        for (s32 i = 0; i < APU_BUFFER_LENGTH / 16; ++i)
+        {
+            memset(debugBuffer, 0, sizeof(debugBuffer));
+            s32 col = 0;
+            for (s32 j = 0; j < 16; ++j)
+            {
+                if (j > 0) col += sprintf(debugBuffer + col, " ");
+                col += sprintf(debugBuffer + col, "%.2f", (f32)apu->buffer[i*16+j]);
+            }
+            nk_label(ctx, debugBuffer, NK_TEXT_LEFT);
+        }
+    }
 }
 
 int main(int argc, char **argv)
@@ -1976,13 +1965,160 @@ int main(int argc, char **argv)
     {
         struct nk_font_atlas *atlas;
         nk_sdl_font_stash_begin(&atlas);
-        struct nk_font *future = nk_font_atlas_add_from_file(atlas, "fonts/consola.ttf", 14, 0);
+        struct nk_font *future = nk_font_atlas_add_from_file(atlas, "fonts/consola.ttf", 15, 0);
         nk_sdl_font_stash_end();
         /*nk_style_load_all_cursors(ctx, atlas->cursors);*/
         if (future)
         {
             nk_style_set_font(ctx, &future->handle);
+            g_clayNkFont = &future->handle;
         }
+    }
+
+    /* ── Clay layout engine init ── */
+    {
+        uint32_t clayMemSize = Clay_MinMemorySize();
+        void *clayMem = malloc(clayMemSize);
+        Clay_Arena clayArena = Clay_CreateArenaWithCapacityAndMemory(clayMemSize, clayMem);
+        g_clayCtx = Clay_Initialize(
+            clayArena,
+            (Clay_Dimensions){ (float)win_width, (float)win_height },
+            (Clay_ErrorHandler){ ClayHandleError, NULL });
+        Clay_SetMeasureTextFunction(ClayMeasureText, (void *)g_clayNkFont);
+    }
+
+    /* ── Retro terminal theme ── */
+    {
+        struct nk_color bg       = nk_rgba(0x0D, 0x0D, 0x0D, 255); /* #0D0D0D */
+        struct nk_color panel    = nk_rgba(0x14, 0x14, 0x14, 255); /* #141414 */
+        struct nk_color header   = nk_rgba(0x1A, 0x1A, 0x1A, 255); /* #1A1A1A */
+        struct nk_color border   = nk_rgba(0x2A, 0x2A, 0x2A, 255); /* #2A2A2A */
+        struct nk_color text     = nk_rgba(0xC8, 0xC8, 0xC8, 255); /* #C8C8C8 */
+        struct nk_color accent   = nk_rgba(0x33, 0xFF, 0x66, 255); /* #33FF66 */
+        struct nk_color accentDk = nk_rgba(0x1A, 0x8C, 0x3A, 255); /* #1A8C3A */
+        struct nk_color btnNorm  = nk_rgba(0x1E, 0x1E, 0x1E, 255); /* #1E1E1E */
+        struct nk_color btnHover = nk_rgba(0x2A, 0x2A, 0x2A, 255); /* #2A2A2A */
+        struct nk_color editBg   = nk_rgba(0x0A, 0x0A, 0x0A, 255); /* #0A0A0A */
+        struct nk_color darkText = nk_rgba(0x0D, 0x0D, 0x0D, 255);
+        struct nk_color zero     = nk_rgba(0, 0, 0, 0);
+
+        struct nk_style *s = &ctx->style;
+
+        /* Window */
+        s->window.fixed_background = nk_style_item_color(panel);
+        s->window.background       = panel;
+        s->window.border_color     = border;
+        s->window.border           = 1.0f;
+        s->window.padding          = nk_vec2(6, 6);
+        s->window.spacing          = nk_vec2(4, 4);
+
+        /* Window header (Nuklear chrome title bar) */
+        s->window.header.normal    = nk_style_item_color(header);
+        s->window.header.hover     = nk_style_item_color(header);
+        s->window.header.active    = nk_style_item_color(header);
+        s->window.header.label_normal = accent;
+        s->window.header.label_hover  = accent;
+        s->window.header.label_active = accent;
+
+        /* Text */
+        s->text.color = text;
+
+        /* Buttons */
+        s->button.normal         = nk_style_item_color(btnNorm);
+        s->button.hover          = nk_style_item_color(btnHover);
+        s->button.active         = nk_style_item_color(accent);
+        s->button.border_color   = border;
+        s->button.text_background= btnNorm;
+        s->button.text_normal    = text;
+        s->button.text_hover     = accent;
+        s->button.text_active    = darkText;
+        s->button.border         = 1.0f;
+        s->button.rounding       = 0.0f;
+        s->button.padding        = nk_vec2(4, 2);
+
+        /* Checkbox */
+        s->checkbox.normal       = nk_style_item_color(btnNorm);
+        s->checkbox.hover        = nk_style_item_color(btnHover);
+        s->checkbox.active       = nk_style_item_color(accent);
+        s->checkbox.border_color = border;
+        s->checkbox.text_normal  = text;
+        s->checkbox.text_hover   = accent;
+        s->checkbox.text_active  = text;
+        s->checkbox.cursor_normal= nk_style_item_color(accent);
+        s->checkbox.cursor_hover = nk_style_item_color(accent);
+        s->checkbox.border       = 1.0f;
+
+        /* Option (radio) */
+        s->option.normal         = nk_style_item_color(btnNorm);
+        s->option.hover          = nk_style_item_color(btnHover);
+        s->option.active         = nk_style_item_color(accent);
+        s->option.border_color   = border;
+        s->option.text_normal    = text;
+        s->option.text_hover     = accent;
+        s->option.text_active    = text;
+        s->option.cursor_normal  = nk_style_item_color(accent);
+        s->option.cursor_hover   = nk_style_item_color(accent);
+        s->option.border         = 1.0f;
+
+        /* Edit fields */
+        s->edit.normal           = nk_style_item_color(editBg);
+        s->edit.hover            = nk_style_item_color(editBg);
+        s->edit.active           = nk_style_item_color(editBg);
+        s->edit.border_color     = border;
+        s->edit.cursor_normal    = accent;
+        s->edit.cursor_hover     = accent;
+        s->edit.cursor_text_normal = darkText;
+        s->edit.cursor_text_hover  = darkText;
+        s->edit.text_normal      = text;
+        s->edit.text_hover       = text;
+        s->edit.text_active      = text;
+        s->edit.selected_normal  = accentDk;
+        s->edit.selected_hover   = accentDk;
+        s->edit.selected_text_normal = text;
+        s->edit.selected_text_hover  = text;
+        s->edit.border           = 1.0f;
+        s->edit.padding          = nk_vec2(4, 2);
+
+        /* Scrollbar */
+        s->scrollv.normal        = nk_style_item_color(btnNorm);
+        s->scrollv.hover         = nk_style_item_color(btnHover);
+        s->scrollv.active        = nk_style_item_color(btnHover);
+        s->scrollv.cursor_normal = nk_style_item_color(accentDk);
+        s->scrollv.cursor_hover  = nk_style_item_color(accent);
+        s->scrollv.cursor_active = nk_style_item_color(accent);
+        s->scrollv.border_color  = border;
+        s->scrollv.cursor_border_color = border;
+        s->scrollv.border        = 1.0f;
+        s->scrollv.rounding      = 0.0f;
+
+        s->scrollh = s->scrollv;
+
+        /* Selectable (used in lists) */
+        s->selectable.normal         = nk_style_item_color(panel);
+        s->selectable.hover          = nk_style_item_color(btnHover);
+        s->selectable.pressed        = nk_style_item_color(accent);
+        s->selectable.normal_active  = nk_style_item_color(accentDk);
+        s->selectable.hover_active   = nk_style_item_color(accent);
+        s->selectable.pressed_active = nk_style_item_color(accent);
+        s->selectable.text_normal    = text;
+        s->selectable.text_hover     = accent;
+        s->selectable.text_pressed   = darkText;
+        s->selectable.text_normal_active  = text;
+        s->selectable.text_hover_active   = darkText;
+        s->selectable.text_pressed_active = darkText;
+
+        /* Progress bar */
+        s->progress.normal       = nk_style_item_color(btnNorm);
+        s->progress.hover        = nk_style_item_color(btnNorm);
+        s->progress.active       = nk_style_item_color(btnNorm);
+        s->progress.cursor_normal= nk_style_item_color(accent);
+        s->progress.cursor_hover = nk_style_item_color(accent);
+        s->progress.cursor_active= nk_style_item_color(accent);
+        s->progress.border_color = border;
+        s->progress.border       = 1.0f;
+        s->progress.rounding     = 0.0f;
+
+        (void)bg; (void)zero;
     }
 
     InitDevice(&device);
@@ -2098,22 +2234,24 @@ int main(int argc, char **argv)
         s = SDL_GetPerformanceCounter();
 
         /* GUI */
-        nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
         SDL_GetWindowSize(win, &win_width, &win_height);
-        UiLayout layout = ComputeUiLayout(win_width, win_height);
 
-        DrawMainPanels(ctx, flags, win, &device, &layout, dt, d1, d2, &initialCounter);
-
-        DrawInstructionsPanel(ctx, flags, &layout);
-
-        
-        DrawToolsTabs(ctx, flags, &layout);
-        if (debugMode)
+        /* Forward mouse state to Clay before layout pass */
         {
-            if (app.ui.debugToolTab == 0) DrawMemoryTool(ctx, flags, layout.toolsView);
-            else if (app.ui.debugToolTab == 1) DrawVideoTool(ctx, flags, layout.toolsView, &device, &ctx->input);
-            else if (app.ui.debugToolTab == 2) DrawAudioTool(ctx, flags, layout.toolsView);
+            int mx, my;
+            Uint32 mbtn = SDL_GetMouseState(&mx, &my);
+            bool mouseDown = (mbtn & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
+            Clay_SetPointerState(
+                (Clay_Vector2){ (float)mx, (float)my },
+                mouseDown);
+            Clay_UpdateScrollContainers(false,
+                (Clay_Vector2){ 0, 0 },
+                dt);
         }
+
+        Clay_SetLayoutDimensions((Clay_Dimensions){ (float)win_width, (float)win_height });
+        Clay_RenderCommandArray clayCmds = BuildClayLayout(win_width, win_height, dt);
+        Clay_NkRender(ctx, clayCmds, win_width, win_height, &device, win, dt, d1, d2, &initialCounter);
 
 
         
