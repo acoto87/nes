@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-u8 ReadCPUU8(NES *nes, u16 address);
+u8 ReadCPUU8(NES* nes, u16 address);
 
 // (CPU_FREQ / 240) = (1789773 / 240) = 7457.38
 // Frequency of FrameCounter
@@ -30,7 +30,7 @@ extern f32 tndTable[203];
             PULSE CHANNEL
 **************************************/
 
-static inline void WriteAPUPulseEnvelope(APUPulse *pulse, u8 value)
+static inline void WriteAPUPulseEnvelope(APUPulse* pulse, u8 value)
 {
     pulse->dutyMode = (value >> 6) & 3;
     pulse->lengthEnabled = !((value >> 5) & 1);
@@ -41,7 +41,7 @@ static inline void WriteAPUPulseEnvelope(APUPulse *pulse, u8 value)
     pulse->envelopeStart = TRUE;
 }
 
-static inline void WriteAPUPulseSweep(APUPulse *pulse, u8 value)
+static inline void WriteAPUPulseSweep(APUPulse* pulse, u8 value)
 {
     pulse->sweepEnabled = (value >> 7) & 1;
     pulse->sweepPeriod = ((value >> 4) & 7) + 1;
@@ -50,15 +50,14 @@ static inline void WriteAPUPulseSweep(APUPulse *pulse, u8 value)
     pulse->sweepReload = TRUE;
 }
 
-static inline void WriteAPUPulseTimer(APUPulse *pulse, u8 value)
+static inline void WriteAPUPulseTimer(APUPulse* pulse, u8 value)
 {
     pulse->timerPeriod = (pulse->timerPeriod & 0xFF00) | (u16)value;
 }
 
-static inline void WriteAPUPulseLength(APUPulse *pulse, u8 value)
+static inline void WriteAPUPulseLength(APUPulse* pulse, u8 value)
 {
-    if (pulse->enabled)
-    {
+    if (pulse->enabled) {
         pulse->lengthValue = lengthTable[value >> 3];
         pulse->timerPeriod = (pulse->timerPeriod & 0x00FF) | ((u16)(value & 7) << 8);
         pulse->envelopeStart = TRUE;
@@ -70,22 +69,21 @@ static inline void WriteAPUPulseLength(APUPulse *pulse, u8 value)
             TRIANGLE CHANNEL
 **************************************/
 
-static inline void WriteAPUTriangleLinear(APUTriangle *triangle, u8 value)
+static inline void WriteAPUTriangleLinear(APUTriangle* triangle, u8 value)
 {
     triangle->linearEnabled = !((value >> 7) & 1);
     triangle->lengthEnabled = !((value >> 7) & 1);
     triangle->linearPeriod = value & 0x7F;
 }
 
-static inline void WriteAPUTriangleTimer(APUTriangle *triangle, u8 value)
+static inline void WriteAPUTriangleTimer(APUTriangle* triangle, u8 value)
 {
     triangle->timerPeriod = (triangle->timerPeriod & 0xFF00) | (u16)value;
 }
 
-static inline void WriteAPUTriangleLength(APUTriangle *triangle, u8 value)
+static inline void WriteAPUTriangleLength(APUTriangle* triangle, u8 value)
 {
-    if (triangle->enabled)
-    {
+    if (triangle->enabled) {
         triangle->lengthValue = lengthTable[value >> 3];
         triangle->timerPeriod = (triangle->timerPeriod & 0x00FF) | ((u16)(value & 7) << 8);
         triangle->timerValue = triangle->timerPeriod;
@@ -97,7 +95,7 @@ static inline void WriteAPUTriangleLength(APUTriangle *triangle, u8 value)
             NOISE CHANNEL
 **************************************/
 
-static inline void WriteAPUNoiseEnvelope(APUNoise *noise, u8 value)
+static inline void WriteAPUNoiseEnvelope(APUNoise* noise, u8 value)
 {
     noise->lengthEnabled = !((value >> 5) & 1);
     noise->constantVolume = value & 15;
@@ -107,16 +105,15 @@ static inline void WriteAPUNoiseEnvelope(APUNoise *noise, u8 value)
     noise->envelopeStart = TRUE;
 }
 
-static inline void WriteAPUNoisePeriod(APUNoise *noise, u8 value)
+static inline void WriteAPUNoisePeriod(APUNoise* noise, u8 value)
 {
     noise->timerMode = (value >> 7) & 1;
     noise->timerPeriod = noiseTable[value & 0x0F];
 }
 
-static inline void WriteAPUNoiseLength(APUNoise *noise, u8 value)
+static inline void WriteAPUNoiseLength(APUNoise* noise, u8 value)
 {
-    if (noise->enabled)
-    {
+    if (noise->enabled) {
         noise->lengthValue = lengthTable[value >> 3];
         noise->envelopeStart = TRUE;
     }
@@ -126,31 +123,31 @@ static inline void WriteAPUNoiseLength(APUNoise *noise, u8 value)
             DMC CHANNEL
 **************************************/
 
-static inline void WriteAPUDMCControl(APUDMC *dmc, u8 value)
+static inline void WriteAPUDMCControl(APUDMC* dmc, u8 value)
 {
     dmc->irq = (value & 0x80) >> 7;
     dmc->loop = (value & 0x40) >> 6;
     dmc->timerPeriod = dmcTable[value & 0x0F];
 }
 
-static inline void WriteAPUDMCValue(APUDMC *dmc, u8 value)
+static inline void WriteAPUDMCValue(APUDMC* dmc, u8 value)
 {
     dmc->value = (value & 0x7F);
 }
 
-static inline void WriteAPUDMCAddress(APUDMC *dmc, u8 value)
+static inline void WriteAPUDMCAddress(APUDMC* dmc, u8 value)
 {
     // Sample address = %11AAAAAA.AA000000
     dmc->sampleAddress = 0xC000 + (u16)value * 64;
 }
 
-static inline void WriteAPUDMCLength(APUDMC *dmc, u8 value)
+static inline void WriteAPUDMCLength(APUDMC* dmc, u8 value)
 {
     // Sample length = %0000LLLL.LLLL0001
     dmc->sampleLength = (u16)value * 16 + 1;
 }
 
-static inline void RestartDMC(APUDMC *dmc)
+static inline void RestartDMC(APUDMC* dmc)
 {
     dmc->currentAddress = dmc->sampleAddress;
     dmc->currentLength = dmc->sampleLength;
@@ -160,44 +157,37 @@ static inline void RestartDMC(APUDMC *dmc)
             STATUS AND FRAMECOUNTER CHANNEL
 ********************************************************/
 
-static inline u8 ReadAPUStatus(NES *nes)
+static inline u8 ReadAPUStatus(NES* nes)
 {
-    APU *apu = &nes->apu;
+    APU* apu = &nes->apu;
 
     u8 result = 0;
 
-    if (apu->pulse1.lengthValue > 0)
-    {
+    if (apu->pulse1.lengthValue > 0) {
         result |= 1;
     }
 
-    if (apu->pulse2.lengthValue > 0)
-    {
+    if (apu->pulse2.lengthValue > 0) {
         result |= 2;
     }
 
-    if (apu->triangle.lengthValue)
-    {
+    if (apu->triangle.lengthValue) {
         result |= 4;
     }
 
-    if (apu->noise.lengthValue > 0)
-    {
+    if (apu->noise.lengthValue > 0) {
         result |= 8;
     }
 
-    if (apu->dmc.value > 0)
-    {
+    if (apu->dmc.value > 0) {
         result |= 16;
     }
 
-    if (apu->inhibitIRQ)
-    {
+    if (apu->inhibitIRQ) {
         result |= 0x40;
     }
 
-    if (apu->dmcIRQ)
-    {
+    if (apu->dmcIRQ) {
         result |= 0x80;
     }
 
@@ -206,57 +196,49 @@ static inline u8 ReadAPUStatus(NES *nes)
     return result;
 }
 
-static inline void WriteAPUStatus(NES *nes, u8 value)
+static inline void WriteAPUStatus(NES* nes, u8 value)
 {
-    APU *apu = &nes->apu;
+    APU* apu = &nes->apu;
 
     apu->pulse1.enabled = (value & 1);
-    if (!apu->pulse1.enabled)
-    {
+    if (!apu->pulse1.enabled) {
         apu->pulse1.lengthValue = 0;
     }
 
     apu->pulse2.enabled = (value & 2) >> 1;
-    if (!apu->pulse2.enabled)
-    {
+    if (!apu->pulse2.enabled) {
         apu->pulse2.lengthValue = 0;
     }
 
     apu->triangle.enabled = (value & 4) >> 1;
-    if (!apu->triangle.enabled)
-    {
+    if (!apu->triangle.enabled) {
         apu->triangle.lengthValue = 0;
     }
 
     apu->noise.enabled = (value & 8) >> 1;
-    if (!apu->noise.enabled)
-    {
+    if (!apu->noise.enabled) {
         apu->noise.lengthValue = 0;
     }
 
     apu->dmc.enabled = (value & 16) >> 1;
-    if (!apu->dmc.enabled)
-    {
+    if (!apu->dmc.enabled) {
         apu->dmc.currentLength = 0;
-    }
-    else if (!apu->dmc.currentLength)
-    {
+    } else if (!apu->dmc.currentLength) {
         RestartDMC(&apu->dmc);
     }
 
     apu->dmcIRQ = FALSE;
 }
 
-void ResetAPU(NES *nes);
-void PowerAPU(NES *nes);
-void InitAPU(NES *nes);
-void StepAPU(NES *nes);
-void WriteAPUFrameCounter(NES *nes, u8 value);
+void ResetAPU(NES* nes);
+void PowerAPU(NES* nes);
+void InitAPU(NES* nes);
+void StepAPU(NES* nes);
+void WriteAPUFrameCounter(NES* nes, u8 value);
 
-static inline void StepAPUCycles(NES *nes, s32 cycles)
+static inline void StepAPUCycles(NES* nes, s32 cycles)
 {
-    for (s32 i = 0; i < cycles; ++i)
-    {
+    for (s32 i = 0; i < cycles; ++i) {
         StepAPU(nes);
     }
 }

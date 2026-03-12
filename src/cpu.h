@@ -82,9 +82,9 @@
 // see https://wiki.nesdev.com/w/index.php/Clock_rate
 #define CPU_FREQ 1789773
 
-u8 ReadCPUU8(NES *nes, u16 address);
+u8 ReadCPUU8(NES* nes, u16 address);
 
-static inline u16 ReadCPUU16(NES *nes, u16 address)
+static inline u16 ReadCPUU16(NES* nes, u16 address)
 {
     // read in little-endian mode
     u8 lo = ReadCPUU8(nes, address);
@@ -92,9 +92,9 @@ static inline u16 ReadCPUU16(NES *nes, u16 address)
     return (hi << 8) | lo;
 }
 
-void WriteCPUU8(NES *nes, u16 address, u8 value);
+void WriteCPUU8(NES* nes, u16 address, u8 value);
 
-static inline void WriteCPUU16(NES *nes, u16 address, u16 value)
+static inline void WriteCPUU16(NES* nes, u16 address, u16 value)
 {
     // write in little-endian mode
     u8 lo = value & 0xFF;
@@ -103,15 +103,15 @@ static inline void WriteCPUU16(NES *nes, u16 address, u16 value)
     WriteCPUU8(nes, address + 1, hi);
 }
 
-static inline void PushStackU8(NES *nes, u8 value)
+static inline void PushStackU8(NES* nes, u8 value)
 {
-    CPU *cpu = &nes->cpu;
+    CPU* cpu = &nes->cpu;
     u8 sp = cpu->sp;
     WriteCPUU8(nes, sp + 0x100, value);
     cpu->sp = sp > 0 ? sp - 1 : 0xFF;
 }
 
-static inline void PushStackU16(NES *nes, u16 value)
+static inline void PushStackU16(NES* nes, u16 value)
 {
     u8 lo = value & 0xFF;
     u8 hi = (value & 0xFF00) >> 8;
@@ -119,16 +119,16 @@ static inline void PushStackU16(NES *nes, u16 value)
     PushStackU8(nes, lo);
 }
 
-static inline u8 PopStackU8(NES *nes)
+static inline u8 PopStackU8(NES* nes)
 {
-    CPU *cpu = &nes->cpu;
+    CPU* cpu = &nes->cpu;
     u8 sp = cpu->sp + 1;
     u8 v = ReadCPUU8(nes, sp + 0x100);
     cpu->sp = sp;
     return v;
 }
 
-static inline u16 PopStackU16(NES *nes)
+static inline u16 PopStackU16(NES* nes)
 {
     u8 lo = PopStackU8(nes);
     u8 hi = PopStackU8(nes);
@@ -136,46 +136,46 @@ static inline u16 PopStackU16(NES *nes)
 }
 
 #define GetCarry(cpu) GetBitFlag(cpu->p, CARRY_FLAG)
-#define SetCarry(cpu, v) \
-    if (v) SetBitFlag(&cpu->p, CARRY_FLAG); \
-    else   ClearBitFlag(&cpu->p, CARRY_FLAG);
+#define SetCarry(cpu, v)                                                                                               \
+    if (v) SetBitFlag(&cpu->p, CARRY_FLAG);                                                                            \
+    else ClearBitFlag(&cpu->p, CARRY_FLAG);
 
 #define GetZero(cpu) GetBitFlag(cpu->p, ZERO_FLAG)
-#define SetZero(cpu, v) \
-    if (v) SetBitFlag(&cpu->p, ZERO_FLAG); \
-    else   ClearBitFlag(&cpu->p, ZERO_FLAG);
+#define SetZero(cpu, v)                                                                                                \
+    if (v) SetBitFlag(&cpu->p, ZERO_FLAG);                                                                             \
+    else ClearBitFlag(&cpu->p, ZERO_FLAG);
 
 #define GetInterrupt(cpu) GetBitFlag(cpu->p, INTERRUPT_FLAG)
-#define SetInterrupt(cpu, v) \
-    if (v) SetBitFlag(&cpu->p, INTERRUPT_FLAG); \
-    else   ClearBitFlag(&cpu->p, INTERRUPT_FLAG);
+#define SetInterrupt(cpu, v)                                                                                           \
+    if (v) SetBitFlag(&cpu->p, INTERRUPT_FLAG);                                                                        \
+    else ClearBitFlag(&cpu->p, INTERRUPT_FLAG);
 
 #define GetDecimal(cpu) GetBitFlag(cpu->p, DECIMAL_FLAG)
-#define SetDecimal(cpu, v) \
-    if (v) SetBitFlag(&cpu->p, DECIMAL_FLAG); \
-    else   ClearBitFlag(&cpu->p, DECIMAL_FLAG);
+#define SetDecimal(cpu, v)                                                                                             \
+    if (v) SetBitFlag(&cpu->p, DECIMAL_FLAG);                                                                          \
+    else ClearBitFlag(&cpu->p, DECIMAL_FLAG);
 
 #define GetBreak(cpu) GetBitFlag(cpu->p, BREAK_FLAG)
-#define SetBreak(cpu, v) \
-    if (v) SetBitFlag(&cpu->p, BREAK_FLAG); \
-    else   ClearBitFlag(&cpu->p, BREAK_FLAG);
+#define SetBreak(cpu, v)                                                                                               \
+    if (v) SetBitFlag(&cpu->p, BREAK_FLAG);                                                                            \
+    else ClearBitFlag(&cpu->p, BREAK_FLAG);
 
 #define GetOverflow(cpu) GetBitFlag(cpu->p, OVERFLOW_FLAG)
-#define SetOverflow(cpu, v) \
-    if (v) SetBitFlag(&cpu->p, OVERFLOW_FLAG); \
-    else   ClearBitFlag(&cpu->p, OVERFLOW_FLAG);
+#define SetOverflow(cpu, v)                                                                                            \
+    if (v) SetBitFlag(&cpu->p, OVERFLOW_FLAG);                                                                         \
+    else ClearBitFlag(&cpu->p, OVERFLOW_FLAG);
 
 #define GetNegative(cpu) GetBitFlag(cpu->p, NEGATIVE_FLAG)
-#define SetNegative(cpu, v) \
-    if (v) SetBitFlag(&cpu->p, NEGATIVE_FLAG); \
-    else   ClearBitFlag(&cpu->p, NEGATIVE_FLAG);
+#define SetNegative(cpu, v)                                                                                            \
+    if (v) SetBitFlag(&cpu->p, NEGATIVE_FLAG);                                                                         \
+    else ClearBitFlag(&cpu->p, NEGATIVE_FLAG);
 
-void ResetCPU(NES *nes);
-void PowerCPU(NES *nes);
-void InitCPU(NES *nes);
-CPUStep StepCPU(NES *nes);
+void ResetCPU(NES* nes);
+void PowerCPU(NES* nes);
+void InitCPU(NES* nes);
+CPUStep StepCPU(NES* nes);
 
-static inline void StepCPUCycles(NES *nes, s32 cycles)
+static inline void StepCPUCycles(NES* nes, s32 cycles)
 {
     StepPPUCycles(nes, cycles);
     StepAPUCycles(nes, cycles);

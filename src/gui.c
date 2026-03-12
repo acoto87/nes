@@ -2,9 +2,9 @@
 
 #include "gui.h"
 
-void InitGUI(NES *nes)
+void InitGUI(NES* nes)
 {
-    GUI *gui = &nes->gui;
+    GUI* gui = &nes->gui;
 
     gui->width = PPU_SCREEN_WIDTH;
     gui->height = PPU_SCREEN_HEIGHT;
@@ -12,9 +12,9 @@ void InitGUI(NES *nes)
     ASSERT(sizeof(gui->pixels) == gui->width * gui->height * sizeof(Color));
 }
 
-void ResetGUI(NES *nes)
+void ResetGUI(NES* nes)
 {
-    GUI *gui = &nes->gui;
+    GUI* gui = &nes->gui;
 
     gui->width = PPU_SCREEN_WIDTH;
     gui->height = PPU_SCREEN_HEIGHT;
@@ -24,7 +24,7 @@ void ResetGUI(NES *nes)
     ASSERT(sizeof(gui->pixels) == gui->width * gui->height * sizeof(Color));
 }
 
-void SetGUIPixel(GUI *gui, u32 x, u32 y, Color color)
+void SetGUIPixel(GUI* gui, u32 x, u32 y, Color color)
 {
     ASSERT(x >= 0 && x < gui->width);
     ASSERT(y >= 0 && y < gui->height);

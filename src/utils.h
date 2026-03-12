@@ -5,7 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
+#define ASSERT(expression)                                                                                             \
+    if (!(expression)) {                                                                                               \
+        *(int*)0 = 0;                                                                                                  \
+    }
 
 #define KILOBYTES(x) ((x) * 1024)
 #define MEGABYTES(x) ((x) * 1024 * 1024)
@@ -54,14 +57,13 @@ typedef u16 b16;
 typedef u32 b32;
 typedef u64 b64;
 
-#define TRUE  1
+#define TRUE 1
 #define FALSE 0
 
 typedef size_t size;
 
 typedef struct Color Color;
-struct Color
-{
+struct Color {
     u8 r, g, b, a;
 };
 
@@ -81,19 +83,18 @@ static inline void* Allocate(size size)
     return malloc(size);
 }
 
-static inline void Free(void *address)
+static inline void Free(void* address)
 {
     free(address);
 }
 
 typedef struct LoadedFile LoadedFile;
-struct LoadedFile
-{
+struct LoadedFile {
     u64 size;
-    u8 *contents;
+    u8* contents;
 };
 
-static inline u64 fsize(FILE *file)
+static inline u64 fsize(FILE* file)
 {
     u64 pos = ftell(file);
     fseek(file, 0, SEEK_END);
@@ -102,13 +103,12 @@ static inline u64 fsize(FILE *file)
     return size;
 }
 
-static inline LoadedFile LoadEntireFile(char *filePath)
+static inline LoadedFile LoadEntireFile(char* filePath)
 {
     LoadedFile file = {0};
 
-    FILE *in = fopen(filePath, "rb");
-    if (in)
-    {
+    FILE* in = fopen(filePath, "rb");
+    if (in) {
         file.size = fsize(in);
         file.contents = (u8*)Allocate(file.size);
         fread(file.contents, 1, file.size, in);
@@ -119,11 +119,10 @@ static inline LoadedFile LoadEntireFile(char *filePath)
 }
 
 typedef struct LoadedBitmap LoadedBitmap;
-struct LoadedBitmap
-{
+struct LoadedBitmap {
     u32 width, height;
     s32 xoffset, yoffset;
-    Color *pixels;
+    Color* pixels;
 };
 
 #endif // UTILS_H

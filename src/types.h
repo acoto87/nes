@@ -13,23 +13,20 @@
 #define APU_BUFFER_LENGTH 1024
 
 typedef struct Memory Memory;
-struct Memory
-{
+struct Memory {
     b32 created;
     u32 length;
-    u8 *bytes;
+    u8* bytes;
 };
 
-typedef enum MirrorType
-{
+typedef enum MirrorType {
     MIRROR_HORIZONTAL,
     MIRROR_VERTICAL,
     MIRROR_FOUR,
 } MirrorType;
 
 typedef struct CartridgeHeader CartridgeHeader;
-struct CartridgeHeader
-{
+struct CartridgeHeader {
     // Constant $4E $45 $53 $1A ("NES" followed by $1A)
     u8 nesStr[4];
 
@@ -69,8 +66,7 @@ struct CartridgeHeader
 };
 
 typedef struct Cartridge Cartridge;
-struct Cartridge
-{
+struct Cartridge {
     MirrorType mirrorType;
     b32 hasBatteryPack;
     u8 mapper;
@@ -84,50 +80,47 @@ struct Cartridge
 
     u32 prgBanks;
     u32 prgSizeInBytes;
-    u8 *prg;
+    u8* prg;
 
     u32 chrBanks;
     u32 chrSizeInBytes;
-    u8 *chr;
+    u8* chr;
 };
 
-typedef enum CPUAddressingMode
-{
-    AM_NON = 0,     // None
+typedef enum CPUAddressingMode {
+    AM_NON = 0, // None
 
-    AM_IMM = 1,     // Immediate                #$00
+    AM_IMM = 1, // Immediate                #$00
 
-    AM_ABS = 2,     // Absolute                 $0000
-    AM_ABX = 3,     //                          $0000, X
-    AM_ABY = 4,     //                          $0000, Y
+    AM_ABS = 2, // Absolute                 $0000
+    AM_ABX = 3, //                          $0000, X
+    AM_ABY = 4, //                          $0000, Y
 
-    AM_ZPA = 5,     // Zero-Page-Absolute       $00
-    AM_ZPX = 6,     // Zero-Page-Indexed        $00, X
-    AM_ZPY = 7,     // Zero-Page-Indexed        $00, Y
+    AM_ZPA = 5, // Zero-Page-Absolute       $00
+    AM_ZPX = 6, // Zero-Page-Indexed        $00, X
+    AM_ZPY = 7, // Zero-Page-Indexed        $00, Y
 
-    AM_IND = 8,     // Indirect                 ($0000)
-    AM_IZX = 9,     // Pre-Indexed-Indirect     ($00, X)
-    AM_IZY = 10,    // Post-Indexed-Indirect    ($00), Y
+    AM_IND = 8,  // Indirect                 ($0000)
+    AM_IZX = 9,  // Pre-Indexed-Indirect     ($00, X)
+    AM_IZY = 10, // Post-Indexed-Indirect    ($00), Y
 
-    AM_IMP = 11,     // Implied
-    AM_ACC = 12,     // Accumulator
+    AM_IMP = 11, // Implied
+    AM_ACC = 12, // Accumulator
 
-    AM_REL = 13     // Relative                 $0000
+    AM_REL = 13 // Relative                 $0000
 } CPUAddressingMode;
 
-typedef enum CPURegister
-{
-    CPU_NR = 0,     // No register
-    CPU_AR = 1,     // Register accumulator
-    CPU_XR = 2,     // Register x
-    CPU_YR = 3,     // register y
-    CPU_ST = 4,     // Register status
-    CPU_PC = 5,     // Register program counter
-    CPU_SP = 6      // Register stack pointer
+typedef enum CPURegister {
+    CPU_NR = 0, // No register
+    CPU_AR = 1, // Register accumulator
+    CPU_XR = 2, // Register x
+    CPU_YR = 3, // register y
+    CPU_ST = 4, // Register status
+    CPU_PC = 5, // Register program counter
+    CPU_SP = 6  // Register stack pointer
 } CPURegister;
 
-typedef enum CPUInstructionSet
-{
+typedef enum CPUInstructionSet {
     CPU_ADC, //  Add Memory to Accumulator with Carry
     CPU_AND, //  "AND" Memory with Accumulator
     CPU_ASL, //  Shift Left One Bit(Memory or Accumulator)
@@ -223,8 +216,7 @@ typedef enum CPUInstructionSet
 } CPUInstructionSet;
 
 typedef struct CPUInstruction CPUInstruction;
-struct CPUInstruction
-{
+struct CPUInstruction {
     u8 opcode;
     CPUInstructionSet instruction;
     CPUAddressingMode addressingMode;
@@ -234,8 +226,7 @@ struct CPUInstruction
     b32 pageCycles;
 };
 
-typedef enum CPUInterrupt
-{
+typedef enum CPUInterrupt {
     CPU_INTERRUPT_NON = 0,
     CPU_INTERRUPT_NMI = 1,
     CPU_INTERRUPT_IRQ = 2,
@@ -243,47 +234,45 @@ typedef enum CPUInterrupt
 } CPUInterrupt;
 
 typedef struct CPU CPU;
-struct CPU
-{
-    u8 a;                       // accumulator register
-    u8 x;                       // x register
-    u8 y;                       // y register
-    u8 sp;                      // stack pointer
-    u8 p;                       // status register
-    u16 pc;                     // program counter
-    u64 cycles;                 // number of cycles
-    u32 waitCycles;             // number of cycles to stall
-    CPUInterrupt interrupt;     // interrupt type to perform
+struct CPU {
+    u8 a;                   // accumulator register
+    u8 x;                   // x register
+    u8 y;                   // y register
+    u8 sp;                  // stack pointer
+    u8 p;                   // status register
+    u16 pc;                 // program counter
+    u64 cycles;             // number of cycles
+    u32 waitCycles;         // number of cycles to stall
+    CPUInterrupt interrupt; // interrupt type to perform
 };
 
 typedef struct PPU PPU;
-struct PPU
-{
-    u32 cycle;                  // PPU current scanline cycles count,
-                                // 341 total,
-                                // (0) idle,
-                                // (1-256) fetch background,
-                                // (257-320) fetch sprites,
-                                // (321-336) pre-fetch first two tiles of next scanline,
-                                // (337-340) dummy fetch
-    s32 scanline;               // PPU current scanline,
-                                // 262 total,
-                                // (-1, 261) pre-render,
-                                // (0-239) visible,
-                                // (240) post,
-                                // (241-260) vblank
-    u64 frameCount;             // PPU frame counter
-    u64 totalCycles;            // PPU total cycles count
+struct PPU {
+    u32 cycle;       // PPU current scanline cycles count,
+                     // 341 total,
+                     // (0) idle,
+                     // (1-256) fetch background,
+                     // (257-320) fetch sprites,
+                     // (321-336) pre-fetch first two tiles of next scanline,
+                     // (337-340) dummy fetch
+    s32 scanline;    // PPU current scanline,
+                     // 262 total,
+                     // (-1, 261) pre-render,
+                     // (0-239) visible,
+                     // (240) post,
+                     // (241-260) vblank
+    u64 frameCount;  // PPU frame counter
+    u64 totalCycles; // PPU total cycles count
 
-    u8 control;                 // PPU Control Register 1 (0x2000)
-    u8 mask;                    // PPU Mask Register 2 (0x2001)
-    u8 status;                  // PPU Status Register (0x2002)
-    u8 oamAddress;              // OAM Read/Write Address (0x2003)
-    u8 oamData;                 // OAM Data Read/Write (0x2004)
-    u8 scroll;                  // Scroll Position (0x2005)
-    u8 address;                 // PPU Read/Write address (0x2006)
-    u8 data;                    // PPU Data Read/Write (0x2007)
-    u8 oamDma;                  // OAM DMA high address (0x4014)
+    u8 control;    // PPU Control Register 1 (0x2000)
+    u8 mask;       // PPU Mask Register 2 (0x2001)
+    u8 status;     // PPU Status Register (0x2002)
+    u8 oamAddress; // OAM Read/Write Address (0x2003)
+    u8 oamData;    // OAM Data Read/Write (0x2004)
+    u8 scroll;     // Scroll Position (0x2005)
+    u8 address;    // PPU Read/Write address (0x2006)
+    u8 data;       // PPU Data Read/Write (0x2007)
+    u8 oamDma;     // OAM DMA high address (0x4014)
 
     // NMI flags
     b32 suppressNmi;
@@ -291,10 +280,10 @@ struct PPU
     u8 delayNmi;*/
 
     // PPU registers
-    u16 v;  // current vram address (15 bit)
-    u16 t;  // temporary vram address (15 bit)
-    u8 x;   // fine x scroll (3 bit)
-    u8 w;   // write toggle (1 bit)
+    u16 v; // current vram address (15 bit)
+    u16 t; // temporary vram address (15 bit)
+    u8 x;  // fine x scroll (3 bit)
+    u8 w;  // write toggle (1 bit)
 
     // background temporary variables
     u8 nameTableByte;
@@ -308,8 +297,7 @@ struct PPU
 };
 
 typedef struct APUPulse APUPulse;
-struct APUPulse
-{
+struct APUPulse {
     b32 globalEnabled;
 
     b32 enabled;
@@ -345,8 +333,7 @@ struct APUPulse
 };
 
 typedef struct APUTriangle APUTriangle;
-struct APUTriangle
-{
+struct APUTriangle {
     b32 globalEnabled;
 
     b32 enabled;
@@ -369,8 +356,7 @@ struct APUTriangle
 };
 
 typedef struct APUNoise APUNoise;
-struct APUNoise
-{
+struct APUNoise {
     b32 globalEnabled;
 
     b32 enabled;
@@ -398,8 +384,7 @@ struct APUNoise
 };
 
 typedef struct APUDMC APUDMC;
-struct APUDMC
-{
+struct APUDMC {
     b32 globalEnabled;
 
     b32 enabled;
@@ -425,8 +410,7 @@ struct APUDMC
 };
 
 typedef struct APU APU;
-struct APU
-{
+struct APU {
     APUPulse pulse1;
     APUPulse pulse2;
     APUTriangle triangle;
@@ -448,16 +432,14 @@ struct APU
 };
 
 typedef struct Controller Controller;
-struct Controller
-{
+struct Controller {
     u8 state;
     u8 index;
     u8 strobe;
 };
 
 typedef struct GUI GUI;
-struct GUI
-{
+struct GUI {
     u32 width;
     u32 height;
     Color pixels[256 * 240];
@@ -471,8 +453,7 @@ struct GUI
 };
 
 typedef struct NES NES;
-struct NES
-{
+struct NES {
     Memory cpuMemory;
     Memory ppuMemory;
     Memory oamMemory;
@@ -487,19 +468,18 @@ struct NES
 
     GUI gui;
 
-    void(*mapperInit)(NES *nes);
-    u8(*mapperReadU8)(NES *nes, u16 address);
-    void(*mapperWriteU8)(NES *nes, u16 address, u8 value);
-    void(*mapperSave)(NES *nes, FILE *file);
-    void(*mapperLoad)(NES *nes, FILE *file);
+    void (*mapperInit)(NES* nes);
+    u8 (*mapperReadU8)(NES* nes, u16 address);
+    void (*mapperWriteU8)(NES* nes, u16 address, u8 value);
+    void (*mapperSave)(NES* nes, FILE* file);
+    void (*mapperLoad)(NES* nes, FILE* file);
     void* mapperData;
 };
 
 typedef struct CPUStep CPUStep;
-struct CPUStep
-{
+struct CPUStep {
     u32 cycles;
-    CPUInstruction *instruction;
+    CPUInstruction* instruction;
 };
 
 #endif // TYPES_H

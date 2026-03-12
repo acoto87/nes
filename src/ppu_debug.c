@@ -1,7 +1,6 @@
 #include "ppu_debug.h"
 
-Color systemPalette[PPU_NUM_SYSTEM_COLOURS] =
-{
+Color systemPalette[PPU_NUM_SYSTEM_COLOURS] = {
     { 0x75, 0x75, 0x75, 0xFF },
     { 0x27, 0x1B, 0x8F, 0xFF },
     { 0x00, 0x00, 0xAB, 0xFF },
@@ -68,8 +67,7 @@ Color systemPalette[PPU_NUM_SYSTEM_COLOURS] =
     { 0x00, 0x00, 0x00, 0xFF }
 };
 
-u8 attributeTableLookup[PPU_VERTICAL_TILES_PER_ATTRIBUTE_BYTE][PPU_HORIZONTAL_TILES_PER_ATTRIBUTE_BYTE] =
-{
+u8 attributeTableLookup[PPU_VERTICAL_TILES_PER_ATTRIBUTE_BYTE][PPU_HORIZONTAL_TILES_PER_ATTRIBUTE_BYTE] = {
     { 0x0, 0x1, 0x4, 0x5 },
     { 0x2, 0x3, 0x6, 0x7 },
     { 0x8, 0x9, 0xC, 0xD },

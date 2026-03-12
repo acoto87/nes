@@ -34,32 +34,31 @@
 #define MASK_OAM_BEHIND_BACKGROUND_ON BIT5_MASK
 #define MASK_OAM_BANK_NUMBER_ON BIT0_MASK
 
-static inline u8 GetSpriteX(Memory *oamMemory, u8 spriteIndex)
+static inline u8 GetSpriteX(Memory* oamMemory, u8 spriteIndex)
 {
     u16 address = (OAM_BYTES_PER_SPRITE * spriteIndex) + OAM_X_BYTE_OFFSET;
     return ReadU8(oamMemory, address);
 }
 
-static inline u8 GetSpriteY(Memory *oamMemory, u8 spriteIndex)
+static inline u8 GetSpriteY(Memory* oamMemory, u8 spriteIndex)
 {
     u16 address = (OAM_BYTES_PER_SPRITE * spriteIndex) + OAM_Y_BYTE_OFFSET;
     return ReadU8(oamMemory, address);
 }
 
-static inline u8 GetBankNumber(Memory *oamMemory, u8 spriteIndex)
+static inline u8 GetBankNumber(Memory* oamMemory, u8 spriteIndex)
 {
     u16 address = (OAM_BYTES_PER_SPRITE * spriteIndex) + OAM_TILE_BYTE_OFFSET;
     u8 data = ReadU8(oamMemory, address);
     return HAS_FLAG(data, MASK_OAM_BANK_NUMBER_ON) ? 1 : 0;
 }
 
-static inline u8 GetTileNumber(Memory *oamMemory, u8 spriteIndex, b32 using8x16)
+static inline u8 GetTileNumber(Memory* oamMemory, u8 spriteIndex, b32 using8x16)
 {
     u16 address = (OAM_BYTES_PER_SPRITE * spriteIndex) + OAM_TILE_BYTE_OFFSET;
     u8 data = ReadU8(oamMemory, address);
 
-    if (!using8x16)
-    {
+    if (!using8x16) {
         return data;
     }
 
@@ -67,13 +66,13 @@ static inline u8 GetTileNumber(Memory *oamMemory, u8 spriteIndex, b32 using8x16)
     return (data >> 1) << 1;
 }
 
-static inline u8 GetAttributes(Memory *oamMemory, u8 spriteIndex)
+static inline u8 GetAttributes(Memory* oamMemory, u8 spriteIndex)
 {
     u16 address = (OAM_BYTES_PER_SPRITE * spriteIndex) + OAM_ATTRIBUTES_BYTE_OFFSET;
     return ReadU8(oamMemory, address);
 }
 
-static inline u8 GetPalette(Memory *oamMemory, u8 spriteIndex)
+static inline u8 GetPalette(Memory* oamMemory, u8 spriteIndex)
 {
     u8 attributes = GetAttributes(oamMemory, spriteIndex);
 
@@ -82,19 +81,19 @@ static inline u8 GetPalette(Memory *oamMemory, u8 spriteIndex)
     return attributes;
 }
 
-static inline b32 IsFlippedHorizontal(Memory *oamMemory, u8 spriteIndex)
+static inline b32 IsFlippedHorizontal(Memory* oamMemory, u8 spriteIndex)
 {
     u8 attributes = GetAttributes(oamMemory, spriteIndex);
     return HAS_FLAG(attributes, MASK_OAM_FLIP_HORIZONTAL_ON);
 }
 
-static inline b32 IsFlippedVertical(Memory *oamMemory, u8 spriteIndex)
+static inline b32 IsFlippedVertical(Memory* oamMemory, u8 spriteIndex)
 {
     u8 attributes = GetAttributes(oamMemory, spriteIndex);
     return HAS_FLAG(attributes, MASK_OAM_FLIP_VERTICAL_ON);
 }
 
-static inline b32 IsBehindBackground(Memory *oamMemory, u8 spriteIndex)
+static inline b32 IsBehindBackground(Memory* oamMemory, u8 spriteIndex)
 {
     u8 attributes = GetAttributes(oamMemory, spriteIndex);
     return HAS_FLAG(attributes, MASK_OAM_BEHIND_BACKGROUND_ON);

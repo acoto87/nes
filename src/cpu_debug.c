@@ -1,7 +1,6 @@
 #include "cpu_debug.h"
 
-CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT] =
-{
+CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT] = {
     { 0x00, CPU_BRK, AM_IMM, CPU_NR, 2, 7, 0 },
     { 0x01, CPU_ORA, AM_IZX, CPU_XR, 2, 6, 0 },
     { 0x02, CPU_KIL, AM_NON, CPU_NR, 0, 0, 0 },
@@ -262,8 +261,7 @@ CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT] =
 
 const char* GetInstructionStr(CPUInstructionSet instruction)
 {
-    switch (instruction)
-    {
+    switch (instruction) {
         case CPU_ADC: return "ADC";
         case CPU_AND: return "AND";
         case CPU_ASL: return "ASL";
@@ -346,8 +344,7 @@ const char* GetInstructionStr(CPUInstructionSet instruction)
 
 const char* GetRegisterStr(CPURegister cpuRegister)
 {
-    switch (cpuRegister)
-    {
+    switch (cpuRegister) {
         case CPU_AR: return "A";
         case CPU_XR: return "X";
         case CPU_YR: return "Y";
