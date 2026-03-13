@@ -67,13 +67,6 @@ struct Color {
     u8 r, g, b, a;
 };
 
-#define RGB(r, g, b) (((r) << 16) | ((g) << 8) | ((b) << 0))
-#define ARGB(a, r, g, b) (((a) << 24) | ((r) << 16) | ((g) << 8) | ((b) << 0))
-#define RGBA(r, g, b, a) (((r) << 24) | ((g) << 16) | ((b) << 8) | ((a) << 0))
-#define BGR(b, g, r) (((b) << 16) | ((g) << 8) | ((r) << 0))
-#define ABGR(a, b, g, r) (((a) << 24) | ((b) << 16) | ((g) << 8) | ((r) << 0))
-#define BGRA(b, g, r, a) (((b) << 24) | ((g) << 16) | ((r) << 8) | ((a) << 0))
-
 #define GetBitFlag(v, f) ((v) & (1 << (f)) ? 1 : 0)
 #define SetBitFlag(v, f) (*(v) = (*(v) | (1 << (f))))
 #define ClearBitFlag(v, f) (*(v) = *(v) ^ (*(v) & (1 << (f))))

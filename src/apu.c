@@ -256,7 +256,7 @@ internal void StepDMCShifter(APUDMC* dmc)
             }
         }
 
-        dmc->shiftRegister >> 1; // NOTE: Is this a bug? Should it be dmc->shiftRegister >>= 1; ?
+        dmc->shiftRegister >>= 1;
         dmc->bitCount--;
     }
 }
@@ -395,29 +395,34 @@ internal void StepAPUFrameCounter(NES* nes)
     }
 }
 
-internal f32 HighPassFilter(f32 sampleValue, s32 freq)
+internal f32 HighPassFilter(AudioFilter* filter, f32 sampleValue)
 {
-    local f32 lastInputSample, lastInputSample2, lastOutputSample;
+    if (!filter->enabled || filter->freq <= 0) return sampleValue;
 
-    f32 a = (f32)freq / ((f32)freq + (f32)APU_SAMPLES_PER_SECOND);
-    f32 newSampleValue = a * (lastOutputSample + lastInputSample - lastInputSample2);
+    f32 dt = 1.0f / (f32)APU_SAMPLES_PER_SECOND;
+    f32 rc = 1.0f / (2.0f * 3.14159265359f * (f32)filter->freq);
+    f32 alpha = rc / (rc + dt);
 
-    lastInputSample2 = lastInputSample;
-    lastInputSample = sampleValue;
-    lastOutputSample = newSampleValue;
+    f32 newSampleValue = alpha * (filter->lastOutputSample + sampleValue - filter->lastInputSample);
+
+    filter->lastInputSample = sampleValue;
+    filter->lastOutputSample = newSampleValue;
 
     return newSampleValue;
 }
 
-internal f32 LowPassFilter(f32 sampleValue, s32 freq)
+internal f32 LowPassFilter(AudioFilter* filter, f32 sampleValue)
 {
-    local f32 lastInputSample, lastOutputSample;
+    if (!filter->enabled || filter->freq <= 0) return sampleValue;
 
-    f32 a = (f32)APU_SAMPLES_PER_SECOND / ((f32)freq + (f32)APU_SAMPLES_PER_SECOND);
-    f32 newSampleValue = lastOutputSample + a * (lastInputSample - lastOutputSample);
+    f32 dt = 1.0f / (f32)APU_SAMPLES_PER_SECOND;
+    f32 rc = 1.0f / (2.0f * 3.14159265359f * (f32)filter->freq);
+    f32 alpha = dt / (rc + dt);
 
-    lastInputSample = sampleValue;
-    lastOutputSample = newSampleValue;
+    f32 newSampleValue = filter->lastOutputSample + alpha * (sampleValue - filter->lastOutputSample);
+
+    filter->lastInputSample = sampleValue;
+    filter->lastOutputSample = newSampleValue;
 
     return newSampleValue;
 }
@@ -449,10 +454,14 @@ internal void SetOutput(APU* apu)
     f32 tndOut = tndTable[3 * t + 2 * n + d];
     f32 out = pulseOut + tndOut;
 
-    // NOTE: Don't know if this make sense after the change to s16 format instead of f32
-    // output = HighPassFilter(output, 90);
-    // output = HighPassFilter(output, 440);
-    // output = LowPassFilter(output, 14000);
+    // Apply a simple analog-style output stage to the mixed floating-point
+    // sample before converting it to s16:
+    // - High-pass filters remove DC offset / very low-frequency rumble.
+    // - Low-pass filter softens harsh high-frequency edges.
+    // This keeps the waveform centered and sounds closer to real hardware.
+    out = HighPassFilter(&apu->hpFilter1, out);
+    out = HighPassFilter(&apu->hpFilter2, out);
+    out = LowPassFilter(&apu->lpFilter, out);
 
     apu->buffer[apu->bufferIndex] = (s16)(out * APU_AMPLIFIER_VALUE);
     apu->bufferIndex = (apu->bufferIndex + 1) % APU_BUFFER_LENGTH;
@@ -473,11 +482,16 @@ void StepAPU(NES* nes)
         apu->frameCounter = 0;
     }
 
-    apu->sampleCounter++;
+    // Fractional accumulator: add SAMPLE_RATE every CPU cycle.
+    // When the running total crosses CPU_FREQ, exactly one sample is due.
+    // Subtracting CPU_FREQ instead of zeroing the counter carries the
+    // fractional remainder forward, so the ratio stays perfect over time.
+    // See apu.h for a detailed explanation of why this matters.
+    apu->sampleCounter += APU_SAMPLES_PER_SECOND; // += 48000
 
-    if (apu->sampleCounter >= APU_CYCLES_PER_SAMPLE) {
+    if (apu->sampleCounter >= CPU_FREQ) { // >= 1789773
         SetOutput(apu);
-        apu->sampleCounter = 0;
+        apu->sampleCounter -= CPU_FREQ; // keep remainder, do NOT zero
     }
 }
 
@@ -548,6 +562,13 @@ void ResetAPU(NES* nes)
     apu->dmc.globalEnabled = TRUE;
     apu->dmc.enabled = FALSE;
     apu->dmc.value = 0;
+
+    apu->hpFilter1.lastInputSample = 0;
+    apu->hpFilter1.lastOutputSample = 0;
+    apu->hpFilter2.lastInputSample = 0;
+    apu->hpFilter2.lastOutputSample = 0;
+    apu->lpFilter.lastInputSample = 0;
+    apu->lpFilter.lastOutputSample = 0;
 
     apu->bufferIndex = 0;
     memset(apu->buffer, 0, sizeof(apu->buffer));

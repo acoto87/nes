@@ -8,6 +8,12 @@
 #include <string.h>
 #include <stdarg.h>
 
+#define SDL_MAIN_HANDLED
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
+#include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_opengl_glext.h>
+
 #include "utils.h"
 #include "types.h"
 #include "cartridge.h"
@@ -19,21 +25,12 @@
 #include "apu.h"
 #include "controller.h"
 #include "gui.h"
-
-#define SDL_MAIN_HANDLED
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_audio.h>
-#include <SDL2/SDL_opengl.h>
-#include <SDL2/SDL_opengl_glext.h>
-
 #include "ui.h"
 
 #define nes (app.runtime.nes)
-#include "cimgui_impl.h"
 
 #define WINDOW_WIDTH 1200
 #define WINDOW_HEIGHT 800
-
 
 AppState app = {0};
 
@@ -176,6 +173,27 @@ internal void QueueAudioBuffer(APU* apu, SDL_AudioDeviceID audioDeviceId, SDL_Au
 {
     if (!audioDeviceId) return;
     s32 bytesToQueue = apu->bufferIndex * APU_BYTES_PER_SAMPLE;
+
+// Queue backpressure: even with a perfectly-timed sample accumulator the
+// host audio clock and the emulation clock are never 100% identical.  If
+// we push audio unconditionally, small timing jitter accumulates in SDL's
+// internal buffer and creates ever-growing latency.
+//
+// Strategy: measure how many bytes are already queued and waiting.  If the
+// queue already holds more than ~3 device-buffer periods of audio, skip
+// this push entirely.  SDL will drain the existing queue on its own.
+//
+// Target: want.samples = 1024 frames, 3 device periods = 3072 samples.
+// At 16-bit mono that is 3072 * 2 = 6144 bytes (~64 ms ceiling).
+// This keeps latency bounded while absorbing normal frame-time jitter.
+//
+// Note: SDL_GetQueuedAudioSize returns bytes already queued but not yet
+// consumed by the hardware. We compare in bytes to avoid an extra divide.
+#define APU_MAX_QUEUED_BYTES (1024 * APU_BYTES_PER_SAMPLE * 3)
+
+    u32 queuedBytes = SDL_GetQueuedAudioSize(audioDeviceId);
+    if (queuedBytes > APU_MAX_QUEUED_BYTES) return; // let hardware catch up
+
     if (audioStream) {
         if (SDL_AudioStreamPut(audioStream, apu->buffer, bytesToQueue) == 0) {
             s32 convertedBytes = SDL_AudioStreamAvailable(audioStream);
@@ -238,6 +256,12 @@ int main(int argc, char** argv)
     app.ui.triangleEnabled = TRUE;
     app.ui.noiseEnabled = TRUE;
     app.ui.dmcEnabled = TRUE;
+    app.ui.hpFilter1Enabled = TRUE;
+    app.ui.hpFilter1Freq = 90;
+    app.ui.hpFilter2Enabled = TRUE;
+    app.ui.hpFilter2Freq = 440;
+    app.ui.lpFilterEnabled = TRUE;
+    app.ui.lpFilterFreq = 14000;
     globalPerfCountFrequency = SDL_GetPerformanceFrequency();
 
     SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "1");
@@ -307,6 +331,22 @@ int main(int argc, char** argv)
 
     u64 startCounter = SDL_GetPerformanceCounter();
 
+    // Frame cycle accumulator — carries the sub-cycle fractional remainder
+    // across frames so it is never permanently lost.
+    //
+    // The NES PPU runs 341 cycles × 262 scanlines = 89342 PPU ticks per frame.
+    // The CPU runs at PPU/3, so the exact CPU cycles per frame is:
+    //   89342 / 3 = 29780.666... cycles
+    // Truncating to 29780 drops 0.666 cycles per frame = ~40 cycles/sec lost.
+    // Although small, compounding over millions of frames matters for accuracy.
+    //
+    // Solution: accumulate the integer part (0.666... * 3 = 2 remainder over
+    // every 3 frames). We use the same numerator/denominator approach as the
+    // APU accumulator: add PPU_CYCLES_PER_FRAME every frame, take the integer
+    // CPU part, subtract PPU_CYCLES_PER_FRAME from the running total.
+    // In practice: base = 29780, every 3 frames one frame gets 29781 cycles.
+    s32 cycleRemainder = 0; // accumulates sub-integer CPU cycles across frames
+
     while (!quit) {
         SDL_Event evt;
         while (SDL_PollEvent(&evt)) {
@@ -334,9 +374,28 @@ int main(int argc, char** argv)
         igNewFrame();
 
         if (nes) {
-            // NOTE: 16.7 ms per frame at 60 FPS,
-            // but we can adjust it for stepping and debugging
-            s32 cycles = 0.0167 * CPU_FREQ;
+            // Exact NTSC CPU cycles per frame derived from PPU geometry:
+            //   PPU cycles/frame = PPU_CYCLES_PER_SCANLINE * PPU_SCANLINES_PER_FRAME
+            //                    = 341 * 262 = 89342
+            //   CPU cycles/frame = 89342 / 3 = 29780.666...
+            //
+            // The old value was 0.0167 * CPU_FREQ = 29889 — 109 cycles/frame
+            // too many, making the emulator run at ~59.88 fps instead of the
+            // correct ~60.099 fps (NTSC).  Over-counted cycles also mean more
+            // audio samples are generated per wall-clock second, compounding
+            // the APU drift described in apu.h.
+            //
+            // cycleRemainder tracks the fractional cycles not yet assigned.
+            // 89342 mod 3 = 2, so the remainder grows by 2 per frame.
+            // When it accumulates to >= 3 we add one extra CPU cycle that frame
+            // and subtract 3 from the remainder.  This keeps the long-run
+            // average at exactly 29780.666... cycles/frame with no float math.
+            cycleRemainder += (PPU_CYCLES_PER_SCANLINE * PPU_SCANLINES_PER_FRAME) % 3; // += 2
+            s32 cycles = (PPU_CYCLES_PER_SCANLINE * PPU_SCANLINES_PER_FRAME) / 3;      // 29780
+            if (cycleRemainder >= 3) {
+                cycles++;
+                cycleRemainder -= 3;
+            }
 
             if (stepping || oneCycleAtTime) {
                 cycles = 1;
@@ -385,7 +444,18 @@ int main(int argc, char** argv)
         u64 endCounter = SDL_GetPerformanceCounter();
         f32 secondsElapsed = GetSecondsElapsed(startCounter, endCounter);
 
-        while (secondsElapsed < 0.0167) {
+// True NTSC frame duration: 1 / (CPU_FREQ / (341 * 262 / 3))
+//   = (341 * 262) / (3 * CPU_FREQ)
+//   = 89342 / 5369319
+//   ≈ 0.016639 s  (16.639 ms, NOT 16.7 ms)
+//
+// Using 0.0167 s over-waits by ~0.061 ms per frame = ~3.7 ms/sec.
+// Combined with the APU over-sampling this worsened audio drift.
+// The exact expression avoids a magic number and stays in sync with
+// any future changes to CPU_FREQ or PPU constants.
+#define NES_FRAME_DURATION_S ((f32)(PPU_CYCLES_PER_SCANLINE * PPU_SCANLINES_PER_FRAME) / (3.0f * CPU_FREQ))
+
+        while (secondsElapsed < NES_FRAME_DURATION_S) {
             endCounter = SDL_GetPerformanceCounter();
             secondsElapsed = GetSecondsElapsed(startCounter, endCounter);
         }

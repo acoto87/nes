@@ -7,6 +7,7 @@
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui.h"
+#include "cimgui_impl.h"
 
 /* App State */
 typedef struct RuntimeState RuntimeState;
@@ -38,8 +39,6 @@ struct UiState {
     s32 leftSidebarTab;
     s32 rightSidebarTab;
 
-    s32 fps;
-    s32 fpsCount;
     b32 oneCycleToggle;
     b32 debugToggle;
 
@@ -60,6 +59,13 @@ struct UiState {
     b32 triangleEnabled;
     b32 noiseEnabled;
     b32 dmcEnabled;
+
+    b32 hpFilter1Enabled;
+    s32 hpFilter1Freq;
+    b32 hpFilter2Enabled;
+    s32 hpFilter2Freq;
+    b32 lpFilterEnabled;
+    s32 lpFilterFreq;
 };
 
 typedef struct AppState AppState;

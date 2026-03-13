@@ -409,6 +409,13 @@ struct APUDMC {
     s16 buffer[APU_BUFFER_LENGTH];
 };
 
+typedef struct AudioFilter {
+    b32 enabled;
+    s32 freq;
+    f32 lastInputSample;
+    f32 lastOutputSample;
+} AudioFilter;
+
 typedef struct APU APU;
 struct APU {
     APUPulse pulse1;
@@ -416,6 +423,10 @@ struct APU {
     APUTriangle triangle;
     APUNoise noise;
     APUDMC dmc;
+
+    AudioFilter hpFilter1;
+    AudioFilter hpFilter2;
+    AudioFilter lpFilter;
 
     u64 cycles;
     u8 frameMode;

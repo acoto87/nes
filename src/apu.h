@@ -10,10 +10,31 @@ u8 ReadCPUU8(NES* nes, u16 address);
 // from: http://wiki.nesdev.com/w/index.php/APU#Frame_Counter_.28.244017.29
 #define FRAME_COUNTER_RATE 7457
 
+// The NES CPU runs at 1.789773 MHz (NTSC).
+// Defined here (rather than cpu.h) so that apu.c can reference it for
+// audio timing without creating a circular include with cpu.h.
+// cpu.h re-exports the same symbol — always use CPU_FREQ, not the literal.
+// see https://wiki.nesdev.com/w/index.php/Clock_rate
+#define CPU_FREQ 1789773
+
 #define APU_SAMPLES_PER_SECOND 48000
 
-// (CPU_FREQ / 48000) = (1789773 / 48000) = 37.28
-#define APU_CYCLES_PER_SAMPLE 37
+// Audio sample timing — fractional accumulator technique
+//
+// The naive approach is to emit a sample every N CPU cycles where
+//   N = CPU_FREQ / SAMPLE_RATE = 1789773 / 48000 = 37.2869...
+// Truncating to 37 means samples are generated at 1789773/37 = 48372 Hz
+// instead of 48000 Hz — 372 extra samples per second that pile up as delay.
+//
+// The fix: use the accumulator pattern.  Each CPU cycle we add SAMPLE_RATE to
+// a running counter.  When the counter reaches CPU_FREQ we emit one sample and
+// subtract CPU_FREQ (keeping the fractional remainder).  The ratio is:
+//   counter += 48000  every CPU cycle
+//   emit + counter -= 1789773  when counter >= 1789773
+// This produces exactly 48000 samples per 1789773 CPU cycles with no rounding
+// error and no floating-point arithmetic in the hot path.
+//
+// APU_CYCLES_PER_SAMPLE (the truncated integer) is no longer used.
 
 #define APU_BYTES_PER_SAMPLE sizeof(s16)
 #define APU_AMPLIFIER_VALUE 10000

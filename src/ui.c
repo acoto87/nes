@@ -136,7 +136,7 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
 
         igSeparator();
         igTextColored((ImVec4){0.4f, 0.4f, 0.4f, 1.0f}, "FPS:");
-        igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "%d", app.ui.fps);
+        igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "%d", (s32)(1.0f / dt));
         igTextColored((ImVec4){0.4f, 0.4f, 0.4f, 1.0f}, "dt:");
         igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "%.4f", dt);
 
@@ -446,6 +446,44 @@ internal void DrawAudioPanel()
         igCheckbox("DMC", &dmc);
 
         igSpacing();
+        igSeparator();
+        igSpacing();
+
+        igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "AUDIO FILTERS");
+
+        bool hp1 = app.ui.hpFilter1Enabled;
+        bool hp2 = app.ui.hpFilter2Enabled;
+        bool lp = app.ui.lpFilterEnabled;
+
+        igCheckbox("High-pass filter 1 (DC offset)", &hp1);
+        if (hp1) {
+            igIndent(10.0f);
+            igSliderInt("HP1 Freq (Hz)", &app.ui.hpFilter1Freq, 10, 500, "%d", 0);
+            igUnindent(10.0f);
+        }
+
+        igCheckbox("High-pass filter 2", &hp2);
+        if (hp2) {
+            igIndent(10.0f);
+            igSliderInt("HP2 Freq (Hz)", &app.ui.hpFilter2Freq, 10, 2000, "%d", 0);
+            igUnindent(10.0f);
+        }
+
+        igCheckbox("Low-pass filter (Treble roll-off)", &lp);
+        if (lp) {
+            igIndent(10.0f);
+            igSliderInt("LP Freq (Hz)", &app.ui.lpFilterFreq, 1000, 20000, "%d", 0);
+            igUnindent(10.0f);
+        }
+
+        app.ui.hpFilter1Enabled = hp1;
+        app.ui.hpFilter2Enabled = hp2;
+        app.ui.lpFilterEnabled = lp;
+
+        igSpacing();
+        igSeparator();
+        igSpacing();
+
         DrawAudioWaveform(apu->buffer, apu->bufferIndex);
 
         app.ui.square1Enabled = sq1;
@@ -453,6 +491,13 @@ internal void DrawAudioPanel()
         app.ui.triangleEnabled = tri;
         app.ui.noiseEnabled = noi;
         app.ui.dmcEnabled = dmc;
+
+        apu->hpFilter1.enabled = hp1;
+        apu->hpFilter1.freq = app.ui.hpFilter1Freq;
+        apu->hpFilter2.enabled = hp2;
+        apu->hpFilter2.freq = app.ui.hpFilter2Freq;
+        apu->lpFilter.enabled = lp;
+        apu->lpFilter.freq = app.ui.lpFilterFreq;
 
         apu->pulse1.globalEnabled = sq1;
         apu->pulse2.globalEnabled = sq2;

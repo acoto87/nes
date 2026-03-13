@@ -77,10 +77,8 @@
 #define OVERFLOW_FLAG 6
 #define NEGATIVE_FLAG 7
 
-// The NES CPU operates at a speed of 21.477272 MHz / 12 = 1.789773 MHz = 1789773Hz,
-// that's is ~1789773 cycles per second.
-// see https://wiki.nesdev.com/w/index.php/Clock_rate
-#define CPU_FREQ 1789773
+// CPU_FREQ is defined in apu.h (included above) so that apu.c can use it
+// without a circular dependency. It is available here because cpu.h includes apu.h.
 
 u8 ReadCPUU8(NES* nes, u16 address);
 

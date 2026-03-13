@@ -1645,17 +1645,19 @@ CPUStep StepCPU(NES* nes)
                 HandleInterrupt(nes, CPU_RESET_ADDRESS, FALSE);
                 break;
             }
-
             // non-maskable interrupt
             case CPU_INTERRUPT_NMI: {
                 HandleInterrupt(nes, CPU_NMI_ADDRESS, FALSE);
                 break;
             }
-
             case CPU_INTERRUPT_IRQ: {
                 if (!GetBitFlag(cpu->p, INTERRUPT_FLAG)) {
                     HandleInterrupt(nes, CPU_IRQ_ADDRESS, FALSE);
                 }
+                break;
+            }
+            case CPU_INTERRUPT_NON: {
+                // do nothing
                 break;
             }
         }
