@@ -13,6 +13,7 @@
 #include "ppu_debug.h"
 #include "apu.h"
 #include "gui.h"
+#include "controller.h"
 
 #define nes (app.runtime.nes)
 
@@ -247,6 +248,40 @@ internal void UpdatePatternTableTextures(Device* device, NES* nesPtr)
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+internal void UpdatePatternHoverTexture(Device* device, NES* nesPtr, s32 tableIndex, s32 tileIndex)
+{
+    if (!nesPtr) return;
+
+    u32 pixels[8 * 8]; // 8x8 pixels, 4 bytes/pixel (RGBA)
+
+    u32 palette[4] = {
+        0xFF000000, // Black
+        0xFF555555, // Dark gray
+        0xFFAAAAAA, // Light gray
+        0xFFFFFFFF  // White
+    };
+
+    u16 baseAddr = tableIndex * 0x1000;
+    u16 tileAddr = baseAddr + tileIndex * 16;
+
+    for (s32 y = 0; y < 8; ++y) {
+        u8 plane0 = ReadPPUU8(nesPtr, tileAddr + y);
+        u8 plane1 = ReadPPUU8(nesPtr, tileAddr + y + 8);
+
+        for (s32 x = 0; x < 8; ++x) {
+            u8 bit0 = (plane0 >> (7 - x)) & 1;
+            u8 bit1 = (plane1 >> (7 - x)) & 1;
+            u8 colorIndex = (bit1 << 1) | bit0;
+
+            pixels[y * 8 + x] = palette[colorIndex];
+        }
+    }
+
+    glBindTexture(GL_TEXTURE_2D, device->patternHover);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 internal void DrawNametable(Device* device, NES* nesPtr, u16 address)
 {
     if (!nesPtr) return;
@@ -376,11 +411,35 @@ internal void DrawVideoPanel(Device* device)
     if (nes) {
         igText("Pattern Tables");
         UpdatePatternTableTextures(device, nes);
-        igImage((ImTextureRef_c){NULL, (ImTextureID)(intptr_t)device->patterns[0]}, (ImVec2){128, 128}, (ImVec2){0, 0},
-                (ImVec2){1, 1});
-        igSameLine(0, 4);
-        igImage((ImTextureRef_c){NULL, (ImTextureID)(intptr_t)device->patterns[1]}, (ImVec2){128, 128}, (ImVec2){0, 0},
-                (ImVec2){1, 1});
+
+        for (int i = 0; i < 2; i++) {
+            igImage((ImTextureRef_c){NULL, (ImTextureID)(intptr_t)device->patterns[i]}, (ImVec2){128, 128},
+                    (ImVec2){0, 0}, (ImVec2){1, 1});
+
+            if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                ImVec2 mousePos = igGetMousePos();
+                ImVec2 itemPos = igGetItemRectMin();
+
+                float x = mousePos.x - itemPos.x;
+                float y = mousePos.y - itemPos.y;
+
+                int tileX = (int)(x / 8.0f);
+                int tileY = (int)(y / 8.0f);
+                int tileIdx = tileY * 16 + tileX;
+                u16 addr = i * 0x1000 + tileIdx * 16;
+
+                igBeginTooltip();
+                igText("Tile: %02X", tileIdx);
+                igText("Address: $%04X", addr);
+
+                UpdatePatternHoverTexture(device, nes, i, tileIdx);
+                igImage((ImTextureRef_c){NULL, (ImTextureID)(intptr_t)device->patternHover}, (ImVec2){64, 64},
+                        (ImVec2){0, 0}, (ImVec2){1, 1});
+
+                igEndTooltip();
+            }
+            if (i == 0) igSameLine(0, 4);
+        }
 
         igSpacing();
         igSeparator();
@@ -719,6 +778,111 @@ internal void DrawGameScreen(Device* device)
 }
 
 
+internal void DrawPalettesPanel()
+{
+    if (nes) {
+        igText("Background Palettes");
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                u16 addr = 0x3F00 + i * 4 + j;
+                u8 val = ReadPPUU8(nes, addr);
+                Color c = systemPalette[val % 64];
+                ImVec4 color = (ImVec4){c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, 1.0f};
+
+                char id[32];
+                snprintf(id, sizeof(id), "##bg_%d_%d", i, j);
+                igColorButton(id, color,
+                              ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker |
+                                  ImGuiColorEditFlags_NoDragDrop,
+                              (ImVec2){30, 30});
+                if (j < 3) igSameLine(0, 4);
+            }
+            if (i < 3) igSameLine(0, 16);
+        }
+
+        igSpacing();
+        igText("Sprite Palettes");
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                u16 addr = 0x3F10 + i * 4 + j;
+                u8 val = ReadPPUU8(nes, addr);
+                Color c = systemPalette[val % 64];
+                ImVec4 color = (ImVec4){c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, 1.0f};
+
+                char id[32];
+                snprintf(id, sizeof(id), "##sp_%d_%d", i, j);
+                igColorButton(id, color,
+                              ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker |
+                                  ImGuiColorEditFlags_NoDragDrop,
+                              (ImVec2){30, 30});
+                if (j < 3) igSameLine(0, 4);
+            }
+            if (i < 3) igSameLine(0, 16);
+        }
+    } else {
+        igTextDisabled("No ROM loaded");
+    }
+}
+
+internal void DrawControllerPanel()
+{
+    if (!nes) {
+        igTextDisabled("No ROM loaded");
+        return;
+    }
+
+    u8 state = nes->controllers[0].state;
+    ImVec4 activeCol = (ImVec4){1.0f, 0.0f, 0.0f, 1.0f};   // Red
+    ImVec4 inactiveCol = (ImVec4){0.3f, 0.3f, 0.3f, 1.0f}; // Dark gray
+
+#define GET_COL(btn) (GetBitFlag(state, btn) ? activeCol : inactiveCol)
+
+    igText("Player 1 Controller:");
+    igSpacing();
+    igSpacing();
+
+    igColumns(3, NULL, false);
+
+    // D-PAD
+    igText("    ");
+    igSameLine(0, 0);
+    igTextColored(GET_COL(BUTTON_UP), " [UP] ");
+
+    igTextColored(GET_COL(BUTTON_LEFT), "[LF]");
+    igSameLine(0, 0);
+    igText("      ");
+    igSameLine(0, 0);
+    igTextColored(GET_COL(BUTTON_RIGHT), "[RT]");
+
+    igText("    ");
+    igSameLine(0, 0);
+    igTextColored(GET_COL(BUTTON_DOWN), "[DN] ");
+
+    igNextColumn();
+
+    // SELECT / START
+    igSpacing();
+    igSpacing();
+    igSpacing();
+    igTextColored(GET_COL(BUTTON_SELECT), "[SEL]");
+    igSameLine(0, 10);
+    igTextColored(GET_COL(BUTTON_START), "[STR]");
+
+    igNextColumn();
+
+    // B / A
+    igSpacing();
+    igSpacing();
+    igSpacing();
+    igTextColored(GET_COL(BUTTON_B), "( B )");
+    igSameLine(0, 10);
+    igTextColored(GET_COL(BUTTON_A), "( A )");
+
+    igColumns(1, NULL, false);
+#undef GET_COL
+}
+
+
 void DrawUI(SDL_Window* win, Device* device, f32 dt)
 {
     DrawTopBar(win, dt);
@@ -749,6 +913,15 @@ void DrawUI(SDL_Window* win, Device* device, f32 dt)
 
         if (igBegin("MEMORY", NULL, ImGuiWindowFlags_None)) {
             DrawMemoryPanel();
+        }
+        igEnd();
+        if (igBegin("PALETTES", NULL, ImGuiWindowFlags_None)) {
+            DrawPalettesPanel();
+        }
+        igEnd();
+
+        if (igBegin("CONTROLLER", NULL, ImGuiWindowFlags_None)) {
+            DrawControllerPanel();
         }
         igEnd();
     }

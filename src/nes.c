@@ -306,21 +306,7 @@ void Save(NES* nes, char* filePath)
 
     fwrite(gui->patternHover, sizeof(Color), 8 * 8, file);
 
-    for (s32 i = 0; i < 64; ++i) {
-        fwrite(gui->sprites[i], sizeof(Color), 8 * 16, file);
-    }
-
-    for (s32 i = 0; i < 8; ++i) {
-        fwrite(gui->sprites2[i], sizeof(Color), 8 * 16, file);
-    }
-
     fwrite(gui->nametable, sizeof(Color), 256 * 240, file);
-
-    for (s32 i = 0; i < 32; ++i) {
-        for (s32 j = 0; j < 30; ++j) {
-            fwrite(gui->nametable2[i][j], sizeof(Color), 64, file);
-        }
-    }
 
     fclose(file);
 }
@@ -402,21 +388,7 @@ NES* LoadNESSave(char* filePath)
 
     fread(gui->patternHover, sizeof(Color), 8 * 8, file);
 
-    for (s32 i = 0; i < 64; ++i) {
-        fread(gui->sprites[i], sizeof(Color), 8 * 16, file);
-    }
-
-    for (s32 i = 0; i < 8; ++i) {
-        fread(gui->sprites2[i], sizeof(Color), 8 * 16, file);
-    }
-
     fread(gui->nametable, sizeof(Color), 256 * 240, file);
-
-    for (s32 i = 0; i < 32; ++i) {
-        for (s32 j = 0; j < 30; ++j) {
-            fread(gui->nametable2[i][j], sizeof(Color), 64, file);
-        }
-    }
 
     fclose(file);
 

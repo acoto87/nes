@@ -325,7 +325,7 @@ typedef struct APUPulse {
     s16 buffer[APU_BUFFER_LENGTH];
 } APUPulse;
 
-typedef struct  {
+typedef struct {
     bool globalEnabled;
 
     bool enabled;
@@ -444,10 +444,7 @@ typedef struct GUI {
 
     Color patterns[2][128 * 128];
     Color patternHover[8 * 8];
-    Color sprites[64][8 * 16];
-    Color sprites2[8][8 * 16];
     Color nametable[256 * 240];
-    Color nametable2[32][30][64];
 } GUI;
 
 typedef struct NES {

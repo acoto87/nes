@@ -77,13 +77,7 @@ internal void SetupDevice(Device* device)
     device->patterns[0] = InitTexture(128, 128);
     device->patterns[1] = InitTexture(128, 128);
     device->patternHover = InitTexture(8, 8);
-    for (s32 i = 0; i < 64; ++i)
-        device->oam[i] = InitTexture(8, 16);
-    for (s32 i = 0; i < 8; ++i)
-        device->oam2[i] = InitTexture(8, 16);
     device->nametable = InitTexture(256, 240);
-    for (s32 i = 0; i < 960; ++i)
-        device->nametable2[i] = InitTexture(8, 8);
 }
 
 internal inline f32 GetSecondsElapsed(u64 start, u64 end)

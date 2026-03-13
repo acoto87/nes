@@ -92,10 +92,7 @@ typedef struct Device {
     GLuint screen;
     GLuint patterns[2];
     GLuint patternHover;
-    GLuint oam[64];
-    GLuint oam2[8];
     GLuint nametable;
-    GLuint nametable2[960];
 } Device;
 
 void SetupImGuiStyle();
