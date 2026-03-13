@@ -26,6 +26,15 @@
 #include "controller.h"
 #include "gui.h"
 #include "ui.h"
+#include "mapper.h"
+#include "mapper0.h"
+#include "mapper1.h"
+#include "mapper2.h"
+#include "mapper3.h"
+#include "mapper66.h"
+#include "memory.h"
+#include "oam.h"
+#include "wave_writer.h"
 
 #define nes (app.runtime.nes)
 
@@ -45,7 +54,7 @@ internal void* LoadGLProc(const char* name)
 
 internal void LoadGLFunctions(void)
 {
-    GLGenerateMipmap = (PFNGLGENERATEMIPMAPPROC)LoadGLProc("glGenerateMipmap");
+    GLGenerateMipmap = (PFNGLGENERATEMIPMAPPROC)(intptr_t)LoadGLProc("glGenerateMipmap");
 }
 
 internal GLuint InitTexture(GLsizei width, GLsizei height)
@@ -134,7 +143,7 @@ internal b32 LoadFileIntoApp(SDL_Window* win, const char* path)
 {
     if (!path || !path[0]) return FALSE;
     if (EndsWith(path, ".nes")) {
-        Cartridge cartridge = {};
+        Cartridge cartridge = {0};
         if (!LoadNesRom((char*)path, &cartridge)) {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
             return FALSE;
@@ -482,3 +491,23 @@ int main(int argc, char** argv)
 
     return 0;
 }
+
+#undef nes
+
+#include "nes.c"
+#include "cpu.c"
+#include "cpu_io.c"
+#include "cpu_debug.c"
+#include "ppu.c"
+#include "ppu_debug.c"
+#include "apu.c"
+#include "apu_tables.c"
+#include "controller.c"
+#include "gui.c"
+#include "mapper0.c"
+#include "mapper1.c"
+#include "mapper2.c"
+#include "mapper3.c"
+#include "mapper66.c"
+
+#include "ui.c"
