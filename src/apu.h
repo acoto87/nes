@@ -59,7 +59,7 @@ static inline void WriteAPUPulseEnvelope(APUPulse* pulse, u8 value)
     pulse->envelopeLoop = (value >> 5) & 1;
     pulse->envelopeEnabled = !((value >> 4) & 1);
     pulse->envelopePeriod = value & 15;
-    pulse->envelopeStart = TRUE;
+    pulse->envelopeStart = true;
 }
 
 static inline void WriteAPUPulseSweep(APUPulse* pulse, u8 value)
@@ -68,7 +68,7 @@ static inline void WriteAPUPulseSweep(APUPulse* pulse, u8 value)
     pulse->sweepPeriod = ((value >> 4) & 7) + 1;
     pulse->sweepNegate = (value >> 3) & 1;
     pulse->sweepShift = value & 7;
-    pulse->sweepReload = TRUE;
+    pulse->sweepReload = true;
 }
 
 static inline void WriteAPUPulseTimer(APUPulse* pulse, u8 value)
@@ -81,7 +81,7 @@ static inline void WriteAPUPulseLength(APUPulse* pulse, u8 value)
     if (pulse->enabled) {
         pulse->lengthValue = lengthTable[value >> 3];
         pulse->timerPeriod = (pulse->timerPeriod & 0x00FF) | ((u16)(value & 7) << 8);
-        pulse->envelopeStart = TRUE;
+        pulse->envelopeStart = true;
         pulse->dutyValue = 0;
     }
 }
@@ -108,7 +108,7 @@ static inline void WriteAPUTriangleLength(APUTriangle* triangle, u8 value)
         triangle->lengthValue = lengthTable[value >> 3];
         triangle->timerPeriod = (triangle->timerPeriod & 0x00FF) | ((u16)(value & 7) << 8);
         triangle->timerValue = triangle->timerPeriod;
-        triangle->linearReload = TRUE;
+        triangle->linearReload = true;
     }
 }
 
@@ -123,7 +123,7 @@ static inline void WriteAPUNoiseEnvelope(APUNoise* noise, u8 value)
     noise->envelopeLoop = (value >> 5) & 1;
     noise->envelopeEnabled = !((value >> 4) & 1);
     noise->envelopePeriod = value & 15;
-    noise->envelopeStart = TRUE;
+    noise->envelopeStart = true;
 }
 
 static inline void WriteAPUNoisePeriod(APUNoise* noise, u8 value)
@@ -136,7 +136,7 @@ static inline void WriteAPUNoiseLength(APUNoise* noise, u8 value)
 {
     if (noise->enabled) {
         noise->lengthValue = lengthTable[value >> 3];
-        noise->envelopeStart = TRUE;
+        noise->envelopeStart = true;
     }
 }
 
@@ -212,7 +212,7 @@ static inline u8 ReadAPUStatus(NES* nes)
         result |= 0x80;
     }
 
-    apu->inhibitIRQ = FALSE;
+    apu->inhibitIRQ = false;
 
     return result;
 }
@@ -248,7 +248,7 @@ static inline void WriteAPUStatus(NES* nes, u8 value)
         RestartDMC(&apu->dmc);
     }
 
-    apu->dmcIRQ = FALSE;
+    apu->dmcIRQ = false;
 }
 
 void ResetAPU(NES* nes);

@@ -92,8 +92,8 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
         igSeparator();
 
         if (igButton("Open", (ImVec2){0, 0})) {
-            debugging = TRUE;
-            stepping = FALSE;
+            debugging = true;
+            stepping = false;
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Open ROM",
                                      "Drag & drop a .nes or .nsave file onto the window.", win);
         }
@@ -103,32 +103,32 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
                 if (!nes) {
                     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Run", "Load a ROM first.", win);
                 } else {
-                    hitRun = TRUE;
-                    debugging = FALSE;
-                    stepping = FALSE;
+                    hitRun = true;
+                    debugging = false;
+                    stepping = false;
                 }
             }
             if (igButton("Step", (ImVec2){0, 0})) {
-                if (nes) stepping = TRUE;
+                if (nes) stepping = true;
             }
         } else {
             if (igButton("Pause", (ImVec2){0, 0})) {
-                debugging = TRUE;
-                stepping = FALSE;
+                debugging = true;
+                stepping = false;
             }
         }
 
         if (igButton("Reset", (ImVec2){0, 0})) {
             if (nes) {
                 ResetNES(nes);
-                debugging = TRUE;
+                debugging = true;
             }
         }
 
         if (igButton("Save", (ImVec2){0, 0})) {
             if (nes) {
-                debugging = TRUE;
-                stepping = FALSE;
+                debugging = true;
+                stepping = false;
                 if (saveFilePath[0]) Save(nes, saveFilePath);
                 else SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Save", "Load a ROM first.", win);
             }
@@ -538,8 +538,8 @@ internal void DrawInstructionsPanel()
                 u8 opcode = ReadCPUU8(nes, pc);
                 CPUInstruction* instruction = &cpuInstructions[opcode];
                 s32 col = 0;
-                b32 currentInstr = (pc == cpu->pc);
-                b32 breakpointHit = (pc == breakpoint);
+                bool currentInstr = (pc == cpu->pc);
+                bool breakpointHit = (pc == breakpoint);
 
                 if (currentInstr) {
                     igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){0.2f, 1.0f, 0.4f, 1.0f});

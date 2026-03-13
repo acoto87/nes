@@ -3,13 +3,12 @@
 
 #include <string.h>
 
-typedef struct Mapper1Data Mapper1Data;
-struct Mapper1Data {
+typedef struct Mapper1Data {
     u8 control;
     u8 shift;
     u8 prgMode;
     u8 chrMode;
-};
+} Mapper1Data;
 
 static void WriteControl(NES* nes, Mapper1Data* data, u8 value)
 {
@@ -101,7 +100,7 @@ static void LoadRegister(NES* nes, Mapper1Data* data, u16 address, u8 value)
         data->shift = 0x10;
         WriteControl(nes, data, data->control | 0x0C);
     } else {
-        b32 complete = HAS_FLAG(data->shift, 1);
+        bool complete = HAS_FLAG(data->shift, 1);
         data->shift >>= 1;
         data->shift |= (value & 1) << 4;
         if (complete) {
@@ -145,7 +144,7 @@ u8 Mapper1ReadU8(NES* nes, u16 address)
         return ReadU8(&nes->cpuMemory, address);
     }
 
-    ASSERT(FALSE);
+    ASSERT(false);
     return 0;
 }
 
@@ -163,7 +162,7 @@ void Mapper1WriteU8(NES* nes, u16 address, u8 value)
         return;
     }
 
-    ASSERT(FALSE);
+    ASSERT(false);
 }
 
 void Mapper1Save(NES* nes, FILE* file)

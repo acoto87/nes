@@ -1,4 +1,3 @@
-
 #include "controller.h"
 
 void InitController(NES* nes, s32 index)

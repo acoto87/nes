@@ -10,37 +10,34 @@
 #include "cimgui_impl.h"
 
 /* App State */
-typedef struct RuntimeState RuntimeState;
-struct RuntimeState {
+typedef struct RuntimeState {
     s64 perfCountFrequency;
     struct NES* nes;
     char loadedFilePath[1024];
     char saveFilePath[1024];
-};
+} RuntimeState;
 
-typedef struct EmuControlState EmuControlState;
-struct EmuControlState {
-    b32 hitRun;
-    b32 debugging;
-    b32 stepping;
+typedef struct EmuControlState {
+    bool hitRun;
+    bool debugging;
+    bool stepping;
     u16 breakpoint;
-};
+} EmuControlState;
 
-typedef struct UiState UiState;
-struct UiState {
+typedef struct UiState {
     char debugBuffer[256];
 
-    b32 coarseButtons[8];
-    b32 oneCycleAtTime;
-    b32 debugMode;
+    bool coarseButtons[8];
+    bool oneCycleAtTime;
+    bool debugMode;
 
-    b32 leftSidebarCollapsed;
-    b32 rightSidebarCollapsed;
+    bool leftSidebarCollapsed;
+    bool rightSidebarCollapsed;
     s32 leftSidebarTab;
     s32 rightSidebarTab;
 
-    b32 oneCycleToggle;
-    b32 debugToggle;
+    bool oneCycleToggle;
+    bool debugToggle;
 
     char instructionAddressText[12];
     char instructionBreakpointText[5];
@@ -51,29 +48,28 @@ struct UiState {
 
     s32 videoOption;
     s32 nametableOption;
-    b32 showSeparatePixels;
+    bool showSeparatePixels;
 
     s32 audioOption;
-    b32 square1Enabled;
-    b32 square2Enabled;
-    b32 triangleEnabled;
-    b32 noiseEnabled;
-    b32 dmcEnabled;
+    bool square1Enabled;
+    bool square2Enabled;
+    bool triangleEnabled;
+    bool noiseEnabled;
+    bool dmcEnabled;
 
-    b32 hpFilter1Enabled;
+    bool hpFilter1Enabled;
     s32 hpFilter1Freq;
-    b32 hpFilter2Enabled;
+    bool hpFilter2Enabled;
     s32 hpFilter2Freq;
-    b32 lpFilterEnabled;
+    bool lpFilterEnabled;
     s32 lpFilterFreq;
-};
+} UiState;
 
-typedef struct AppState AppState;
-struct AppState {
+typedef struct AppState {
     RuntimeState runtime;
     EmuControlState control;
     UiState ui;
-};
+} AppState;
 
 extern AppState app;
 
@@ -92,8 +88,7 @@ extern AppState app;
 /* Textures */
 #define NUM_TEXTURES 1 + 2 + 1 + 64 + 8 + 1 + 960
 
-typedef struct Device Device;
-struct Device {
+typedef struct Device {
     GLuint screen;
     GLuint patterns[2];
     GLuint patternHover;
@@ -101,7 +96,7 @@ struct Device {
     GLuint oam2[8];
     GLuint nametable;
     GLuint nametable2[960];
-};
+} Device;
 
 void SetupImGuiStyle();
 void DrawUI(SDL_Window* win, Device* device, f32 dt);

@@ -60,23 +60,23 @@
  * http://nesdev.com/NES%20emulator%20development%20guide.txt
  */
 
-b32 LoadNesRom(char* filePath, Cartridge* cartridge)
+bool LoadNesRom(char* filePath, Cartridge* cartridge)
 {
     FILE* file = fopen(filePath, "rb");
     if (!file) {
-        return FALSE;
+        return false;
     }
 
     CartridgeHeader header;
     s64 read = fread(&header, sizeof(u8), HEADER_SIZE, file);
     if (read == 0) {
         fclose(file);
-        return FALSE;
+        return false;
     }
 
     if (!(header.nesStr[0] == 'N' && header.nesStr[1] == 'E' && header.nesStr[2] == 'S' && header.nesStr[3] == 0x1A)) {
         fclose(file);
-        return FALSE;
+        return false;
     }
 
     cartridge->hasTrainer = HAS_FLAG(header.flags6, TRAINER_MASK);
@@ -116,7 +116,7 @@ b32 LoadNesRom(char* filePath, Cartridge* cartridge)
 
     fclose(file);
 
-    return TRUE;
+    return true;
 }
 
 internal void CreateMapper(NES* nes)
@@ -241,7 +241,7 @@ void Destroy(NES* nes)
 
 internal inline void SaveMemory(Memory* memory, FILE* file)
 {
-    fwrite(&memory->created, sizeof(b32), 1, file);
+    fwrite(&memory->created, sizeof(bool), 1, file);
     fwrite(&memory->length, sizeof(u32), 1, file);
     fwrite(memory->bytes, sizeof(u8), memory->length, file);
 }
@@ -267,14 +267,14 @@ void Save(NES* nes, char* filePath)
     // Write cartridge data
     Cartridge* cartridge = &nes->cartridge;
     fwrite(&cartridge->mirrorType, sizeof(MirrorType), 1, file);
-    fwrite(&cartridge->hasBatteryPack, sizeof(b32), 1, file);
+    fwrite(&cartridge->hasBatteryPack, sizeof(bool), 1, file);
     fwrite(&cartridge->mapper, sizeof(u8), 1, file);
     fwrite(&cartridge->prgRAMSize, sizeof(u8), 1, file);
     fwrite(cartridge->path, sizeof(char), sizeof(cartridge->path), file);
 
     fwrite(cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
 
-    fwrite(&cartridge->hasTrainer, sizeof(b32), 1, file);
+    fwrite(&cartridge->hasTrainer, sizeof(bool), 1, file);
     fwrite(cartridge->trainer, sizeof(u8), TRAINER_SIZE, file);
 
     fwrite(&cartridge->prgBanks, sizeof(u32), 1, file);
@@ -327,7 +327,7 @@ void Save(NES* nes, char* filePath)
 
 internal inline void ReadMemory(Memory* memory, FILE* file)
 {
-    fread(&memory->created, sizeof(b32), 1, file);
+    fread(&memory->created, sizeof(bool), 1, file);
     fread(&memory->length, sizeof(u32), 1, file);
 
     memory->bytes = (u8*)Allocate(memory->length);
@@ -358,14 +358,14 @@ NES* LoadNESSave(char* filePath)
     // Read cartridge data
     Cartridge* cartridge = &nes->cartridge;
     fread(&cartridge->mirrorType, sizeof(MirrorType), 1, file);
-    fread(&cartridge->hasBatteryPack, sizeof(b32), 1, file);
+    fread(&cartridge->hasBatteryPack, sizeof(bool), 1, file);
     fread(&cartridge->mapper, sizeof(u8), 1, file);
     fread(&cartridge->prgRAMSize, sizeof(u8), 1, file);
     fread(cartridge->path, sizeof(char), sizeof(cartridge->path), file);
 
     fread(cartridge->title, sizeof(u8), MAX_TITLE_LENGTH, file);
 
-    fread(&cartridge->hasTrainer, sizeof(b32), 1, file);
+    fread(&cartridge->hasTrainer, sizeof(bool), 1, file);
     fread(&cartridge->trainer, sizeof(u8), TRAINER_SIZE, file);
 
     fread(&cartridge->prgBanks, sizeof(u32), 1, file);

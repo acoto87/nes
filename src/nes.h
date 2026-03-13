@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-b32 LoadNesRom(char* filePath, Cartridge* cartridge);
+bool LoadNesRom(char* filePath, Cartridge* cartridge);
 NES* CreateNES(Cartridge cartridge);
 void ResetNES(NES* nes);
 void Destroy(NES* nes);

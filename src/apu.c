@@ -6,7 +6,7 @@ internal void StepPulseEvenlope(APUPulse* pulse)
     if (pulse->envelopeStart) {
         pulse->envelopeVolume = 15;
         pulse->envelopeValue = pulse->envelopePeriod;
-        pulse->envelopeStart = FALSE;
+        pulse->envelopeStart = false;
     } else if (pulse->envelopeValue > 0) {
         pulse->envelopeValue--;
     } else {
@@ -49,7 +49,7 @@ internal void StepPulseSweep(APUPulse* pulse)
         }
 
         pulse->sweepValue = pulse->sweepPeriod;
-        pulse->sweepReload = FALSE;
+        pulse->sweepReload = false;
     } else if (pulse->sweepValue > 0) {
         pulse->sweepValue--;
     } else {
@@ -136,7 +136,7 @@ internal void StepTriangleCounter(APUTriangle* triangle)
     }
 
     if (triangle->linearEnabled) {
-        triangle->linearReload = FALSE;
+        triangle->linearReload = false;
     }
 }
 
@@ -158,7 +158,7 @@ internal void StepNoiseEnvelope(APUNoise* noise)
     if (noise->envelopeStart) {
         noise->envelopeVolume = 15;
         noise->envelopeValue = noise->envelopePeriod;
-        noise->envelopeStart = FALSE;
+        noise->envelopeStart = false;
     } else if (noise->envelopeValue > 0) {
         noise->envelopeValue--;
     } else {
@@ -237,7 +237,7 @@ internal void StepDMCReader(NES* nes, APUDMC* dmc)
             if (dmc->loop) {
                 RestartDMC(dmc);
             } else {
-                nes->apu.dmcIRQ = TRUE;
+                nes->apu.dmcIRQ = true;
             }
         }
     }
@@ -501,16 +501,16 @@ void WriteAPUFrameCounter(NES* nes, u8 value)
 
     if (value & 0xC0) {
         apu->frameMode = 1;
-        apu->inhibitIRQ = TRUE;
+        apu->inhibitIRQ = true;
     } else if (value & 0x80) {
         apu->frameMode = 1;
-        apu->inhibitIRQ = FALSE;
+        apu->inhibitIRQ = false;
     } else if (value & 0x40) {
         apu->frameMode = 0;
-        apu->inhibitIRQ = TRUE;
+        apu->inhibitIRQ = true;
     } else {
         apu->frameMode = 0;
-        apu->inhibitIRQ = TRUE;
+        apu->inhibitIRQ = true;
     }
 
     // apu->frameMode = (value & 0x80) >> 7;
@@ -537,30 +537,30 @@ void ResetAPU(NES* nes)
     apu->sampleCounter = 0;
 
     apu->frameMode = 0;
-    apu->inhibitIRQ = FALSE;
+    apu->inhibitIRQ = false;
 
-    apu->pulse1.globalEnabled = TRUE;
-    apu->pulse1.enabled = FALSE;
+    apu->pulse1.globalEnabled = true;
+    apu->pulse1.enabled = false;
     apu->pulse1.lengthValue = 0;
     apu->pulse1.channel = 1;
 
-    apu->pulse2.globalEnabled = TRUE;
-    apu->pulse2.enabled = FALSE;
+    apu->pulse2.globalEnabled = true;
+    apu->pulse2.enabled = false;
     apu->pulse2.lengthValue = 0;
     apu->pulse2.channel = 2;
 
-    apu->triangle.globalEnabled = TRUE;
-    apu->triangle.enabled = FALSE;
+    apu->triangle.globalEnabled = true;
+    apu->triangle.enabled = false;
     apu->triangle.lengthValue = 0;
     apu->triangle.linearValue = 0;
 
-    apu->noise.globalEnabled = TRUE;
-    apu->noise.enabled = FALSE;
+    apu->noise.globalEnabled = true;
+    apu->noise.enabled = false;
     apu->noise.lengthValue = 0;
     apu->noise.shiftRegister = 1;
 
-    apu->dmc.globalEnabled = TRUE;
-    apu->dmc.enabled = FALSE;
+    apu->dmc.globalEnabled = true;
+    apu->dmc.enabled = false;
     apu->dmc.value = 0;
 
     apu->hpFilter1.lastInputSample = 0;

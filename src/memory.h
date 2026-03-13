@@ -9,7 +9,7 @@ static inline void CreateMemory(Memory* memory, u32 length)
 {
     memory->bytes = (u8*)Allocate(length);
     memory->length = length;
-    memory->created = TRUE;
+    memory->created = true;
 }
 
 static inline void DestroyMemory(Memory* memory)

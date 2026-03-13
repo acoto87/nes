@@ -34,7 +34,6 @@
 #include "mapper66.h"
 #include "memory.h"
 #include "oam.h"
-#include "wave_writer.h"
 
 #define nes (app.runtime.nes)
 
@@ -104,11 +103,11 @@ internal void CopyString(char* dest, size_t destSize, const char* src)
     dest[destSize - 1] = 0;
 }
 
-internal b32 EndsWith(const char* text, const char* suffix)
+internal bool EndsWith(const char* text, const char* suffix)
 {
     size_t textLen = strlen(text);
     size_t suffixLen = strlen(suffix);
-    if (textLen < suffixLen) return FALSE;
+    if (textLen < suffixLen) return false;
     return strcmp(text + textLen - suffixLen, suffix) == 0;
 }
 
@@ -139,32 +138,32 @@ internal void BuildSavePath(const char* sourcePath, char* dest, size_t destSize)
     strncat(dest, ".nsave", destSize - strlen(dest) - 1);
 }
 
-internal b32 LoadFileIntoApp(SDL_Window* win, const char* path)
+internal bool LoadFileIntoApp(SDL_Window* win, const char* path)
 {
-    if (!path || !path[0]) return FALSE;
+    if (!path || !path[0]) return false;
     if (EndsWith(path, ".nes")) {
         Cartridge cartridge = {0};
         if (!LoadNesRom((char*)path, &cartridge)) {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
-            return FALSE;
+            return false;
         }
         if (nes) Destroy(nes);
         nes = CreateNES(cartridge);
         if (!nes) {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Unsupported mapper",
                                      "This ROM uses a mapper that is not implemented yet.", win);
-            return FALSE;
+            return false;
         }
         CopyString(loadedFilePath, sizeof(loadedFilePath), path);
         BuildSavePath(path, saveFilePath, sizeof(saveFilePath));
         UpdateWindowTitle(win, path);
-        return TRUE;
+        return true;
     }
     if (EndsWith(path, ".nsave")) {
         NES* loaded = LoadNESSave((char*)path);
         if (!loaded) {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "The file couldn't be loaded!", win);
-            return FALSE;
+            return false;
         }
         if (nes) Destroy(nes);
         nes = loaded;
@@ -172,10 +171,10 @@ internal b32 LoadFileIntoApp(SDL_Window* win, const char* path)
         CopyString(saveFilePath, sizeof(saveFilePath), path);
         if (nes->cartridge.path[0]) CopyString(loadedFilePath, sizeof(loadedFilePath), nes->cartridge.path);
         UpdateWindowTitle(win, loadedFilePath);
-        return TRUE;
+        return true;
     }
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Only .nes and .nsave files are supported.", win);
-    return FALSE;
+    return false;
 }
 
 internal void QueueAudioBuffer(APU* apu, SDL_AudioDeviceID audioDeviceId, SDL_AudioStream* audioStream)
@@ -232,17 +231,17 @@ internal void UpdateControllerInput(SDL_GameController* controller)
     SetButton(nes, 0, BUTTON_A, keyboard[SDL_SCANCODE_A] || coarseButtons[7]);
 
     if (controller) {
-        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A)) SetButton(nes, 0, BUTTON_A, TRUE);
-        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X)) SetButton(nes, 0, BUTTON_B, TRUE);
-        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START)) SetButton(nes, 0, BUTTON_START, TRUE);
-        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK)) SetButton(nes, 0, BUTTON_SELECT, TRUE);
-        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP)) SetButton(nes, 0, BUTTON_UP, TRUE);
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A)) SetButton(nes, 0, BUTTON_A, true);
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X)) SetButton(nes, 0, BUTTON_B, true);
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START)) SetButton(nes, 0, BUTTON_START, true);
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK)) SetButton(nes, 0, BUTTON_SELECT, true);
+        if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP)) SetButton(nes, 0, BUTTON_UP, true);
         if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN))
-            SetButton(nes, 0, BUTTON_DOWN, TRUE);
+            SetButton(nes, 0, BUTTON_DOWN, true);
         if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT))
-            SetButton(nes, 0, BUTTON_LEFT, TRUE);
+            SetButton(nes, 0, BUTTON_LEFT, true);
         if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
-            SetButton(nes, 0, BUTTON_RIGHT, TRUE);
+            SetButton(nes, 0, BUTTON_RIGHT, true);
     }
 }
 
@@ -251,25 +250,25 @@ int main(int argc, char** argv)
     SDL_Window* win;
     SDL_GLContext glContext;
     int windowWidth, windowHeight;
-    b32 quit = FALSE;
+    bool quit = false;
     f32 dt = 0;
 
     struct Device device;
     SDL_GameController* controller = NULL;
 
-    debugging = TRUE;
-    debugMode = TRUE;
-    app.ui.debugToggle = TRUE;
-    app.ui.square1Enabled = TRUE;
-    app.ui.square2Enabled = TRUE;
-    app.ui.triangleEnabled = TRUE;
-    app.ui.noiseEnabled = TRUE;
-    app.ui.dmcEnabled = TRUE;
-    app.ui.hpFilter1Enabled = TRUE;
+    debugging = true;
+    debugMode = true;
+    app.ui.debugToggle = true;
+    app.ui.square1Enabled = true;
+    app.ui.square2Enabled = true;
+    app.ui.triangleEnabled = true;
+    app.ui.noiseEnabled = true;
+    app.ui.dmcEnabled = true;
+    app.ui.hpFilter1Enabled = true;
     app.ui.hpFilter1Freq = 90;
-    app.ui.hpFilter2Enabled = TRUE;
+    app.ui.hpFilter2Enabled = true;
     app.ui.hpFilter2Freq = 440;
-    app.ui.lpFilterEnabled = TRUE;
+    app.ui.lpFilterEnabled = true;
     app.ui.lpFilterFreq = 14000;
     globalPerfCountFrequency = SDL_GetPerformanceFrequency();
 
@@ -361,7 +360,7 @@ int main(int argc, char** argv)
         while (SDL_PollEvent(&evt)) {
             ImGui_ImplSDL2_ProcessEvent(&evt);
 
-            if (evt.type == SDL_QUIT) quit = TRUE;
+            if (evt.type == SDL_QUIT) quit = true;
 
             if (evt.type == SDL_DROPFILE) {
                 LoadFileIntoApp(win, evt.drop.file);
@@ -370,7 +369,7 @@ int main(int argc, char** argv)
 
             if (evt.type == SDL_WINDOWEVENT && evt.window.event == SDL_WINDOWEVENT_CLOSE &&
                 evt.window.windowID == SDL_GetWindowID(win)) {
-                quit = TRUE;
+                quit = true;
             }
         }
 
@@ -421,11 +420,11 @@ int main(int argc, char** argv)
                 if (!debugging) {
                     if (!hitRun) {
                         if (nes->cpu.pc == breakpoint) {
-                            debugging = TRUE;
-                            stepping = FALSE;
+                            debugging = true;
+                            stepping = false;
                         }
                     } else {
-                        hitRun = FALSE;
+                        hitRun = false;
                     }
                 }
 
@@ -434,7 +433,7 @@ int main(int argc, char** argv)
                 CPUStep step = StepCPU(nes);
                 cycles -= step.cycles;
 
-                if (debugging) stepping = FALSE;
+                if (debugging) stepping = false;
             }
 
             QueueAudioBuffer(&nes->apu, audioDeviceId, audioStream);

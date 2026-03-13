@@ -354,4 +354,3 @@ const char* GetRegisterStr(CPURegister cpuRegister)
         default: return "UK";
     }
 }
-

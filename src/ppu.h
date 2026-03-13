@@ -392,7 +392,7 @@ static inline u8 ReadPPUStatus(NES* nes)
     // anyway, causing the program to miss frames.
     if (ppu->scanline == 241) {
         if (ppu->cycle == 0) {
-            ppu->suppressNmi = TRUE;
+            ppu->suppressNmi = true;
         }
     }
 
@@ -637,7 +637,7 @@ static inline void SetVerticalBlank(NES* nes)
         }
     }
 
-    ppu->suppressNmi = FALSE;
+    ppu->suppressNmi = false;
 }
 
 static inline void ClearVerticalBlank(NES* nes)
@@ -649,8 +649,8 @@ static inline void ClearVerticalBlank(NES* nes)
     ClearBitFlag(&ppu->status, VBLANK_FLAG);
 
     /*ppu->delayNmi = 0;
-    ppu->outputNmi = FALSE;*/
-    ppu->suppressNmi = FALSE;
+    ppu->outputNmi = false;*/
+    ppu->suppressNmi = false;
 }
 
 void ResetPPU(NES* nes);

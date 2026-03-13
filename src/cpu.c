@@ -2,7 +2,7 @@
 
 #pragma region[ Instructions ]
 
-internal void HandleInterrupt(NES* nes, u16 interruptAddress, b32 fromBRK)
+internal void HandleInterrupt(NES* nes, u16 interruptAddress, bool fromBRK)
 {
     CPU* cpu = &nes->cpu;
 
@@ -65,7 +65,7 @@ internal inline void AND(NES* nes, u16 address)
     cpu->a = data;
 }
 
-internal inline void ASL(NES* nes, u16 address, b32 addressingModeACC)
+internal inline void ASL(NES* nes, u16 address, bool addressingModeACC)
 {
     CPU* cpu = &nes->cpu;
 
@@ -99,7 +99,7 @@ internal inline void ASL(NES* nes, u16 address, b32 addressingModeACC)
     }
 }
 
-internal inline void Branch(NES* nes, u16 address, b32 condition)
+internal inline void Branch(NES* nes, u16 address, bool condition)
 {
     CPU* cpu = &nes->cpu;
 
@@ -111,7 +111,7 @@ internal inline void Branch(NES* nes, u16 address, b32 condition)
     if (condition) {
         StepCPUCycles(nes, 1);
 
-        b32 hasCrossPage = PAGE_CROSS(cpu->pc, cpu->pc + data);
+        bool hasCrossPage = PAGE_CROSS(cpu->pc, cpu->pc + data);
 
         cpu->pc += data;
         cpu->cycles += 1;
@@ -179,7 +179,7 @@ internal inline void BPL(NES* nes, u16 address)
 internal inline void BRK(NES* nes)
 {
     StepCPUCycles(nes, 2);
-    HandleInterrupt(nes, CPU_IRQ_ADDRESS, TRUE);
+    HandleInterrupt(nes, CPU_IRQ_ADDRESS, true);
 }
 
 internal inline void BVC(NES* nes, u16 address)
@@ -441,7 +441,7 @@ internal inline void LDY(NES* nes, u16 address)
     cpu->y = data;
 }
 
-internal inline void LSR(NES* nes, u16 address, b32 addressingModeACC)
+internal inline void LSR(NES* nes, u16 address, bool addressingModeACC)
 {
     CPU* cpu = &nes->cpu;
 
@@ -533,7 +533,7 @@ internal inline void PLP(NES* nes)
     cpu->p = (v & 0xC0) | (cpu->p & 0x30) | (v & 0x0F);
 }
 
-internal inline void ROL(NES* nes, u16 address, b32 addressingModeACC)
+internal inline void ROL(NES* nes, u16 address, bool addressingModeACC)
 {
     CPU* cpu = &nes->cpu;
 
@@ -549,7 +549,7 @@ internal inline void ROL(NES* nes, u16 address, b32 addressingModeACC)
         data = ReadCPUU8(nes, address);
     }
 
-    b32 setCarry = data & 0x80;
+    bool setCarry = data & 0x80;
 
     data <<= 1;
 
@@ -572,7 +572,7 @@ internal inline void ROL(NES* nes, u16 address, b32 addressingModeACC)
     }
 }
 
-internal inline void ROR(NES* nes, u16 address, b32 addressingModeACC)
+internal inline void ROR(NES* nes, u16 address, bool addressingModeACC)
 {
     CPU* cpu = &nes->cpu;
 
@@ -588,7 +588,7 @@ internal inline void ROR(NES* nes, u16 address, b32 addressingModeACC)
         data = ReadCPUU8(nes, address);
     }
 
-    b32 setCarry = data & 0x01;
+    bool setCarry = data & 0x01;
 
     data >>= 1;
 
@@ -828,7 +828,7 @@ internal inline void RLA(NES* nes, u16 address)
 
     u8 data = ReadCPUU8(nes, address);
 
-    b32 setCarry = data & 0x80;
+    bool setCarry = data & 0x80;
 
     data <<= 1;
 
@@ -889,7 +889,7 @@ internal inline void RRA(NES* nes, u16 address)
 
     u8 data = ReadCPUU8(nes, address);
 
-    b32 setCarry = data & 0x01;
+    bool setCarry = data & 0x01;
 
     data >>= 1;
 
@@ -1070,7 +1070,7 @@ internal inline void ISC(NES* nes, u16 address)
 
 internal inline void KIL(NES* nes)
 {
-    ASSERT(FALSE);
+    ASSERT(false);
 }
 
 internal inline void FEX(NES* nes) {}
@@ -1127,7 +1127,7 @@ internal void ExecuteInstruction(NES* nes, CPUInstruction* instruction)
     CPU* cpu = &nes->cpu;
 
     u16 address;
-    b32 pageCrossed = FALSE;
+    bool pageCrossed = false;
 
     switch (instruction->addressingMode) {
         // Immediate #$00
@@ -1297,7 +1297,7 @@ internal void ExecuteInstruction(NES* nes, CPUInstruction* instruction)
         }
 
         default: {
-            ASSERT(FALSE);
+            ASSERT(false);
             break;
         }
     }
@@ -1642,17 +1642,17 @@ CPUStep StepCPU(NES* nes)
     if (cpu->interrupt) {
         switch (cpu->interrupt) {
             case CPU_INTERRUPT_RES: {
-                HandleInterrupt(nes, CPU_RESET_ADDRESS, FALSE);
+                HandleInterrupt(nes, CPU_RESET_ADDRESS, false);
                 break;
             }
             // non-maskable interrupt
             case CPU_INTERRUPT_NMI: {
-                HandleInterrupt(nes, CPU_NMI_ADDRESS, FALSE);
+                HandleInterrupt(nes, CPU_NMI_ADDRESS, false);
                 break;
             }
             case CPU_INTERRUPT_IRQ: {
                 if (!GetBitFlag(cpu->p, INTERRUPT_FLAG)) {
-                    HandleInterrupt(nes, CPU_IRQ_ADDRESS, FALSE);
+                    HandleInterrupt(nes, CPU_IRQ_ADDRESS, false);
                 }
                 break;
             }

@@ -27,7 +27,7 @@ u8 Mapper66ReadU8(NES* nes, u16 address)
         return ReadU8(&nes->cpuMemory, address);
     }
 
-    ASSERT(FALSE);
+    ASSERT(false);
     return 0;
 }
 
@@ -57,5 +57,5 @@ void Mapper66WriteU8(NES* nes, u16 address, u8 value)
         return;
     }
 
-    ASSERT(FALSE);
+    ASSERT(false);
 }

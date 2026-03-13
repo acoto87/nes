@@ -14,16 +14,16 @@ typedef enum Buttons {
     BUTTON_RIGHT = 7
 } Buttons;
 
-static inline b32 GetButton(NES* nes, s32 index, Buttons button)
+static inline bool GetButton(NES* nes, s32 index, Buttons button)
 {
     Controller* controller = &nes->controllers[index];
 
     u32 state = controller->state;
-    b32 isDown = state & (1 << button);
+    bool isDown = state & (1 << button);
     return isDown;
 }
 
-static inline void SetButton(NES* nes, s32 index, Buttons button, b32 isDown)
+static inline void SetButton(NES* nes, s32 index, Buttons button, bool isDown)
 {
     Controller* controller = &nes->controllers[index];
 

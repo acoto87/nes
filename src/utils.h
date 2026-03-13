@@ -4,11 +4,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
+#include <stdbool.h>
 
-#define ASSERT(expression)                                                                                             \
-    if (!(expression)) {                                                                                               \
-        *(int*)0 = 0;                                                                                                  \
-    }
+#define ASSERT(expression) assert(expression)
 
 #define KILOBYTES(x) ((x) * 1024)
 #define MEGABYTES(x) ((x) * 1024 * 1024)
@@ -52,20 +51,11 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
-typedef u8 b8;
-typedef u16 b16;
-typedef u32 b32;
-typedef u64 b64;
-
-#define TRUE 1
-#define FALSE 0
-
 typedef size_t size;
 
-typedef struct Color Color;
-struct Color {
+typedef struct Color {
     u8 r, g, b, a;
-};
+} Color;
 
 #define GetBitFlag(v, f) ((v) & (1 << (f)) ? 1 : 0)
 #define SetBitFlag(v, f) (*(v) = (*(v) | (1 << (f))))
@@ -81,11 +71,10 @@ static inline void Free(void* address)
     free(address);
 }
 
-typedef struct LoadedFile LoadedFile;
-struct LoadedFile {
+typedef struct LoadedFile {
     u64 size;
     u8* contents;
-};
+} LoadedFile;
 
 static inline u64 fsize(FILE* file)
 {
@@ -111,11 +100,10 @@ static inline LoadedFile LoadEntireFile(char* filePath)
     return file;
 }
 
-typedef struct LoadedBitmap LoadedBitmap;
-struct LoadedBitmap {
+typedef struct LoadedBitmap {
     u32 width, height;
     s32 xoffset, yoffset;
     Color* pixels;
-};
+} LoadedBitmap;
 
 #endif // UTILS_H

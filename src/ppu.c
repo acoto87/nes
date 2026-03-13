@@ -11,8 +11,8 @@ internal void RenderPixel(NES* nes)
     PPU* ppu = &nes->ppu;
     GUI* gui = &nes->gui;
 
-    b32 renderBackground = GetBitFlag(ppu->mask, BACKGROUND_ENABLED_FLAG);
-    b32 renderSprites = GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG);
+    bool renderBackground = GetBitFlag(ppu->mask, BACKGROUND_ENABLED_FLAG);
+    bool renderSprites = GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG);
 
     u8 background = 0;
     u8 sprite = 0, a = 0, idx = -1;
@@ -82,8 +82,8 @@ internal void RenderPixel(NES* nes)
         }
     }
 
-    b32 b = background % 4 != 0;
-    b32 s = sprite % 4 != 0;
+    bool b = background % 4 != 0;
+    bool s = sprite % 4 != 0;
 
     u8 colorIndex;
 
@@ -264,9 +264,9 @@ void StepPPU(NES* nes)
 {
     PPU* ppu = &nes->ppu;
 
-    b32 renderBackground = GetBitFlag(ppu->mask, BACKGROUND_ENABLED_FLAG);
-    b32 renderSprites = GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG);
-    b32 renderEnabled = renderBackground || renderSprites;
+    bool renderBackground = GetBitFlag(ppu->mask, BACKGROUND_ENABLED_FLAG);
+    bool renderSprites = GetBitFlag(ppu->mask, SPRITES_ENABLED_FLAG);
+    bool renderEnabled = renderBackground || renderSprites;
 
     if (renderEnabled) {
         /*
@@ -376,7 +376,7 @@ void StepPPU(NES* nes)
                 }
             }
         } else {
-            ASSERT(FALSE);
+            ASSERT(false);
         }
     }
 
@@ -544,7 +544,7 @@ void StepPPU(NES* nes)
         //}
         // else
         //{
-        //    ASSERT(FALSE);
+        //    ASSERT(false);
         //}
     }
 
