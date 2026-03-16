@@ -15,10 +15,27 @@
 #include "gui.h"
 #include "controller.h"
 
+#include "IconsFontAwesome5.h"
+
 #define nes (app.runtime.nes)
 
-void SetupImGuiStyle()
+void SetupImGui(void)
 {
+    ImGuiIO* io = igGetIO_Nil();
+    (void)io;
+    io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    ImFontConfig* fontConfig = ImFontConfig_ImFontConfig();
+    fontConfig->MergeMode = true;
+    fontConfig->PixelSnapH = true;
+
+    // Define the icon ranges for the specific font you are using (e.g., Font Awesome)
+    static const ImWchar icon_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+    ImFontAtlas_AddFontDefault(io->Fonts, NULL);
+    ImFontAtlas_AddFontFromFileTTF(io->Fonts, "fonts/fontawesome-webfont.ttf", 13.0f, fontConfig, icon_ranges);
+    // ImFontConfig_destroy(fontConfig);
+
     ImGuiStyle* style = igGetStyle();
     ImVec4* colors = style->Colors;
 
@@ -75,12 +92,14 @@ void SetupImGuiStyle()
     style->TabBorderSize = 1.0f;
 }
 
+
 /* ------------------------------------------------------------------------- */
 /* UI Sections                                                               */
 /* ------------------------------------------------------------------------- */
 
 internal void DrawTopBar(SDL_Window* win, f32 dt)
 {
+    igPushStyleVar_Vec2(ImGuiStyleVar_FramePadding, (ImVec2){10, 10});
     if (igBeginMainMenuBar()) {
         const char* romName = "No ROM";
         if (nes && loadedFilePath[0]) {
@@ -88,45 +107,59 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
             if (!s) s = SDL_strrchr(loadedFilePath, '/');
             romName = s ? s + 1 : loadedFilePath;
         }
+
         igTextColored((ImVec4){0.4f, 0.4f, 0.4f, 1.0f}, "ROM:");
         igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, " %s", romName);
         igSeparator();
 
-        if (igButton("Open", (ImVec2){0, 0})) {
-            debugging = true;
-            stepping = false;
-            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Open ROM",
-                                     "Drag & drop a .nes or .nsave file onto the window.", win);
+        bool hitF5 = igIsKeyPressed_Bool(ImGuiKey_F5, false);
+        bool hitF8 = igIsKeyPressed_Bool(ImGuiKey_F8, false);
+        bool hitF9 = igIsKeyPressed_Bool(ImGuiKey_F9, false);
+        bool hitF10 = igIsKeyPressed_Bool(ImGuiKey_F10, false);
+        bool hitF11 = igIsKeyPressed_Bool(ImGuiKey_F11, true);
+        bool hitF12 = igIsKeyPressed_Bool(ImGuiKey_F12, false);
+
+        f32 windowWidth = igGetWindowWidth();
+
+        f32 centerWidth = 570.0f;
+        f32 startX = (windowWidth - centerWidth) * 0.5f;
+        if (startX > igGetCursorPosX()) {
+            igSetCursorPosX(startX);
+        } else {
+            igSameLine(0, 0);
         }
 
         if (debugging) {
-            if (igButton("Run", (ImVec2){0, 0})) {
+            if (igButton(ICON_FA_PLAY " Run (F5)", (ImVec2){0, 0}) || hitF5) {
                 if (!nes) {
                     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Run", "Load a ROM first.", win);
                 } else {
                     hitRun = true;
                     debugging = false;
                     stepping = false;
+
+                    igSetWindowFocus_Str(ICON_FA_DESKTOP " NES Screen");
                 }
             }
-            if (igButton("Step", (ImVec2){0, 0})) {
-                if (nes) stepping = true;
-            }
         } else {
-            if (igButton("Pause", (ImVec2){0, 0})) {
+            if (igButton(ICON_FA_PAUSE " Pause (F5)", (ImVec2){0, 0}) || hitF5) {
                 debugging = true;
                 stepping = false;
             }
         }
 
-        if (igButton("Reset", (ImVec2){0, 0})) {
+        igSameLine(0, 5);
+
+        if (igButton(ICON_FA_UNDO " Reset (F9)", (ImVec2){0, 0}) || hitF9) {
             if (nes) {
                 ResetNES(nes);
                 debugging = true;
             }
         }
 
-        if (igButton("Save", (ImVec2){0, 0})) {
+        igSameLine(0, 5);
+
+        if (igButton(ICON_FA_SAVE " Save (F10)", (ImVec2){0, 0}) || hitF10) {
             if (nes) {
                 debugging = true;
                 stepping = false;
@@ -135,23 +168,64 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
             }
         }
 
-        igSeparator();
-        igTextColored((ImVec4){0.4f, 0.4f, 0.4f, 1.0f}, "FPS:");
-        igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "%d", (s32)(1.0f / dt));
-        igTextColored((ImVec4){0.4f, 0.4f, 0.4f, 1.0f}, "dt:");
-        igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "%.4f", dt);
-
-        igSeparator();
-        bool oneCyc = (bool)app.ui.oneCycleToggle;
-        if (igCheckbox("1-cycle", &oneCyc)) app.ui.oneCycleToggle = oneCyc;
-        oneCycleAtTime = app.ui.oneCycleToggle;
+        igSameLine(0, 5);
 
         bool dbgToggle = (bool)app.ui.debugToggle;
-        if (igCheckbox("Debug", &dbgToggle)) app.ui.debugToggle = dbgToggle;
+        if (hitF12) dbgToggle = !dbgToggle;
+
+        if (dbgToggle) {
+            igPushStyleColor_Vec4(ImGuiCol_Button, (ImVec4){0.2f, 0.6f, 0.2f, 1.0f});
+            igPushStyleColor_Vec4(ImGuiCol_ButtonHovered, (ImVec4){0.3f, 0.8f, 0.3f, 1.0f});
+            igPushStyleColor_Vec4(ImGuiCol_ButtonActive, (ImVec4){0.4f, 1.0f, 0.4f, 1.0f});
+        }
+        bool clickedDebug = igButton(ICON_FA_BUG " Debug (F12)", (ImVec2){0, 0});
+        if (dbgToggle) igPopStyleColor(3);
+        if (clickedDebug) dbgToggle = !dbgToggle;
+        app.ui.debugToggle = dbgToggle;
         debugMode = app.ui.debugToggle;
+
+        if (debugMode) {
+            igSameLine(0, 5);
+
+            if (igButton(ICON_FA_STEP_FORWARD " Step (F11)", (ImVec2){0, 0}) || hitF11) {
+                if (nes) stepping = true;
+            }
+        }
+
+        char fpsText[64];
+        char dtText[64];
+        snprintf(fpsText, sizeof(fpsText), "FPS: %d", (s32)(1.0f / dt));
+        snprintf(dtText, sizeof(dtText), "dt: %.4f", dt);
+
+        f32 rightWidth = 320.0f;
+        f32 rightX = windowWidth - rightWidth;
+        if (rightX > igGetCursorPosX()) {
+            igSetCursorPosX(rightX);
+        } else {
+            igSameLine(0, 0);
+        }
+
+        bool oneCyc = (bool)app.ui.oneCycleToggle;
+        if (hitF8) oneCyc = !oneCyc;
+        if (oneCyc) {
+            igPushStyleColor_Vec4(ImGuiCol_Button, (ImVec4){0.2f, 0.6f, 0.2f, 1.0f});
+            igPushStyleColor_Vec4(ImGuiCol_ButtonHovered, (ImVec4){0.3f, 0.8f, 0.3f, 1.0f});
+            igPushStyleColor_Vec4(ImGuiCol_ButtonActive, (ImVec4){0.4f, 1.0f, 0.4f, 1.0f});
+        }
+        bool clickedOneCyc = igButton(ICON_FA_CLOCK " 1-cycle (F8)", (ImVec2){0, 0});
+        if (oneCyc) igPopStyleColor(3);
+        if (clickedOneCyc) oneCyc = !oneCyc;
+        app.ui.oneCycleToggle = oneCyc;
+        oneCycleAtTime = app.ui.oneCycleToggle;
+
+        igSameLine(0, 5);
+        igButton(fpsText, (ImVec2){0, 0});
+        igSameLine(0, 5);
+        igButton(dtText, (ImVec2){0, 0});
 
         igEndMainMenuBar();
     }
+    igPopStyleVar(1);
 }
 
 internal void DrawLeftSidebar(f32 dt)
@@ -375,7 +449,7 @@ internal void DrawAudioWaveform(s16* buffer, s32 pointCount)
 internal void DrawOAMTable(NES* nesPtr)
 {
     if (igBeginTable("OAMTable", 5, ImGuiTableFlags_ScrollY | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg,
-                     (ImVec2){0, 200}, 0)) {
+                     (ImVec2){0, 0}, 0)) {
         igTableSetupScrollFreeze(0, 1);
         igTableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 20.0f, 0);
         igTableSetupColumn("X", ImGuiTableColumnFlags_WidthFixed, 30.0f, 0);
@@ -719,7 +793,23 @@ internal void DrawMemoryPanel()
 
         bool child_visible = igBeginChild_Str("MemoryView", (ImVec2){0, 0}, false, ImGuiWindowFlags_None);
         if (child_visible) {
-            if (igBeginTable("HexDump", 17, ImGuiTableFlags_None, (ImVec2){0, 0}, 0)) {
+            if (igBeginTable("HexDump", 33, ImGuiTableFlags_HighlightHoveredColumn | ImGuiTableFlags_PadOuterX, (ImVec2){-20.0f, 0}, 0)) {
+                igTableSetupColumn("ADDRESS", ImGuiTableColumnFlags_WidthFixed, 40.0f, 0);
+
+                for (s32 j = 0; j < 16; j++) {
+                    char columnName[4];
+                    snprintf(columnName, sizeof(columnName), "%02X", j);
+                    igTableSetupColumn(columnName, ImGuiTableColumnFlags_WidthStretch, 1.0f, 0);
+                }
+
+                for (s32 j = 0; j < 16; j++) {
+                    char columnName[4];
+                    snprintf(columnName, sizeof(columnName), "%01X", j);
+                    igTableSetupColumn(columnName, ImGuiTableColumnFlags_WidthFixed, 4.0f, 0);
+                }
+
+                igTableHeadersRow();
+
                 for (s32 i = 0; i < 64; ++i) {
                     igTableNextRow(ImGuiTableRowFlags_None, 0);
                     igTableNextColumn();
@@ -742,6 +832,24 @@ internal void DrawMemoryPanel()
 
                         igText("%02X", v);
                     }
+
+                    for (s32 j = 0; j < 16; ++j) {
+                        igTableNextColumn();
+                        u16 addr = baseAddress + i * 16 + j;
+                        u8 v = 0;
+
+                        if (app.ui.memoryOption == 0) {
+                            v = ReadCPUU8(nes, addr);
+                        } else if (app.ui.memoryOption == 1) {
+                            v = ReadPPUU8(nes, addr);
+                        } else if (app.ui.memoryOption == 2) {
+                            v = ReadU8(&nes->oamMemory, addr % 256);
+                        } else if (app.ui.memoryOption == 3) {
+                            v = ReadU8(&nes->oamMemory2, addr % 32);
+                        }
+
+                        igText("%c", v);
+                    }
                 }
                 igEndTable();
             }
@@ -756,6 +864,7 @@ internal void DrawGameScreen(Device* device)
 {
     if (nes) {
         GUI* gui = &nes->gui;
+
         glBindTexture(GL_TEXTURE_2D, device->screen);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 240, GL_RGBA, GL_UNSIGNED_BYTE, gui->pixels);
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -772,8 +881,15 @@ internal void DrawGameScreen(Device* device)
         f32 oy = (avail.y - drawH) * 0.5f;
 
         igSetCursorPos((ImVec2){ox, oy});
-        igImage((ImTextureRef_c){NULL, (ImTextureID)(intptr_t)device->screen}, (ImVec2){drawW, drawH}, (ImVec2){0, 0},
-                (ImVec2){1, 1});
+        igImage(
+            (ImTextureRef_c){
+                NULL,
+                (ImTextureID)(intptr_t)device->screen
+            },
+            (ImVec2){drawW, drawH},
+            (ImVec2){0, 0},
+            (ImVec2){1, 1}
+        );
     }
 }
 
@@ -792,8 +908,7 @@ internal void DrawPalettesPanel()
                 char id[32];
                 snprintf(id, sizeof(id), "##bg_%d_%d", i, j);
                 igColorButton(id, color,
-                              ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker |
-                                  ImGuiColorEditFlags_NoDragDrop,
+                              ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoDragDrop,
                               (ImVec2){30, 30});
                 if (j < 3) igSameLine(0, 4);
             }
@@ -882,7 +997,6 @@ internal void DrawControllerPanel()
 #undef GET_COL
 }
 
-
 void DrawUI(SDL_Window* win, Device* device, f32 dt)
 {
     DrawTopBar(win, dt);
@@ -891,43 +1005,44 @@ void DrawUI(SDL_Window* win, Device* device, f32 dt)
     igDockSpaceOverViewport(0, viewport, ImGuiDockNodeFlags_PassthruCentralNode, NULL);
 
     if (debugMode) {
-        if (igBegin("SYSTEM", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_FA_MICROCHIP " SYSTEM", NULL, ImGuiWindowFlags_None)) {
             DrawLeftSidebar(dt);
         }
         igEnd();
 
-        if (igBegin("VIDEO", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_FA_TV " VIDEO", NULL, ImGuiWindowFlags_None)) {
             DrawVideoPanel(device);
         }
         igEnd();
 
-        if (igBegin("AUDIO", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_FA_MUSIC " AUDIO", NULL, ImGuiWindowFlags_None)) {
             DrawAudioPanel();
         }
         igEnd();
 
-        if (igBegin("INSTRUCTIONS", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_FA_CODE " INSTRUCTIONS", NULL, ImGuiWindowFlags_None)) {
             DrawInstructionsPanel();
         }
         igEnd();
 
-        if (igBegin("MEMORY", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_FA_MEMORY " MEMORY", NULL, ImGuiWindowFlags_None)) {
             DrawMemoryPanel();
         }
         igEnd();
-        if (igBegin("PALETTES", NULL, ImGuiWindowFlags_None)) {
+
+        if (igBegin(ICON_FA_PALETTE " PALETTES", NULL, ImGuiWindowFlags_None)) {
             DrawPalettesPanel();
         }
         igEnd();
 
-        if (igBegin("CONTROLLER", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_FA_GAMEPAD " CONTROLLER", NULL, ImGuiWindowFlags_None)) {
             DrawControllerPanel();
         }
         igEnd();
     }
 
     ImGuiWindowFlags screenFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-    if (igBegin("NES Screen", NULL, screenFlags)) {
+    if (igBegin(ICON_FA_DESKTOP " NES Screen", NULL, screenFlags)) {
         DrawGameScreen(device);
     }
     igEnd();

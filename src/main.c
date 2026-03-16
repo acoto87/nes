@@ -148,6 +148,9 @@ internal bool LoadFileIntoApp(SDL_Window* win, const char* path)
                                      "This ROM uses a mapper that is not implemented yet.", win);
             return false;
         }
+        hitRun = false;
+        debugging = true;
+        stepping = false;
         CopyString(loadedFilePath, sizeof(loadedFilePath), path);
         BuildSavePath(path, saveFilePath, sizeof(saveFilePath));
         UpdateWindowTitle(win, path);
@@ -289,13 +292,7 @@ int main(int argc, char** argv)
     SetupDevice(&device);
 
     igCreateContext(NULL);
-    ImGuiIO* io = igGetIO_Nil();
-    (void)io;
-    io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-    SetupImGuiStyle();
-
+    SetupImGui();
     ImGui_ImplSDL2_InitForOpenGL(win, glContext);
     ImGui_ImplOpenGL3_Init("#version 130");
 

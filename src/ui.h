@@ -95,7 +95,7 @@ typedef struct Device {
     GLuint nametable;
 } Device;
 
-void SetupImGuiStyle();
+void SetupImGui(void);
 void DrawUI(SDL_Window* win, Device* device, f32 dt);
 
 #endif

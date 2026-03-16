@@ -170,6 +170,7 @@ int main(int argc, char** argv)
     nob_cmd_append(&cmd, "-o", "build/nes.exe");
 
     if (!nob_cmd_run_sync(cmd) ||
+        !nob_copy_directory_recursively("fonts", "build/fonts") ||
         !nob_copy_file("external/SDL2/x86_64-w64-mingw32/bin/SDL2.dll", "build/SDL2.dll") ||
         !nob_copy_file("external/cimgui/build/cimgui.dll", "build/cimgui.dll")) {
         return 1;
