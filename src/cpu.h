@@ -81,6 +81,7 @@
 // without a circular dependency. It is available here because cpu.h includes apu.h.
 
 u8 ReadCPUU8(NES* nes, u16 address);
+u8 PeekCPUU8(NES* nes, u16 address);
 
 static inline u16 ReadCPUU16(NES* nes, u16 address)
 {

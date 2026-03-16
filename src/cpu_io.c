@@ -81,6 +81,28 @@ u8 ReadCPUU8(NES* nes, u16 address)
     return 0;
 }
 
+u8 PeekCPUU8(NES* nes, u16 address)
+{
+    if (ISBETWEEN(address, 0x00, 0x2000)) {
+        address = (address % 0x800);
+        return ReadU8(&nes->cpuMemory, address);
+    }
+
+    if (ISBETWEEN(address, 0x2000, 0x4020)) {
+        return 0; // Return 0 for hardware I/O registers to avoid side-effects
+    }
+
+    if (ISBETWEEN(address, 0x6000, 0x8000)) {
+        return ReadU8(&nes->cpuMemory, address);
+    }
+
+    if (ISBETWEEN(address, 0x8000, 0x10000)) {
+        return nes->mapperReadU8(nes, address);
+    }
+
+    return 0;
+}
+
 void WriteCPUU8(NES* nes, u16 address, u8 value)
 {
     if (ISBETWEEN(address, 0x00, 0x2000)) {

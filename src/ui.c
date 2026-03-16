@@ -31,7 +31,7 @@ void SetupImGui(void)
     fontConfig->PixelSnapH = true;
 
     // Define the icon ranges for the specific font you are using (e.g., Font Awesome)
-    static const ImWchar icon_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+    static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
     ImFontAtlas_AddFontDefault(io->Fonts, NULL);
     ImFontAtlas_AddFontFromFileTTF(io->Fonts, "fonts/fontawesome-webfont.ttf", 13.0f, fontConfig, icon_ranges);
     // ImFontConfig_destroy(fontConfig);
@@ -793,7 +793,8 @@ internal void DrawMemoryPanel()
 
         bool child_visible = igBeginChild_Str("MemoryView", (ImVec2){0, 0}, false, ImGuiWindowFlags_None);
         if (child_visible) {
-            if (igBeginTable("HexDump", 33, ImGuiTableFlags_HighlightHoveredColumn | ImGuiTableFlags_PadOuterX, (ImVec2){-20.0f, 0}, 0)) {
+            if (igBeginTable("HexDump", 33, ImGuiTableFlags_HighlightHoveredColumn | ImGuiTableFlags_PadOuterX,
+                             (ImVec2){-20.0f, 0}, 0)) {
                 igTableSetupColumn("ADDRESS", ImGuiTableColumnFlags_WidthFixed, 40.0f, 0);
 
                 for (s32 j = 0; j < 16; j++) {
@@ -821,7 +822,7 @@ internal void DrawMemoryPanel()
                         u8 v = 0;
 
                         if (app.ui.memoryOption == 0) {
-                            v = ReadCPUU8(nes, addr);
+                            v = PeekCPUU8(nes, addr);
                         } else if (app.ui.memoryOption == 1) {
                             v = ReadPPUU8(nes, addr);
                         } else if (app.ui.memoryOption == 2) {
@@ -839,7 +840,7 @@ internal void DrawMemoryPanel()
                         u8 v = 0;
 
                         if (app.ui.memoryOption == 0) {
-                            v = ReadCPUU8(nes, addr);
+                            v = PeekCPUU8(nes, addr);
                         } else if (app.ui.memoryOption == 1) {
                             v = ReadPPUU8(nes, addr);
                         } else if (app.ui.memoryOption == 2) {
@@ -848,7 +849,7 @@ internal void DrawMemoryPanel()
                             v = ReadU8(&nes->oamMemory2, addr % 32);
                         }
 
-                        igText("%c", v);
+                        igText("%c", (v >= 32 && v < 127) ? v : '.');
                     }
                 }
                 igEndTable();
@@ -880,16 +881,11 @@ internal void DrawGameScreen(Device* device)
         f32 ox = (avail.x - drawW) * 0.5f;
         f32 oy = (avail.y - drawH) * 0.5f;
 
-        igSetCursorPos((ImVec2){ox, oy});
-        igImage(
-            (ImTextureRef_c){
-                NULL,
-                (ImTextureID)(intptr_t)device->screen
-            },
-            (ImVec2){drawW, drawH},
-            (ImVec2){0, 0},
-            (ImVec2){1, 1}
-        );
+        f32 startX = igGetCursorPosX();
+        f32 startY = igGetCursorPosY();
+        igSetCursorPos((ImVec2){startX + ox, startY + oy});
+        igImage((ImTextureRef_c){NULL, (ImTextureID)(intptr_t)device->screen}, (ImVec2){drawW, drawH}, (ImVec2){0, 0},
+                (ImVec2){1, 1});
     }
 }
 
@@ -908,7 +904,8 @@ internal void DrawPalettesPanel()
                 char id[32];
                 snprintf(id, sizeof(id), "##bg_%d_%d", i, j);
                 igColorButton(id, color,
-                              ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoDragDrop,
+                              ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker |
+                                  ImGuiColorEditFlags_NoDragDrop,
                               (ImVec2){30, 30});
                 if (j < 3) igSameLine(0, 4);
             }
