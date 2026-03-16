@@ -1,0 +1,606 @@
+#include <string.h>
+#include "apu.h"
+
+internal void StepPulseEvenlope(APUPulse* pulse)
+{
+    if (pulse->envelopeStart) {
+        pulse->envelopeVolume = 15;
+        pulse->envelopeValue = pulse->envelopePeriod;
+        pulse->envelopeStart = false;
+    } else if (pulse->envelopeValue > 0) {
+        pulse->envelopeValue--;
+    } else {
+        if (pulse->envelopeVolume > 0) {
+            pulse->envelopeVolume--;
+        } else if (pulse->envelopeLoop) {
+            pulse->envelopeVolume = 15;
+        }
+
+        pulse->envelopeValue = pulse->envelopePeriod;
+    }
+}
+
+internal void PulseSweep(APUPulse* pulse)
+{
+    u8 delta = pulse->timerPeriod >> pulse->sweepShift;
+
+    if (pulse->sweepNegate) {
+        pulse->timerPeriod -= delta;
+
+        // The two pulse channels have their adders' carry inputs wired differently, which produces different results
+        // when each channel's change amount is made negative : Pulse 1 adds the ones' complement (−c − 1). Making 20
+        // negative produces a change amount of −21. Pulse 2 adds the two's complement (−c). Making 20 negative produces
+        // a change amount of −20.
+        //
+        // from: http://wiki.nesdev.com/w/index.php/APU_Sweep
+        if (pulse->channel == 1) {
+            pulse->timerPeriod--;
+        }
+    } else {
+        pulse->timerPeriod += delta;
+    }
+}
+
+internal void StepPulseSweep(APUPulse* pulse)
+{
+    if (pulse->sweepReload) {
+        if (pulse->sweepEnabled && !pulse->sweepValue) {
+            PulseSweep(pulse);
+        }
+
+        pulse->sweepValue = pulse->sweepPeriod;
+        pulse->sweepReload = false;
+    } else if (pulse->sweepValue > 0) {
+        pulse->sweepValue--;
+    } else {
+        if (pulse->sweepEnabled) {
+            PulseSweep(pulse);
+        }
+
+        pulse->sweepValue = pulse->sweepPeriod;
+    }
+}
+
+internal void StepPulseTimer(APUPulse* pulse)
+{
+    if (!pulse->timerValue) {
+        pulse->timerValue = pulse->timerPeriod;
+        pulse->dutyValue = (pulse->dutyValue + 1) % 8;
+    } else {
+        pulse->timerValue--;
+    }
+}
+
+internal void StepPulseLength(APUPulse* pulse)
+{
+    if (pulse->lengthEnabled && pulse->lengthValue > 0) {
+        pulse->lengthValue--;
+    }
+}
+
+internal u8 GetPulseOutput(APUPulse* pulse)
+{
+    if (!pulse->globalEnabled) {
+        return 0;
+    }
+
+    if (!pulse->enabled) {
+        return 0;
+    }
+
+    if (!pulse->lengthValue) {
+        return 0;
+    }
+
+    if (!dutyTable[pulse->dutyMode][pulse->dutyValue]) {
+        return 0;
+    }
+
+    if (pulse->timerPeriod < 8 || pulse->timerPeriod > 0x7FF) {
+        return 0;
+    }
+
+    if (pulse->envelopeEnabled) {
+        return pulse->envelopeVolume;
+    }
+
+    return pulse->constantVolume;
+}
+
+internal void StepTriangleTimer(APUTriangle* triangle)
+{
+    if (!triangle->timerValue) {
+        triangle->timerValue = triangle->timerPeriod;
+
+        if (triangle->lengthValue > 0 && triangle->linearValue > 0) {
+            triangle->tableIndex = (triangle->tableIndex + 1) % 32;
+        }
+    } else {
+        triangle->timerValue--;
+    }
+}
+
+internal void StepTriangleLength(APUTriangle* triangle)
+{
+    if (triangle->lengthEnabled && triangle->lengthValue > 0) {
+        triangle->lengthValue--;
+    }
+}
+
+internal void StepTriangleCounter(APUTriangle* triangle)
+{
+    if (triangle->linearReload) {
+        triangle->linearValue = triangle->linearPeriod;
+    } else if (triangle->linearValue > 0) {
+        triangle->linearValue--;
+    }
+
+    if (triangle->linearEnabled) {
+        triangle->linearReload = false;
+    }
+}
+
+internal u8 GetTriangleOutput(APUTriangle* triangle)
+{
+    if (!triangle->globalEnabled) {
+        return 0;
+    }
+
+    if (!triangle->enabled) {
+        return 0;
+    }
+
+    return triangleTable[triangle->tableIndex];
+}
+
+internal void StepNoiseEnvelope(APUNoise* noise)
+{
+    if (noise->envelopeStart) {
+        noise->envelopeVolume = 15;
+        noise->envelopeValue = noise->envelopePeriod;
+        noise->envelopeStart = false;
+    } else if (noise->envelopeValue > 0) {
+        noise->envelopeValue--;
+    } else {
+        if (noise->envelopeVolume > 0) {
+            noise->envelopeVolume--;
+        } else if (noise->envelopeLoop) {
+            noise->envelopeVolume = 15;
+        }
+
+        noise->envelopeValue = noise->envelopePeriod;
+    }
+}
+
+internal void StepNoiseTimer(APUNoise* noise)
+{
+    if (!noise->timerValue) {
+        noise->timerValue = noise->timerPeriod;
+
+        u16 feedbackBit1 = noise->shiftRegister & 1;
+        u16 feedbackBit2 = noise->timerMode ? ((noise->shiftRegister >> 6) & 1) : ((noise->shiftRegister >> 1) & 1);
+        u16 feedback = (feedbackBit1 ^ feedbackBit2) << 14;
+        noise->shiftRegister = feedback | (noise->shiftRegister >> 1);
+    } else {
+        noise->timerValue--;
+    }
+}
+
+internal void StepNoiseLength(APUNoise* noise)
+{
+    if (noise->lengthEnabled && noise->lengthValue > 0) {
+        noise->lengthValue--;
+    }
+}
+
+internal u8 GetNoiseOutput(APUNoise* noise)
+{
+    if (!noise->globalEnabled) {
+        return 0;
+    }
+
+    if (!noise->enabled) {
+        return 0;
+    }
+
+    if (!noise->lengthValue) {
+        return 0;
+    }
+
+    if (noise->shiftRegister & 1) {
+        return 0;
+    }
+
+    if (noise->envelopeEnabled) {
+        return noise->envelopeVolume;
+    }
+
+    return noise->constantVolume;
+}
+
+internal void StepDMCReader(NES* nes, APUDMC* dmc)
+{
+    if (dmc->currentLength > 0 && dmc->bitCount == 0) {
+        // the CPU stall for 4 cycles here
+        nes->cpu.waitCycles += 4;
+
+        dmc->shiftRegister = ReadCPUU8(nes, dmc->currentAddress);
+        dmc->bitCount = 8;
+
+        dmc->currentAddress++;
+        if (dmc->currentAddress == 0) {
+            dmc->currentAddress = 0x8000;
+        }
+
+        dmc->currentLength = 0;
+        if (dmc->currentLength == 0) {
+            if (dmc->loop) {
+                RestartDMC(dmc);
+            } else {
+                nes->apu.dmcIRQ = true;
+            }
+        }
+    }
+}
+
+internal void StepDMCShifter(APUDMC* dmc)
+{
+    if (dmc->bitCount > 0) {
+        if (dmc->shiftRegister & 1) {
+            if (dmc->value <= 125) {
+                dmc->value += 2;
+            }
+        } else {
+            if (dmc->value >= 2) {
+                dmc->value -= 2;
+            }
+        }
+
+        dmc->shiftRegister >>= 1;
+        dmc->bitCount--;
+    }
+}
+
+internal void StepDMCTimer(NES* nes, APUDMC* dmc)
+{
+    if (dmc->enabled) {
+        StepDMCReader(nes, dmc);
+
+        if (!dmc->timerValue) {
+            dmc->timerValue = dmc->timerPeriod;
+            StepDMCShifter(dmc);
+        } else {
+            dmc->timerValue--;
+        }
+    }
+}
+
+internal u8 GetDMCOutput(APUDMC* dmc)
+{
+    return dmc->value;
+}
+
+internal void StepAPUEnvelope(APU* apu)
+{
+    StepPulseEvenlope(&apu->pulse1);
+    StepPulseEvenlope(&apu->pulse2);
+    StepTriangleCounter(&apu->triangle);
+    StepNoiseEnvelope(&apu->noise);
+}
+
+internal void StepAPUSweep(APU* apu)
+{
+    StepPulseSweep(&apu->pulse1);
+    StepPulseSweep(&apu->pulse2);
+}
+
+internal void StepAPUTimer(NES* nes, APU* apu)
+{
+    if (!(apu->cycles & 1)) {
+        StepPulseTimer(&apu->pulse1);
+        StepPulseTimer(&apu->pulse2);
+        StepNoiseTimer(&apu->noise);
+        StepDMCTimer(nes, &apu->dmc);
+    }
+
+    StepTriangleTimer(&apu->triangle);
+}
+
+internal void StepAPULength(APU* apu)
+{
+    StepPulseLength(&apu->pulse1);
+    StepPulseLength(&apu->pulse2);
+    StepTriangleLength(&apu->triangle);
+    StepNoiseLength(&apu->noise);
+}
+
+// mode 0:    mode 1:       function
+// ---------  -----------  -----------------------------
+//  - - - f    - - - - -    IRQ (if bit 6 is clear)
+//  - l - l    l - l - -    Length counter and sweep
+//  e e e e    e e e e -    Envelope and linear counter
+// from: http://wiki.nesdev.com/w/index.php/APU#Frame_Counter_.28.244017.29
+internal void StepAPUFrameCounter(NES* nes)
+{
+    APU* apu = &nes->apu;
+
+    if (apu->frameMode) {
+        // 5-step mode
+        apu->frameValue = (apu->frameValue + 1) % 5;
+
+        switch (apu->frameValue) {
+            case 0: {
+                StepAPUEnvelope(apu);
+                StepAPUSweep(apu);
+                StepAPULength(apu);
+                break;
+            }
+
+            case 1: {
+                StepAPUEnvelope(apu);
+                break;
+            }
+
+            case 2: {
+                StepAPUEnvelope(apu);
+                StepAPUSweep(apu);
+                StepAPULength(apu);
+                break;
+            }
+
+            case 3: {
+                StepAPUEnvelope(apu);
+                break;
+            }
+
+            case 4: {
+                break;
+            }
+        }
+    } else {
+        // 4-step mode
+        apu->frameValue = (apu->frameValue + 1) % 4;
+
+        switch (apu->frameValue) {
+            case 0: {
+                StepAPUEnvelope(apu);
+                break;
+            }
+
+            case 1: {
+                StepAPUEnvelope(apu);
+                StepAPUSweep(apu);
+                StepAPULength(apu);
+                break;
+            }
+
+            case 2: {
+                StepAPUEnvelope(apu);
+                break;
+            }
+
+            case 3: {
+                StepAPUEnvelope(apu);
+                StepAPUSweep(apu);
+                StepAPULength(apu);
+
+                if (!apu->inhibitIRQ) {
+                    if (!(nes->cpu.p & 4)) {
+                        nes->cpu.interrupt = CPU_INTERRUPT_IRQ;
+                    }
+                }
+                break;
+            }
+        }
+    }
+}
+
+internal f32 HighPassFilter(AudioFilter* filter, f32 sampleValue)
+{
+    if (!filter->enabled || filter->freq <= 0) return sampleValue;
+
+    f32 dt = 1.0f / (f32)APU_SAMPLES_PER_SECOND;
+    f32 rc = 1.0f / (2.0f * 3.14159265359f * (f32)filter->freq);
+    f32 alpha = rc / (rc + dt);
+
+    f32 newSampleValue = alpha * (filter->lastOutputSample + sampleValue - filter->lastInputSample);
+
+    filter->lastInputSample = sampleValue;
+    filter->lastOutputSample = newSampleValue;
+
+    return newSampleValue;
+}
+
+internal f32 LowPassFilter(AudioFilter* filter, f32 sampleValue)
+{
+    if (!filter->enabled || filter->freq <= 0) return sampleValue;
+
+    f32 dt = 1.0f / (f32)APU_SAMPLES_PER_SECOND;
+    f32 rc = 1.0f / (2.0f * 3.14159265359f * (f32)filter->freq);
+    f32 alpha = dt / (rc + dt);
+
+    f32 newSampleValue = filter->lastOutputSample + alpha * (sampleValue - filter->lastOutputSample);
+
+    filter->lastInputSample = sampleValue;
+    filter->lastOutputSample = newSampleValue;
+
+    return newSampleValue;
+}
+
+internal void SetOutput(APU* apu)
+{
+    u8 p1 = GetPulseOutput(&apu->pulse1);
+    u8 p2 = GetPulseOutput(&apu->pulse2);
+    u8 t = GetTriangleOutput(&apu->triangle);
+    u8 n = GetNoiseOutput(&apu->noise);
+    u8 d = GetDMCOutput(&apu->dmc);
+
+    apu->pulse1.buffer[apu->pulse1.bufferIndex] = (s16)(pulseTable[p1] * APU_AMPLIFIER_VALUE);
+    apu->pulse1.bufferIndex = (apu->pulse1.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
+    apu->pulse2.buffer[apu->pulse2.bufferIndex] = (s16)(pulseTable[p2] * APU_AMPLIFIER_VALUE);
+    apu->pulse2.bufferIndex = (apu->pulse2.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
+    apu->triangle.buffer[apu->triangle.bufferIndex] = (s16)(tndTable[3 * t] * APU_AMPLIFIER_VALUE);
+    apu->triangle.bufferIndex = (apu->triangle.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
+    apu->noise.buffer[apu->noise.bufferIndex] = (s16)(tndTable[2 * n] * APU_AMPLIFIER_VALUE);
+    apu->noise.bufferIndex = (apu->noise.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
+    apu->dmc.buffer[apu->dmc.bufferIndex] = (s16)(tndTable[d] * APU_AMPLIFIER_VALUE);
+    apu->dmc.bufferIndex = (apu->dmc.bufferIndex + 1) % APU_BUFFER_LENGTH;
+
+    f32 pulseOut = pulseTable[p1 + p2];
+    f32 tndOut = tndTable[3 * t + 2 * n + d];
+    f32 out = pulseOut + tndOut;
+
+    // Apply a simple analog-style output stage to the mixed floating-point
+    // sample before converting it to s16:
+    // - High-pass filters remove DC offset / very low-frequency rumble.
+    // - Low-pass filter softens harsh high-frequency edges.
+    // This keeps the waveform centered and sounds closer to real hardware.
+    out = HighPassFilter(&apu->hpFilter1, out);
+    out = HighPassFilter(&apu->hpFilter2, out);
+    out = LowPassFilter(&apu->lpFilter, out);
+
+    apu->buffer[apu->bufferIndex] = (s16)(out * APU_AMPLIFIER_VALUE);
+    apu->bufferIndex = (apu->bufferIndex + 1) % APU_BUFFER_LENGTH;
+}
+
+void StepAPU(NES* nes)
+{
+    APU* apu = &nes->apu;
+
+    apu->cycles++;
+
+    StepAPUTimer(nes, apu);
+
+    apu->frameCounter++;
+
+    if (apu->frameCounter >= FRAME_COUNTER_RATE) {
+        StepAPUFrameCounter(nes);
+        apu->frameCounter = 0;
+    }
+
+    // Fractional accumulator: add SAMPLE_RATE every CPU cycle.
+    // When the running total crosses CPU_FREQ, exactly one sample is due.
+    // Subtracting CPU_FREQ instead of zeroing the counter carries the
+    // fractional remainder forward, so the ratio stays perfect over time.
+    // See apu.h for a detailed explanation of why this matters.
+    apu->sampleCounter += APU_SAMPLES_PER_SECOND; // += 48000
+
+    if (apu->sampleCounter >= CPU_FREQ) { // >= 1789773
+        SetOutput(apu);
+        apu->sampleCounter -= CPU_FREQ; // keep remainder, do NOT zero
+    }
+}
+
+void WriteAPUFrameCounter(NES* nes, u8 value)
+{
+    APU* apu = &nes->apu;
+
+    if (value & 0xC0) {
+        apu->frameMode = 1;
+        apu->inhibitIRQ = true;
+    } else if (value & 0x80) {
+        apu->frameMode = 1;
+        apu->inhibitIRQ = false;
+    } else if (value & 0x40) {
+        apu->frameMode = 0;
+        apu->inhibitIRQ = true;
+    } else {
+        apu->frameMode = 0;
+        apu->inhibitIRQ = true;
+    }
+
+    // apu->frameMode = (value & 0x80) >> 7;
+
+    // if (!apu->frameMode)
+    // {
+    //     apu->frameIRQ = !((value & 0x40) >> 6);
+    // }
+
+    apu->frameValue = 0;
+
+    if (apu->frameMode) {
+        StepAPUEnvelope(apu);
+        StepAPUSweep(apu);
+        StepAPULength(apu);
+    }
+}
+
+void ResetAPU(NES* nes)
+{
+    APU* apu = &nes->apu;
+
+    apu->frameCounter = 0;
+    apu->sampleCounter = 0;
+
+    apu->frameMode = 0;
+    apu->inhibitIRQ = false;
+
+    apu->pulse1.globalEnabled = true;
+    apu->pulse1.enabled = false;
+    apu->pulse1.lengthValue = 0;
+    apu->pulse1.channel = 1;
+
+    apu->pulse2.globalEnabled = true;
+    apu->pulse2.enabled = false;
+    apu->pulse2.lengthValue = 0;
+    apu->pulse2.channel = 2;
+
+    apu->triangle.globalEnabled = true;
+    apu->triangle.enabled = false;
+    apu->triangle.lengthValue = 0;
+    apu->triangle.linearValue = 0;
+
+    apu->noise.globalEnabled = true;
+    apu->noise.enabled = false;
+    apu->noise.lengthValue = 0;
+    apu->noise.shiftRegister = 1;
+
+    apu->dmc.globalEnabled = true;
+    apu->dmc.enabled = false;
+    apu->dmc.value = 0;
+
+    apu->hpFilter1.lastInputSample = 0;
+    apu->hpFilter1.lastOutputSample = 0;
+    apu->hpFilter2.lastInputSample = 0;
+    apu->hpFilter2.lastOutputSample = 0;
+    apu->lpFilter.lastInputSample = 0;
+    apu->lpFilter.lastOutputSample = 0;
+
+    apu->bufferIndex = 0;
+    memset(apu->buffer, 0, sizeof(apu->buffer));
+
+    WriteAPUFrameCounter(nes, 0);
+}
+
+void PowerAPU(NES* nes)
+{
+    ResetAPU(nes);
+}
+
+void InitAPU(NES* nes)
+{
+    // from: http://wiki.nesdev.com/w/index.php/APU_Mixer
+    //
+    // pulse_table[n] = 95.52 / (8128.0 / n + 100)
+    // tnd_table[n] = 163.67 / (24329.0 / n + 100)
+    //
+    // output = pulse_out + tnd_out
+    // pulse_out = pulse_table[pulse1 + pulse2]
+    // tnd_out = tnd_table[3 * triangle + 2 * noise + dmc]
+
+    for (s32 i = 0; i < 31; ++i) {
+        pulseTable[i] = 95.52f / (8128.0f / (f32)i + 100.0f);
+    }
+
+    for (s32 i = 0; i < 203; ++i) {
+        tndTable[i] = 163.67f / (24329.0f / (f32)i + 100.0f);
+    }
+
+    APU* apu = &nes->apu;
+    apu->pulse1.channel = 1;
+    apu->pulse2.channel = 2;
+}

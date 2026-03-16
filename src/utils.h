@@ -1,8 +1,13 @@
-#pragma once
 #ifndef UTILS_H
 #define UTILS_H
 
-#define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <stdbool.h>
+
+#define ASSERT(expression) assert(expression)
 
 #define KILOBYTES(x) ((x) * 1024)
 #define MEGABYTES(x) ((x) * 1024 * 1024)
@@ -46,51 +51,32 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
-typedef u8 b8;
-typedef u16 b16;
-typedef u32 b32;
-typedef u64 b64;
-
-#define TRUE  1
-#define FALSE 0
-
-#define NULL 0
-
 typedef size_t size;
 
-typedef struct Color
-{
+typedef struct Color {
     u8 r, g, b, a;
-};
-
-#define RGB(r, g, b) (((r) << 16) | ((g) << 8) | ((b) << 0))
-#define ARGB(a, r, g, b) (((a) << 24) | ((r) << 16) | ((g) << 8) | ((b) << 0))
-#define RGBA(r, g, b, a) (((r) << 24) | ((g) << 16) | ((b) << 8) | ((a) << 0))
-#define BGR(b, g, r) (((b) << 16) | ((g) << 8) | ((r) << 0))
-#define ABGR(a, b, g, r) (((a) << 24) | ((b) << 16) | ((g) << 8) | ((r) << 0))
-#define BGRA(b, g, r, a) (((b) << 24) | ((g) << 16) | ((r) << 8) | ((a) << 0))
+} Color;
 
 #define GetBitFlag(v, f) ((v) & (1 << (f)) ? 1 : 0)
 #define SetBitFlag(v, f) (*(v) = (*(v) | (1 << (f))))
 #define ClearBitFlag(v, f) (*(v) = *(v) ^ (*(v) & (1 << (f))))
 
-inline void* Allocate(size size)
+static inline void* Allocate(size size)
 {
-    return VirtualAlloc(0, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    return malloc(size);
 }
 
-inline void Free(void *address)
+static inline void Free(void* address)
 {
-    VirtualFree(address, 0, MEM_RELEASE);
+    free(address);
 }
 
-struct LoadedFile
-{
+typedef struct LoadedFile {
     u64 size;
-    u8 *contents;
-};
+    u8* contents;
+} LoadedFile;
 
-inline u64 fsize(FILE *file)
+static inline u64 fsize(FILE* file)
 {
     u64 pos = ftell(file);
     fseek(file, 0, SEEK_END);
@@ -99,13 +85,12 @@ inline u64 fsize(FILE *file)
     return size;
 }
 
-inline LoadedFile LoadEntireFile(char *filePath)
+static inline LoadedFile LoadEntireFile(char* filePath)
 {
-    LoadedFile file = {};
+    LoadedFile file = {0};
 
-    FILE *in = fopen(filePath, "rb");
-    if (in)
-    {
+    FILE* in = fopen(filePath, "rb");
+    if (in) {
         file.size = fsize(in);
         file.contents = (u8*)Allocate(file.size);
         fread(file.contents, 1, file.size, in);
@@ -115,11 +100,10 @@ inline LoadedFile LoadEntireFile(char *filePath)
     return file;
 }
 
-struct LoadedBitmap
-{
+typedef struct LoadedBitmap {
     u32 width, height;
     s32 xoffset, yoffset;
-    Color *pixels;
-};
+    Color* pixels;
+} LoadedBitmap;
 
-#endif
+#endif // UTILS_H

@@ -1,7 +1,9 @@
-#pragma once
+#ifndef CONTROLLER_H
+#define CONTROLLER_H
 
-enum Buttons
-{
+#include "types.h"
+
+typedef enum Buttons {
     BUTTON_A = 0,
     BUTTON_B = 1,
     BUTTON_SELECT = 2,
@@ -10,66 +12,61 @@ enum Buttons
     BUTTON_DOWN = 5,
     BUTTON_LEFT = 6,
     BUTTON_RIGHT = 7
-};
+} Buttons;
 
-inline b32 GetButton(NES *nes, s32 index, Buttons button)
+static inline bool GetButton(NES* nes, s32 index, Buttons button)
 {
-    Controller *controller = &nes->controllers[index];   
+    Controller* controller = &nes->controllers[index];
 
     u32 state = controller->state;
-    b32 isDown = state & (1 << button);
+    bool isDown = state & (1 << button);
     return isDown;
 }
 
-inline void SetButton(NES *nes, s32 index, Buttons button, b32 isDown)
+static inline void SetButton(NES* nes, s32 index, Buttons button, bool isDown)
 {
-    Controller *controller = &nes->controllers[index];
+    Controller* controller = &nes->controllers[index];
 
     u32 state = controller->state;
 
-    if (isDown)
-    {
+    if (isDown) {
         state |= (1 << button);
-    }
-    else
-    {
+    } else {
         state &= ~(1 << button);
     }
 
     controller->state = state;
 }
 
-inline u8 ReadControllerU8(NES *nes, s32 index)
+static inline u8 ReadControllerU8(NES* nes, s32 index)
 {
-    Controller *controller = &nes->controllers[index];
+    Controller* controller = &nes->controllers[index];
 
     u8 value = 0;
 
-    if (controller->index < 8)
-    {
-        if (GetBitFlag(controller->state, controller->index))
-            value = 1;
+    if (controller->index < 8) {
+        if (GetBitFlag(controller->state, controller->index)) value = 1;
     }
 
     controller->index++;
 
-    if (controller->strobe)
-    {
+    if (controller->strobe) {
         controller->index = 0;
     }
 
     return value;
 }
 
-inline void WriteControllerU8(NES *nes, s32 index, u8 value)
+static inline void WriteControllerU8(NES* nes, s32 index, u8 value)
 {
-    Controller *controller = &nes->controllers[index];
+    Controller* controller = &nes->controllers[index];
     controller->strobe = value & 0x01;
-    if (controller->strobe)
-    {
+    if (controller->strobe) {
         controller->index = 0;
     }
 }
 
-void InitController(NES *nes, s32 index);
-void ResetController(NES *nes, s32 index);
+void InitController(NES* nes, s32 index);
+void ResetController(NES* nes, s32 index);
+
+#endif // CONTROLLER_H
