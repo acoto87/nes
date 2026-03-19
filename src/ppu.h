@@ -500,7 +500,10 @@ static inline u8 ReadPPUVramData(NES* nes)
 {
     PPU* ppu = &nes->ppu;
 
+    // PPUDATA reads place the fetched value on the internal data bus immediately,
+    // even when the returned CPU-visible value comes from the buffered read path.
     u8 value = ReadPPUU8(nes, ppu->v);
+    ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 
     // emulate buffered reads
     if (ppu->v % 0x4000 < 0x3F00) {

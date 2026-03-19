@@ -12,7 +12,7 @@ internal void HandleInterrupt(NES* nes, u16 interruptAddress, bool fromBRK)
     PushStackU16(nes, cpu->pc);
 
     StepCPUCycles(nes, 1);
-    PushStackU8(nes, cpu->p | 0x30);
+    PushStackU8(nes, (cpu->p | 0x20) | (fromBRK ? 0x10 : 0x00));
 
     SetInterrupt(cpu, 1);
 
@@ -20,7 +20,7 @@ internal void HandleInterrupt(NES* nes, u16 interruptAddress, bool fromBRK)
     cpu->pc = ReadCPUU16(nes, interruptAddress);
 
     if (!fromBRK) {
-        StepCPUCycles(nes, 7);
+        StepCPUCycles(nes, 2);
         cpu->cycles += 7;
     }
 }
@@ -81,6 +81,8 @@ internal inline void ASL(NES* nes, u16 address, bool addressingModeACC)
         data = ReadCPUU8(nes, address);
     }
 
+    u8 original = (u8)data;
+
     SetCarry(cpu, data & 0x80);
 
     data = (data << 1) & 0xFF;
@@ -94,6 +96,9 @@ internal inline void ASL(NES* nes, u16 address, bool addressingModeACC)
     if (addressingModeACC) {
         cpu->a = (u8)data;
     } else {
+        StepCPUCycles(nes, 1);
+        WriteCPUU8(nes, address, original);
+
         StepCPUCycles(nes, 1);
         WriteCPUU8(nes, address, (u8)data);
     }
@@ -280,13 +285,18 @@ internal inline void DEC(NES* nes, u16 address)
     StepCPUCycles(nes, 1);
     u8 data = ReadCPUU8(nes, address);
 
+    u8 original = data;
+
     StepCPUCycles(nes, 1);
     data -= 1;
 
     SetNegative(cpu, ISNEG(data));
     SetZero(cpu, !data);
 
-    StepCPUCycles(nes, 2);
+    StepCPUCycles(nes, 1);
+    WriteCPUU8(nes, address, original);
+
+    StepCPUCycles(nes, 1);
     WriteCPUU8(nes, address, data);
 }
 
@@ -343,13 +353,18 @@ internal inline void INC(NES* nes, u16 address)
     StepCPUCycles(nes, 1);
     u8 data = ReadCPUU8(nes, address);
 
+    u8 original = data;
+
     StepCPUCycles(nes, 1);
     data += 1;
 
     SetNegative(cpu, ISNEG(data));
     SetZero(cpu, !data);
 
-    StepCPUCycles(nes, 2);
+    StepCPUCycles(nes, 1);
+    WriteCPUU8(nes, address, original);
+
+    StepCPUCycles(nes, 1);
     WriteCPUU8(nes, address, data);
 }
 
@@ -457,6 +472,8 @@ internal inline void LSR(NES* nes, u16 address, bool addressingModeACC)
         data = ReadCPUU8(nes, address);
     }
 
+    u8 original = data;
+
     SetCarry(cpu, data & 0x01);
 
     data >>= 1;
@@ -470,6 +487,9 @@ internal inline void LSR(NES* nes, u16 address, bool addressingModeACC)
     if (addressingModeACC) {
         cpu->a = data;
     } else {
+        StepCPUCycles(nes, 1);
+        WriteCPUU8(nes, address, original);
+
         StepCPUCycles(nes, 1);
         WriteCPUU8(nes, address, data);
     }
@@ -549,6 +569,8 @@ internal inline void ROL(NES* nes, u16 address, bool addressingModeACC)
         data = ReadCPUU8(nes, address);
     }
 
+    u8 original = data;
+
     bool setCarry = data & 0x80;
 
     data <<= 1;
@@ -567,6 +589,9 @@ internal inline void ROL(NES* nes, u16 address, bool addressingModeACC)
     if (addressingModeACC) {
         cpu->a = data;
     } else {
+        StepCPUCycles(nes, 1);
+        WriteCPUU8(nes, address, original);
+
         StepCPUCycles(nes, 1);
         WriteCPUU8(nes, address, data);
     }
@@ -588,6 +613,8 @@ internal inline void ROR(NES* nes, u16 address, bool addressingModeACC)
         data = ReadCPUU8(nes, address);
     }
 
+    u8 original = data;
+
     bool setCarry = data & 0x01;
 
     data >>= 1;
@@ -606,6 +633,9 @@ internal inline void ROR(NES* nes, u16 address, bool addressingModeACC)
     if (addressingModeACC) {
         cpu->a = data;
     } else {
+        StepCPUCycles(nes, 1);
+        WriteCPUU8(nes, address, original);
+
         StepCPUCycles(nes, 1);
         WriteCPUU8(nes, address, data);
     }
@@ -792,12 +822,20 @@ internal inline void SLO(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
 
+    StepCPUCycles(nes, 2);
+
     u8 data = ReadCPUU8(nes, address);
+
+    u8 original = data;
 
     SetCarry(cpu, data & 0x80);
 
     data <<= 1;
 
+    StepCPUCycles(nes, 1);
+    WriteCPUU8(nes, address, original);
+
+    StepCPUCycles(nes, 1);
     WriteCPUU8(nes, address, data);
 
     data |= cpu->a;
@@ -811,6 +849,8 @@ internal inline void SLO(NES* nes, u16 address)
 internal inline void ANC(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
+
+    StepCPUCycles(nes, 2);
 
     u8 data = ReadCPUU8(nes, address);
     data = cpu->a & data;
@@ -826,7 +866,11 @@ internal inline void RLA(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
 
+    StepCPUCycles(nes, 2);
+
     u8 data = ReadCPUU8(nes, address);
+
+    u8 original = data;
 
     bool setCarry = data & 0x80;
 
@@ -842,6 +886,10 @@ internal inline void RLA(NES* nes, u16 address)
     SetNegative(cpu, ISNEG(acc));
     SetZero(cpu, !acc);
 
+    StepCPUCycles(nes, 1);
+    WriteCPUU8(nes, address, original);
+
+    StepCPUCycles(nes, 1);
     WriteCPUU8(nes, address, data);
     cpu->a = acc;
 }
@@ -850,12 +898,20 @@ internal inline void SRE(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
 
+    StepCPUCycles(nes, 2);
+
     u8 data = ReadCPUU8(nes, address);
+
+    u8 original = data;
 
     SetCarry(cpu, data & 0x01);
 
     data >>= 1;
 
+    StepCPUCycles(nes, 1);
+    WriteCPUU8(nes, address, original);
+
+    StepCPUCycles(nes, 1);
     WriteCPUU8(nes, address, data);
 
     data = cpu->a ^ data;
@@ -869,6 +925,8 @@ internal inline void SRE(NES* nes, u16 address)
 internal inline void ALR(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
+
+    StepCPUCycles(nes, 2);
 
     u8 data = ReadCPUU8(nes, address);
     data = cpu->a & data;
@@ -887,7 +945,11 @@ internal inline void RRA(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
 
+    StepCPUCycles(nes, 2);
+
     u8 data = ReadCPUU8(nes, address);
+
+    u8 original = data;
 
     bool setCarry = data & 0x01;
 
@@ -908,6 +970,10 @@ internal inline void RRA(NES* nes, u16 address)
     SetZero(cpu, !(acc & 0xFF));
     SetOverflow(cpu, !((cpu->a ^ data) & 0x80) && ((cpu->a ^ acc) & 0x80));
 
+    StepCPUCycles(nes, 1);
+    WriteCPUU8(nes, address, original);
+
+    StepCPUCycles(nes, 1);
     WriteCPUU8(nes, address, data);
     cpu->a = (u8)acc;
 }
@@ -915,6 +981,8 @@ internal inline void RRA(NES* nes, u16 address)
 internal inline void ARR(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
+
+    StepCPUCycles(nes, 2);
 
     u8 data = ReadCPUU8(nes, address);
     data = cpu->a & data;
@@ -924,7 +992,7 @@ internal inline void ARR(NES* nes, u16 address)
         data |= 0x80;
     }
 
-    SetOverflow(cpu, (data & 0x20) ^ (data & 0x40));
+    SetOverflow(cpu, ((data >> 5) ^ (data >> 6)) & 1);
     SetCarry(cpu, data & 0x40);
     SetNegative(cpu, ISNEG(data));
     SetZero(cpu, !data);
@@ -936,12 +1004,15 @@ internal inline void SAX(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
 
+    StepCPUCycles(nes, 2);
     WriteCPUU8(nes, address, cpu->a & cpu->x);
 }
 
 internal inline void XAA(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
+
+    StepCPUCycles(nes, 2);
 
     u8 data = ReadCPUU8(nes, address);
     data &= cpu->x;
@@ -956,6 +1027,8 @@ internal inline void AHX(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
 
+    StepCPUCycles(nes, 2);
+
     u8 H = (u8)((address & 0xFF00) >> 8);
     WriteCPUU8(nes, address, cpu->a & cpu->x & H);
 }
@@ -966,6 +1039,8 @@ internal inline void TAS(NES* nes, u16 address)
 
     cpu->sp = cpu->a & cpu->x;
 
+    StepCPUCycles(nes, 2);
+
     u8 H = (u8)((address & 0xFF00) >> 8);
     WriteCPUU8(nes, address, cpu->sp & H);
 }
@@ -973,6 +1048,8 @@ internal inline void TAS(NES* nes, u16 address)
 internal inline void SHY(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
+
+    StepCPUCycles(nes, 2);
 
     u8 H = (u8)((address & 0xFF00) >> 8);
     WriteCPUU8(nes, address, cpu->y & H);
@@ -982,6 +1059,8 @@ internal inline void SHX(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
 
+    StepCPUCycles(nes, 2);
+
     u8 H = (u8)((address & 0xFF00) >> 8);
     WriteCPUU8(nes, address, cpu->x & H);
 }
@@ -989,6 +1068,8 @@ internal inline void SHX(NES* nes, u16 address)
 internal inline void LAX(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
+
+    StepCPUCycles(nes, 2);
 
     u8 data = ReadCPUU8(nes, address);
 
@@ -1002,6 +1083,8 @@ internal inline void LAX(NES* nes, u16 address)
 internal inline void LAS(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
+
+    StepCPUCycles(nes, 2);
 
     u8 data = ReadCPUU8(nes, address);
 
@@ -1019,7 +1102,12 @@ internal inline void DCP(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
 
+    StepCPUCycles(nes, 2);
+
     u8 data = ReadCPUU8(nes, address);
+
+    u8 original = data;
+
     data -= 1;
 
     u16 sub = cpu->a - data;
@@ -1028,12 +1116,18 @@ internal inline void DCP(NES* nes, u16 address)
     SetZero(cpu, !sub);
     SetCarry(cpu, sub < 0x100);
 
+    StepCPUCycles(nes, 1);
+    WriteCPUU8(nes, address, original);
+
+    StepCPUCycles(nes, 1);
     WriteCPUU8(nes, address, data);
 }
 
 internal inline void AXS(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
+
+    StepCPUCycles(nes, 2);
 
     u16 data = ReadCPUU8(nes, address);
 
@@ -1046,11 +1140,16 @@ internal inline void AXS(NES* nes, u16 address)
     cpu->x = (u8)data;
 }
 
-internal inline void ISC(NES* nes, u16 address)
+internal inline void ISB(NES* nes, u16 address)
 {
     CPU* cpu = &nes->cpu;
 
+    StepCPUCycles(nes, 2);
+
     u8 data = ReadCPUU8(nes, address);
+
+    u8 original = data;
+
     data += 1;
 
     u16 acc = cpu->a - data;
@@ -1064,6 +1163,10 @@ internal inline void ISC(NES* nes, u16 address)
     SetZero(cpu, !(acc & 0xFF));
     SetOverflow(cpu, ((cpu->a ^ data) & 0x80) && ((cpu->a ^ acc) & 0x80));
 
+    StepCPUCycles(nes, 1);
+    WriteCPUU8(nes, address, original);
+
+    StepCPUCycles(nes, 1);
     WriteCPUU8(nes, address, data);
     cpu->a = (u8)acc;
 }
@@ -1091,7 +1194,7 @@ void PowerCPU(NES* nes)
     cpu->a = 0;
     cpu->x = 0;
     cpu->y = 0;
-    cpu->cycles = 0;
+    cpu->cycles = 7;
     cpu->sp = CPU_STACK_PTR_INITIAL_VALUE;
     cpu->p = CPU_STATUS_INITIAL_VALUE;
     cpu->waitCycles = 0;
@@ -1117,6 +1220,7 @@ void InitCPU(NES* nes)
 {
     if (!nes->cpuMemory.created) {
         CreateMemory(&nes->cpuMemory, CPU_RAM_TOTAL_SIZE);
+        ZeroMemoryBytes(&nes->cpuMemory);
     }
 }
 
@@ -1146,33 +1250,36 @@ internal void ExecuteInstruction(NES* nes, CPUInstruction* instruction)
         // Absolute $0000, X
         case AM_ABX: {
             StepCPUCycles(nes, 2);
-            address = ReadCPUU16(nes, cpu->pc + 1);
+            u16 baseAddress = ReadCPUU16(nes, cpu->pc + 1);
+            u16 indexedAddress = baseAddress + cpu->x;
 
-            if (instruction->instruction == CPU_ASL || instruction->instruction == CPU_DEC ||
-                instruction->instruction == CPU_INC || instruction->instruction == CPU_LSR ||
-                instruction->instruction == CPU_ROL || instruction->instruction == CPU_ROR ||
-                instruction->instruction == CPU_STA) {
+            if (!instruction->pageCycles) {
                 StepCPUCycles(nes, 1);
+                u16 dummyAddress = (baseAddress & 0xFF00) | (indexedAddress & 0x00FF);
+                ReadCPUU8(nes, dummyAddress);
             } else {
-                pageCrossed = PAGE_CROSS(address, address + cpu->x);
+                pageCrossed = PAGE_CROSS(baseAddress, indexedAddress);
             }
 
-            address += cpu->x;
+            address = indexedAddress;
             break;
         }
 
         // Absolute $0000, Y
         case AM_ABY: {
             StepCPUCycles(nes, 2);
-            address = ReadCPUU16(nes, cpu->pc + 1);
+            u16 baseAddress = ReadCPUU16(nes, cpu->pc + 1);
+            u16 indexedAddress = baseAddress + cpu->y;
 
-            if (instruction->instruction == CPU_STA) {
+            if (!instruction->pageCycles) {
                 StepCPUCycles(nes, 1);
+                u16 dummyAddress = (baseAddress & 0xFF00) | (indexedAddress & 0x00FF);
+                ReadCPUU8(nes, dummyAddress);
             } else {
-                pageCrossed = PAGE_CROSS(address, address + cpu->y);
+                pageCrossed = PAGE_CROSS(baseAddress, indexedAddress);
             }
 
-            address += cpu->y;
+            address = indexedAddress;
             break;
         }
 
@@ -1189,6 +1296,7 @@ internal void ExecuteInstruction(NES* nes, CPUInstruction* instruction)
             address = ReadCPUU8(nes, cpu->pc + 1);
 
             StepCPUCycles(nes, 1);
+            ReadCPUU8(nes, address);
 
             // zero-page addresses wrap around 0xFF,
             // so 0x00FF + 2 = 0x0001, not 0x0101 as you might expect
@@ -1203,6 +1311,7 @@ internal void ExecuteInstruction(NES* nes, CPUInstruction* instruction)
             address = ReadCPUU8(nes, cpu->pc + 1);
 
             StepCPUCycles(nes, 1);
+            ReadCPUU8(nes, address);
 
             // zero-page addresses wrap around 0xFF,
             // so 0x00FF + 2 = 0x0001, not 0x0101 as you might expect
@@ -1234,6 +1343,7 @@ internal void ExecuteInstruction(NES* nes, CPUInstruction* instruction)
             u8 operand = ReadCPUU8(nes, cpu->pc + 1);
 
             StepCPUCycles(nes, 1);
+            ReadCPUU8(nes, operand);
 
             // zero-page addresses wrap around 0xFF,
             // so 0x00FF + 2 = 0x0001, not 0x0101 as you might expect
@@ -1266,15 +1376,18 @@ internal void ExecuteInstruction(NES* nes, CPUInstruction* instruction)
             StepCPUCycles(nes, 1);
             u8 hi = ReadCPUU8(nes, operand2);
 
-            address = (hi << 8) | lo;
+            u16 baseAddress = (hi << 8) | lo;
+            u16 indexedAddress = baseAddress + cpu->y;
 
-            if (instruction->instruction == CPU_STA) {
+            if (!instruction->pageCycles) {
                 StepCPUCycles(nes, 1);
+                u16 dummyAddress = (baseAddress & 0xFF00) | (indexedAddress & 0x00FF);
+                ReadCPUU8(nes, dummyAddress);
             } else {
-                pageCrossed = PAGE_CROSS(address, address + cpu->y);
+                pageCrossed = PAGE_CROSS(baseAddress, indexedAddress);
             }
 
-            address += cpu->y;
+            address = indexedAddress;
             break;
         }
 
@@ -1602,8 +1715,8 @@ internal void ExecuteInstruction(NES* nes, CPUInstruction* instruction)
             AXS(nes, address);
             break;
         }
-        case CPU_ISC: {
-            ISC(nes, address);
+        case CPU_ISB: {
+            ISB(nes, address);
             break;
         }
         case CPU_KIL: {
@@ -1625,7 +1738,7 @@ CPUStep StepCPU(NES* nes)
     CPUStep step = {0};
 
     CPU* cpu = &nes->cpu;
-    u32 startCpuCycles = cpu->cycles;
+    u64 startCpuCycles = cpu->cycles;
 
     if (cpu->waitCycles) {
         --cpu->waitCycles;
@@ -1670,7 +1783,6 @@ CPUStep StepCPU(NES* nes)
     }
 
     CPUInstruction* instruction = GetNextInstruction(nes);
-
     ExecuteInstruction(nes, instruction);
 
     step.cycles = cpu->cycles - startCpuCycles;

@@ -205,7 +205,7 @@ typedef enum CPUInstructionSet {
     CPU_LAS,
     CPU_DCP,
     CPU_AXS,
-    CPU_ISC,
+    CPU_ISB,
 
     CPU_KIL, // Crash
 
@@ -471,7 +471,7 @@ typedef struct NES {
 } NES;
 
 typedef struct CPUStep {
-    u32 cycles;
+    u64 cycles;
     CPUInstruction* instruction;
 } CPUStep;
 

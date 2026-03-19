@@ -1,6 +1,8 @@
-/build/
+build/
+docs/
 nob.exe
 nob.exe.old
 imgui.ini
 roms
-docs/
+*.obj
+*.pdb

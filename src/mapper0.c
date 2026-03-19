@@ -45,7 +45,8 @@ void Mapper0WriteU8(NES* nes, u16 address, u8 value)
     }
 
     if (ISBETWEEN(address, 0x8000, 0x10000)) {
-        WriteU8(&nes->cpuMemory, address, value);
+        // Mapper 0 (NROM) has no registers.
+        // We catch the write, but do nothing with it.
         return;
     }
 

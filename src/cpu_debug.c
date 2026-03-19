@@ -138,7 +138,7 @@ CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT] = {
     { 0x86, CPU_STX, AM_ZPA, CPU_NR, 2, 3, 0 },
     { 0x87, CPU_SAX, AM_ZPA, CPU_NR, 2, 3, 0 },
     { 0x88, CPU_DEY, AM_IMP, CPU_NR, 1, 2, 0 },
-    { 0x89, CPU_NOP, AM_IMM, CPU_NR, 1, 2, 0 },
+    { 0x89, CPU_NOP, AM_IMM, CPU_NR, 2, 2, 0 },
     { 0x8A, CPU_TXA, AM_IMP, CPU_NR, 1, 2, 0 },
     { 0x8B, CPU_XAA, AM_IMM, CPU_NR, 2, 2, 0 },
     { 0x8C, CPU_STY, AM_ABS, CPU_NR, 3, 4, 0 },
@@ -180,7 +180,7 @@ CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT] = {
     { 0xB0, CPU_BCS, AM_REL, CPU_NR, 2, 2, 1 },
     { 0xB1, CPU_LDA, AM_IZY, CPU_YR, 2, 5, 1 },
     { 0xB2, CPU_KIL, AM_NON, CPU_NR, 0, 0, 0 },
-    { 0xB3, CPU_LAX, AM_IZY, CPU_YR, 2, 5, 0 },
+    { 0xB3, CPU_LAX, AM_IZY, CPU_YR, 2, 5, 1 },
     { 0xB4, CPU_LDY, AM_ZPX, CPU_XR, 2, 4, 0 },
     { 0xB5, CPU_LDA, AM_ZPX, CPU_XR, 2, 4, 0 },
     { 0xB6, CPU_LDX, AM_ZPY, CPU_YR, 2, 4, 0 },
@@ -228,11 +228,11 @@ CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT] = {
     { 0xE0, CPU_CPX, AM_IMM, CPU_NR, 2, 2, 0 },
     { 0xE1, CPU_SBC, AM_IZX, CPU_XR, 2, 6, 0 },
     { 0xE2, CPU_NOP, AM_IMM, CPU_NR, 2, 2, 0 },
-    { 0xE3, CPU_ISC, AM_IZX, CPU_XR, 2, 8, 0 },
+    { 0xE3, CPU_ISB, AM_IZX, CPU_XR, 2, 8, 0 },
     { 0xE4, CPU_CPX, AM_ZPA, CPU_NR, 2, 3, 0 },
     { 0xE5, CPU_SBC, AM_ZPA, CPU_NR, 2, 3, 0 },
     { 0xE6, CPU_INC, AM_ZPA, CPU_NR, 2, 5, 0 },
-    { 0xE7, CPU_ISC, AM_ZPA, CPU_NR, 2, 5, 0 },
+    { 0xE7, CPU_ISB, AM_ZPA, CPU_NR, 2, 5, 0 },
     { 0xE8, CPU_INX, AM_IMP, CPU_NR, 1, 2, 0 },
     { 0xE9, CPU_SBC, AM_IMM, CPU_NR, 2, 2, 0 },
     { 0xEA, CPU_NOP, AM_IMP, CPU_NR, 1, 2, 0 },
@@ -240,23 +240,23 @@ CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT] = {
     { 0xEC, CPU_CPX, AM_ABS, CPU_NR, 3, 4, 0 },
     { 0xED, CPU_SBC, AM_ABS, CPU_NR, 3, 4, 0 },
     { 0xEE, CPU_INC, AM_ABS, CPU_NR, 3, 6, 0 },
-    { 0xEF, CPU_ISC, AM_ABS, CPU_NR, 3, 6, 0 },
+    { 0xEF, CPU_ISB, AM_ABS, CPU_NR, 3, 6, 0 },
     { 0xF0, CPU_BEQ, AM_REL, CPU_NR, 2, 2, 1 },
     { 0xF1, CPU_SBC, AM_IZY, CPU_YR, 2, 5, 1 },
     { 0xF2, CPU_KIL, AM_NON, CPU_NR, 0, 0, 0 },
-    { 0xF3, CPU_ISC, AM_IZY, CPU_YR, 2, 8, 0 },
+    { 0xF3, CPU_ISB, AM_IZY, CPU_YR, 2, 8, 0 },
     { 0xF4, CPU_NOP, AM_ZPX, CPU_XR, 2, 4, 0 },
     { 0xF5, CPU_SBC, AM_ZPX, CPU_XR, 2, 4, 0 },
     { 0xF6, CPU_INC, AM_ZPX, CPU_XR, 2, 6, 0 },
-    { 0xF7, CPU_ISC, AM_ZPX, CPU_XR, 2, 6, 0 },
+    { 0xF7, CPU_ISB, AM_ZPX, CPU_XR, 2, 6, 0 },
     { 0xF8, CPU_SED, AM_IMP, CPU_NR, 1, 2, 0 },
     { 0xF9, CPU_SBC, AM_ABY, CPU_YR, 3, 4, 1 },
     { 0xFA, CPU_NOP, AM_IMP, CPU_NR, 1, 2, 0 },
-    { 0xFB, CPU_ISC, AM_ABY, CPU_YR, 3, 7, 0 },
+    { 0xFB, CPU_ISB, AM_ABY, CPU_YR, 3, 7, 0 },
     { 0xFC, CPU_NOP, AM_ABX, CPU_XR, 3, 4, 1 },
     { 0xFD, CPU_SBC, AM_ABX, CPU_XR, 3, 4, 1 },
     { 0xFE, CPU_INC, AM_ABX, CPU_XR, 3, 7, 0 },
-    { 0xFF, CPU_ISC, AM_ABX, CPU_XR, 3, 7, 0 }
+    { 0xFF, CPU_ISB, AM_ABX, CPU_XR, 3, 7, 0 }
 };
 
 const char* GetInstructionStr(CPUInstructionSet instruction)
@@ -335,7 +335,7 @@ const char* GetInstructionStr(CPUInstructionSet instruction)
         case CPU_LAS: return "LAS";
         case CPU_DCP: return "DCP";
         case CPU_AXS: return "AXS";
-        case CPU_ISC: return "ISC";
+        case CPU_ISB: return "ISB";
         case CPU_KIL: return "KIL";
         case CPU_FEX: return "FEX";
         default: return "UNK";
