@@ -3,6 +3,8 @@
 
 #include "types.h"
 
+void CPUSetIRQSource(NES* nes, u32 sourceMask, bool asserted);
+
 u8 ReadCPUU8(NES* nes, u16 address);
 
 // (CPU_FREQ / 240) = (1789773 / 240) = 7457.38
@@ -204,7 +206,7 @@ static inline u8 ReadAPUStatus(NES* nes)
         result |= 16;
     }
 
-    if (apu->inhibitIRQ) {
+    if (apu->frameIRQ) {
         result |= 0x40;
     }
 
@@ -212,7 +214,8 @@ static inline u8 ReadAPUStatus(NES* nes)
         result |= 0x80;
     }
 
-    apu->inhibitIRQ = false;
+    apu->frameIRQ = false;
+    CPUSetIRQSource(nes, CPU_IRQSRC_APU_FRAME, false);
 
     return result;
 }
@@ -249,6 +252,7 @@ static inline void WriteAPUStatus(NES* nes, u8 value)
     }
 
     apu->dmcIRQ = false;
+    CPUSetIRQSource(nes, CPU_IRQSRC_APU_DMC, false);
 }
 
 void ResetAPU(NES* nes);

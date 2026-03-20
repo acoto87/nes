@@ -107,6 +107,20 @@ typedef enum CPUAddressingMode {
     AM_REL = 13 // Relative                 $0000
 } CPUAddressingMode;
 
+typedef enum CPUExecClass {
+    CPU_EXEC_UNSET = 0,
+    CPU_EXEC_READ,
+    CPU_EXEC_WRITE,
+    CPU_EXEC_RMW,
+    CPU_EXEC_BRANCH,
+    CPU_EXEC_IMPLIED,
+    CPU_EXEC_ACCUMULATOR,
+    CPU_EXEC_STACK,
+    CPU_EXEC_JUMP,
+    CPU_EXEC_NOP_READ,
+    CPU_EXEC_SPECIAL,
+} CPUExecClass;
+
 typedef enum CPURegister {
     CPU_NR = 0, // No register
     CPU_AR = 1, // Register accumulator
@@ -117,7 +131,7 @@ typedef enum CPURegister {
     CPU_SP = 6  // Register stack pointer
 } CPURegister;
 
-typedef enum CPUInstructionSet {
+typedef enum CPUInstructionMnemonic {
     CPU_ADC, //  Add Memory to Accumulator with Carry
     CPU_AND, //  "AND" Memory with Accumulator
     CPU_ASL, //  Shift Left One Bit(Memory or Accumulator)
@@ -210,13 +224,14 @@ typedef enum CPUInstructionSet {
     CPU_KIL, // Crash
 
     CPU_FEX, //  Future Expansion
-} CPUInstructionSet;
+} CPUInstructionMnemonic;
 
 typedef struct CPUInstruction {
     u8 opcode;
-    CPUInstructionSet instruction;
+    CPUInstructionMnemonic mnemonic;
     CPUAddressingMode addressingMode;
     CPURegister cpuRegister;
+    CPUExecClass execClass;
     u8 bytesCount;
     u8 cyclesCount;
     bool pageCycles;
@@ -229,16 +244,28 @@ typedef enum CPUInterrupt {
     CPU_INTERRUPT_RES = 3
 } CPUInterrupt;
 
+typedef enum CPUIRQSource {
+    CPU_IRQSRC_APU_FRAME = 1 << 0,
+    CPU_IRQSRC_APU_DMC = 1 << 1,
+    CPU_IRQSRC_MAPPER = 1 << 2,
+} CPUIRQSource;
+
 typedef struct CPU {
-    u8 a;                   // accumulator register
-    u8 x;                   // x register
-    u8 y;                   // y register
-    u8 sp;                  // stack pointer
-    u8 p;                   // status register
-    u16 pc;                 // program counter
-    u64 cycles;             // number of cycles
-    u32 waitCycles;         // number of cycles to stall
-    CPUInterrupt interrupt; // interrupt type to perform
+    u8 a;                           // accumulator register
+    u8 x;                           // x register
+    u8 y;                           // y register
+    u8 sp;                          // stack pointer
+    u8 p;                           // status register
+    u16 pc;                         // program counter
+    u64 cycles;                     // number of cycles
+    u32 waitCycles;                 // number of cycles to stall
+    CPUInterrupt pendingService;    // pending interrupt to service
+    bool nmiLine;                   // current state of the NMI line
+    bool prevNmiLine;               // previous state of the NMI line (used for edge detection)
+    bool nmiPending;                // flag to indicate that an NMI is pending (used for delayed NMI handling)
+    u32 irqSources;                 // bitmask of active IRQ sources
+    bool irqPollIOverrideValid;     // flag to indicate if IRQ poll I override is valid
+    bool irqPollIOverride;          // flag to indicate if IRQ poll I override is active
 } CPU;
 
 typedef struct PPU {
@@ -425,6 +452,7 @@ typedef struct APU {
     s32 sampleCounter;
 
     bool inhibitIRQ;
+    bool frameIRQ;
     bool dmcIRQ;
 
     s32 bufferIndex;

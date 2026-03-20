@@ -206,6 +206,7 @@ $3F1D-$3F1F  Sprite palette 3
 
 // this is a forward reference to a function in cpu.h, so WriteDMA could compile.
 u8 ReadCPUU8(NES* nes, u16 address);
+void CPUSetNMILine(NES* nes, bool asserted);
 
 // palette adapted from http://nesdev.parodius.com/NESTechFAQ.htm
 extern Color systemPalette[PPU_NUM_SYSTEM_COLOURS];
@@ -357,6 +358,8 @@ static inline void WritePPUCtrl(NES* nes, u8 value)
     ppu->control = value;
     ppu->t = (ppu->t & 0xF3FF) | (((u16)value & 0x3) << 10);
 
+    CPUSetNMILine(nes, !ppu->suppressNmi && GetBitFlag(ppu->control, VBLANK_FLAG) && GetBitFlag(ppu->status, VBLANK_FLAG));
+
     // Least significant bits previously written into a PPU register goes into PPUSTATUS
     ppu->status = (ppu->status & 0xE0) | (value & 0x1F);
 }
@@ -387,6 +390,7 @@ static inline u8 ReadPPUStatus(NES* nes)
 
     ppu->status &= 0x7F;
     ppu->w = 0;
+    CPUSetNMILine(nes, false);
 
     // Caution: Reading PPUSTATUS at the exact start of vertical blank will return 0 in bit 7 but clear the latch
     // anyway, causing the program to miss frames.
@@ -629,16 +633,13 @@ static inline void ColorEmphasis(Color* color, u8 mask)
 
 static inline void SetVerticalBlank(NES* nes)
 {
-    CPU* cpu = &nes->cpu;
     PPU* ppu = &nes->ppu;
 
     if (!ppu->suppressNmi) {
         SetBitFlag(&ppu->status, VBLANK_FLAG);
-
-        if (GetBitFlag(ppu->control, VBLANK_FLAG)) {
-            cpu->interrupt = CPU_INTERRUPT_NMI;
-        }
     }
+
+    CPUSetNMILine(nes, !ppu->suppressNmi && GetBitFlag(ppu->control, VBLANK_FLAG) && GetBitFlag(ppu->status, VBLANK_FLAG));
 
     ppu->suppressNmi = false;
 }
@@ -650,6 +651,7 @@ static inline void ClearVerticalBlank(NES* nes)
     ClearBitFlag(&ppu->status, SCANLINE_COUNT_FLAG);
     ClearBitFlag(&ppu->status, HIT_FLAG);
     ClearBitFlag(&ppu->status, VBLANK_FLAG);
+    CPUSetNMILine(nes, false);
 
     /*ppu->delayNmi = 0;
     ppu->outputNmi = false;*/

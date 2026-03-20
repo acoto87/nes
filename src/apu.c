@@ -238,6 +238,7 @@ internal void StepDMCReader(NES* nes, APUDMC* dmc)
                 RestartDMC(dmc);
             } else {
                 nes->apu.dmcIRQ = true;
+                CPUSetIRQSource(nes, CPU_IRQSRC_APU_DMC, true);
             }
         }
     }
@@ -385,9 +386,8 @@ internal void StepAPUFrameCounter(NES* nes)
                 StepAPULength(apu);
 
                 if (!apu->inhibitIRQ) {
-                    if (!(nes->cpu.p & 4)) {
-                        nes->cpu.interrupt = CPU_INTERRUPT_IRQ;
-                    }
+                    apu->frameIRQ = true;
+                    CPUSetIRQSource(nes, CPU_IRQSRC_APU_FRAME, true);
                 }
                 break;
             }
@@ -499,19 +499,11 @@ void WriteAPUFrameCounter(NES* nes, u8 value)
 {
     APU* apu = &nes->apu;
 
-    if (value & 0xC0) {
-        apu->frameMode = 1;
-        apu->inhibitIRQ = true;
-    } else if (value & 0x80) {
-        apu->frameMode = 1;
-        apu->inhibitIRQ = false;
-    } else if (value & 0x40) {
-        apu->frameMode = 0;
-        apu->inhibitIRQ = true;
-    } else {
-        apu->frameMode = 0;
-        apu->inhibitIRQ = true;
-    }
+    apu->frameIRQ = false;
+    CPUSetIRQSource(nes, CPU_IRQSRC_APU_FRAME, false);
+
+    apu->frameMode = (value & 0x80) ? 1 : 0;
+    apu->inhibitIRQ = (value & 0x40) ? true : false;
 
     // apu->frameMode = (value & 0x80) >> 7;
 
@@ -538,6 +530,9 @@ void ResetAPU(NES* nes)
 
     apu->frameMode = 0;
     apu->inhibitIRQ = false;
+    apu->frameIRQ = false;
+    apu->dmcIRQ = false;
+    CPUSetIRQSource(nes, CPU_IRQSRC_APU_FRAME | CPU_IRQSRC_APU_DMC, false);
 
     apu->pulse1.globalEnabled = true;
     apu->pulse1.enabled = false;

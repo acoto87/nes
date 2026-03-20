@@ -30,9 +30,9 @@
 #define U16LOW_MASK 0xFF
 #define U16HIGH_MASK 0xFF00
 
-#define ISNEG(x) ((x) & 0x80)
+#define ISNEG(x) ((x) & BIT7_MASK)
 #define HAS_FLAG(x, mask) (((x) & (mask)) == (mask))
-#define ISBETWEEN(x, a, b) ((x) >= (0) && (x) < (b))
+#define ISBETWEEN(x, a, b) ((x) >= (a) && (x) < (b))
 
 #define internal static
 #define global static
