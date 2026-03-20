@@ -603,8 +603,8 @@ void PowerPPU(NES* nes)
 {
     PPU* ppu = &nes->ppu;
 
-    ppu->cycle = 0;
-    ppu->scanline = 241;
+    ppu->cycle = 21;
+    ppu->scanline = 0;
     ppu->totalCycles = 0;
     ppu->frameCount = 0;
 
@@ -621,13 +621,16 @@ void InitPPU(NES* nes)
 {
     if (!nes->ppuMemory.created) {
         CreateMemory(&nes->ppuMemory, PPU_RAM_SIZE);
+        ZeroMemoryBytes(&nes->ppuMemory);
     }
 
     if (!nes->oamMemory.created) {
         CreateMemory(&nes->oamMemory, 256);
+        ZeroMemoryBytes(&nes->oamMemory);
     }
 
     if (!nes->oamMemory2.created) {
         CreateMemory(&nes->oamMemory2, 32);
+        ZeroMemoryBytes(&nes->oamMemory2);
     }
 }

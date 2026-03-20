@@ -30,9 +30,9 @@
 #define U16LOW_MASK 0xFF
 #define U16HIGH_MASK 0xFF00
 
-#define ISNEG(x) ((x) & 0x80)
+#define ISNEG(x) ((x) & BIT7_MASK)
 #define HAS_FLAG(x, mask) (((x) & (mask)) == (mask))
-#define ISBETWEEN(x, a, b) ((x) >= (0) && (x) < (b))
+#define ISBETWEEN(x, a, b) ((x) >= (a) && (x) < (b))
 
 #define internal static
 #define global static
@@ -70,40 +70,5 @@ static inline void Free(void* address)
 {
     free(address);
 }
-
-typedef struct LoadedFile {
-    u64 size;
-    u8* contents;
-} LoadedFile;
-
-static inline u64 fsize(FILE* file)
-{
-    u64 pos = ftell(file);
-    fseek(file, 0, SEEK_END);
-    u64 size = ftell(file);
-    fseek(file, pos, SEEK_SET);
-    return size;
-}
-
-static inline LoadedFile LoadEntireFile(char* filePath)
-{
-    LoadedFile file = {0};
-
-    FILE* in = fopen(filePath, "rb");
-    if (in) {
-        file.size = fsize(in);
-        file.contents = (u8*)Allocate(file.size);
-        fread(file.contents, 1, file.size, in);
-        fclose(in);
-    }
-
-    return file;
-}
-
-typedef struct LoadedBitmap {
-    u32 width, height;
-    s32 xoffset, yoffset;
-    Color* pixels;
-} LoadedBitmap;
 
 #endif // UTILS_H

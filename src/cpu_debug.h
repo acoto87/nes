@@ -6,7 +6,7 @@
 #define CPU_INSTRUCTIONS_COUNT 0x100
 
 extern CPUInstruction cpuInstructions[CPU_INSTRUCTIONS_COUNT];
-const char* GetInstructionStr(CPUInstructionSet instruction);
+const char* GetInstructionStr(CPUInstructionMnemonic instruction);
 const char* GetRegisterStr(CPURegister cpuRegister);
 
 #endif

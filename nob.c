@@ -29,7 +29,7 @@ static bool nob_read_entire_dir_recursively(const char* parent, Nob_File_Paths* 
     return true;
 }
 
-static bool clear_folder(const char* parent, Nob_File_Paths *file_paths)
+static bool clear_folder(const char* parent, Nob_File_Paths* file_paths)
 {
     if (!nob_read_entire_dir_recursively(parent, file_paths, 0)) {
         return false;
@@ -62,6 +62,7 @@ int main(int argc, char** argv)
     nob_log(NOB_INFO, "Compiling and linking...");
 
     int build_release = 0;
+    int build_msvc = 0;
 
     if (argc > 1) {
         // Shift the first argument (the executable path) so
@@ -90,6 +91,24 @@ int main(int argc, char** argv)
                                 build_mode_value);
                         return 1;
                     }
+                } else if (strcmp(arg, "--compiler") == 0 || strcmp(arg, "-cc") == 0) {
+                    if (argc == 0) {
+                        nob_log(NOB_ERROR, "missing compiler after %s", arg);
+                        return 1;
+                    }
+                    const char* compiler_value = nob_shift_args(&argc, &argv);
+                    if (!compiler_value) {
+                        nob_log(NOB_ERROR, "missing compiler after %s", arg);
+                        return 1;
+                    }
+                    if (strcasecmp(compiler_value, "gcc") == 0) {
+                        build_msvc = 0;
+                    } else if (strcasecmp(compiler_value, "msvc") == 0) {
+                        build_msvc = 1;
+                    } else {
+                        nob_log(NOB_ERROR, "unknown compiler: %s. Valid options are 'gcc' or 'msvc'.", compiler_value);
+                        return 1;
+                    }
                 } else {
                     nob_log(NOB_WARNING, "ignoring unknown argument: %s", arg);
                 }
@@ -116,26 +135,52 @@ int main(int argc, char** argv)
         }
 
         nob_log(NOB_INFO, "Compiling cimgui.dll...");
-        nob_cmd_append(&cmd, "g++", "-shared");
-        if (build_release) {
-            nob_cmd_append(&cmd, "-O2");
+
+        if (build_msvc) {
+            nob_cmd_append(&cmd, "cl.exe", "/LD");
+            if (build_release) {
+                nob_cmd_append(&cmd, "/O2");
+            } else {
+                nob_cmd_append(&cmd, "/Od", "/Zi");
+            }
+            nob_cmd_append(&cmd, "/Iexternal/SDL2/include");
+            nob_cmd_append(&cmd, "/Iexternal/SDL2/include/SDL2");
+            nob_cmd_append(&cmd, "/Iexternal/cimgui/imgui");
+            nob_cmd_append(&cmd, "/Iexternal/cimgui/imgui/backends");
+            nob_cmd_append(&cmd, "/Iexternal/cimgui");
+            nob_cmd_append(&cmd, "/DCIMGUI_USE_SDL2", "/DCIMGUI_USE_OPENGL3");
+            nob_cmd_append(&cmd, "/DIMGUI_IMPL_API=extern \"C\" __declspec(dllexport)");
+
+            for (size_t i = 0; i < NOB_ARRAY_LEN(cimgui_src_files); ++i) {
+                nob_cmd_append(&cmd, cimgui_src_files[i]);
+            }
+
+            nob_cmd_append(&cmd, "/link");
+            nob_cmd_append(&cmd, "/LIBPATH:external/SDL2/lib/msvc/x64", "SDL2.lib", "opengl32.lib");
+            nob_cmd_append(&cmd, "/OUT:external/cimgui/build/cimgui.dll", "/IMPLIB:external/cimgui/build/cimgui.lib");
         } else {
-            nob_cmd_append(&cmd, "-O0", "-g");
-        }
-        nob_cmd_append(&cmd, "-Iexternal/SDL2/x86_64-w64-mingw32/include");
-        nob_cmd_append(&cmd, "-Iexternal/SDL2/x86_64-w64-mingw32/include/SDL2");
-        nob_cmd_append(&cmd, "-Iexternal/cimgui/imgui");
-        nob_cmd_append(&cmd, "-Iexternal/cimgui/imgui/backends");
-        nob_cmd_append(&cmd, "-Iexternal/cimgui");
-        nob_cmd_append(&cmd, "-DCIMGUI_USE_SDL2", "-DCIMGUI_USE_OPENGL3");
-        nob_cmd_append(&cmd, "-DIMGUI_IMPL_API=extern \"C\" __declspec(dllexport)");
+            nob_cmd_append(&cmd, "g++", "-shared");
+            if (build_release) {
+                nob_cmd_append(&cmd, "-O2");
+            } else {
+                nob_cmd_append(&cmd, "-O0", "-g");
+            }
+            nob_cmd_append(&cmd, "-Iexternal/SDL2/include");
+            nob_cmd_append(&cmd, "-Iexternal/SDL2/include/SDL2");
+            nob_cmd_append(&cmd, "-Iexternal/cimgui/imgui");
+            nob_cmd_append(&cmd, "-Iexternal/cimgui/imgui/backends");
+            nob_cmd_append(&cmd, "-Iexternal/cimgui");
+            nob_cmd_append(&cmd, "-DCIMGUI_USE_SDL2", "-DCIMGUI_USE_OPENGL3");
+            nob_cmd_append(&cmd, "-DIMGUI_IMPL_API=extern \"C\" __declspec(dllexport)");
 
-        for (size_t i = 0; i < NOB_ARRAY_LEN(cimgui_src_files); ++i) {
-            nob_cmd_append(&cmd, cimgui_src_files[i]);
-        }
+            for (size_t i = 0; i < NOB_ARRAY_LEN(cimgui_src_files); ++i) {
+                nob_cmd_append(&cmd, cimgui_src_files[i]);
+            }
 
-        nob_cmd_append(&cmd, "-Lexternal/SDL2/x86_64-w64-mingw32/lib", "-lSDL2", "-lopengl32");
-        nob_cmd_append(&cmd, "-o", "external/cimgui/build/cimgui.dll", "-Wl,--out-implib,external/cimgui/build/libcimgui.dll.a");
+            nob_cmd_append(&cmd, "-Lexternal/SDL2/lib/mingw32", "-lSDL2", "-lopengl32");
+            nob_cmd_append(&cmd, "-o", "external/cimgui/build/cimgui.dll",
+                           "-Wl,--out-implib,external/cimgui/build/libcimgui.dll.a");
+        }
 
         if (!nob_cmd_run_sync(cmd)) {
             return 1;
@@ -149,29 +194,58 @@ int main(int argc, char** argv)
     }
 
     nob_log(NOB_INFO, "Compiling nes.exe...");
-    nob_cmd_append(&cmd, "gcc");
-    if (build_release) {
-        nob_cmd_append(&cmd, "-O2");
-    } else {
-        nob_cmd_append(&cmd, "-O0", "-g");
-    }
-    nob_cmd_append(&cmd, "-Wall", "-Wno-narrowing", "-Wno-missing-braces", "--pedantic");
-    nob_cmd_append(&cmd, "-Iexternal/SDL2/x86_64-w64-mingw32/include");
-    nob_cmd_append(&cmd, "-Iexternal/SDL2/x86_64-w64-mingw32/include/SDL2");
-    nob_cmd_append(&cmd, "-Iexternal/cimgui/imgui");
-    nob_cmd_append(&cmd, "-Iexternal/cimgui/imgui/backends");
-    nob_cmd_append(&cmd, "-Iexternal/cimgui");
-    nob_cmd_append(&cmd, "-DCIMGUI_USE_SDL2", "-DCIMGUI_USE_OPENGL3");
-    nob_cmd_append(&cmd, "-DIMGUI_IMPL_API=extern __declspec(dllimport)", "-DCIMGUI_NO_EXPORT");
-    nob_cmd_append(&cmd, "src/main.c");
-    nob_cmd_append(&cmd, "-Lexternal/cimgui/build", "-lcimgui");
-    nob_cmd_append(&cmd, "-Lexternal/SDL2/x86_64-w64-mingw32/lib", "-lSDL2");
-    nob_cmd_append(&cmd, "-lopengl32");
-    nob_cmd_append(&cmd, "-o", "build/nes.exe");
 
-    if (!nob_cmd_run_sync(cmd) ||
-        !nob_copy_directory_recursively("fonts", "build/fonts") ||
-        !nob_copy_file("external/SDL2/x86_64-w64-mingw32/bin/SDL2.dll", "build/SDL2.dll") ||
+    if (build_msvc) {
+        nob_cmd_append(&cmd, "cl.exe");
+        if (build_release) {
+            nob_cmd_append(&cmd, "/O2");
+        } else {
+            nob_cmd_append(&cmd, "/Od", "/Zi");
+        }
+        nob_cmd_append(&cmd, "/W3");
+        nob_cmd_append(&cmd, "/Iexternal/SDL2/include");
+        nob_cmd_append(&cmd, "/Iexternal/SDL2/include/SDL2");
+        nob_cmd_append(&cmd, "/Iexternal/cimgui/imgui");
+        nob_cmd_append(&cmd, "/Iexternal/cimgui/imgui/backends");
+        nob_cmd_append(&cmd, "/Iexternal/cimgui");
+        nob_cmd_append(&cmd, "/DCIMGUI_USE_SDL2", "/DCIMGUI_USE_OPENGL3");
+        nob_cmd_append(&cmd, "/DIMGUI_IMPL_API=extern __declspec(dllimport)", "/DCIMGUI_NO_EXPORT");
+        nob_cmd_append(&cmd, "src/main.c");
+        nob_cmd_append(&cmd, "/link");
+        nob_cmd_append(&cmd, "/LIBPATH:external/cimgui/build", "cimgui.lib");
+        nob_cmd_append(&cmd, "/LIBPATH:external/SDL2/lib/msvc/x64", "SDL2.lib", "SDL2main.lib", "opengl32.lib",
+                       "Shell32.lib");
+        nob_cmd_append(&cmd, "/OUT:build/nes.exe");
+        if (build_release) {
+            nob_cmd_append(&cmd, "/SUBSYSTEM:WINDOWS");
+        } else {
+            nob_cmd_append(&cmd, "/SUBSYSTEM:CONSOLE");
+        }
+    } else {
+        nob_cmd_append(&cmd, "gcc");
+        if (build_release) {
+            nob_cmd_append(&cmd, "-O2");
+        } else {
+            nob_cmd_append(&cmd, "-O0", "-g");
+        }
+        nob_cmd_append(&cmd, "-Wall", "-Wno-narrowing", "-Wno-missing-braces", "--pedantic");
+        nob_cmd_append(&cmd, "-Iexternal/SDL2/include");
+        nob_cmd_append(&cmd, "-Iexternal/SDL2/include/SDL2");
+        nob_cmd_append(&cmd, "-Iexternal/cimgui/imgui");
+        nob_cmd_append(&cmd, "-Iexternal/cimgui/imgui/backends");
+        nob_cmd_append(&cmd, "-Iexternal/cimgui");
+        nob_cmd_append(&cmd, "-DCIMGUI_USE_SDL2", "-DCIMGUI_USE_OPENGL3");
+        nob_cmd_append(&cmd, "-DIMGUI_IMPL_API=extern __declspec(dllimport)", "-DCIMGUI_NO_EXPORT");
+        nob_cmd_append(&cmd, "src/main.c");
+        nob_cmd_append(&cmd, "-Lexternal/cimgui/build", "-lcimgui");
+        nob_cmd_append(&cmd, "-Lexternal/SDL2/lib/mingw32", "-lSDL2");
+        nob_cmd_append(&cmd, "-lopengl32");
+        nob_cmd_append(&cmd, "-o", "build/nes.exe");
+    }
+
+    if (!nob_cmd_run_sync(cmd) || !nob_copy_directory_recursively("fonts", "build/fonts") ||
+        (build_msvc ? !nob_copy_file("external/SDL2/lib/msvc/x64/SDL2.dll", "build/SDL2.dll")
+                    : !nob_copy_file("external/SDL2/lib/mingw32/SDL2.dll", "build/SDL2.dll")) ||
         !nob_copy_file("external/cimgui/build/cimgui.dll", "build/cimgui.dll")) {
         return 1;
     }

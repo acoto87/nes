@@ -15,7 +15,7 @@
 #define CPU_IRQ_ADDRESS 0xFFFE
 #define CPU_NMI_ADDRESS 0xFFFA
 
-#define CPU_STATUS_INITIAL_VALUE 0x34 // or 0x24
+#define CPU_STATUS_INITIAL_VALUE 0x24
 #define CPU_STACK_PTR_INITIAL_VALUE 0xFF
 
 #define CPU_PRG_BANK_0_OFFSET 0x8000
@@ -65,8 +65,6 @@
 
 #define CPU_SRAM_OFFSET 0x6000
 #define CPU_SRAM_SIZE 0x2000
-
-#define PAGE_CROSS(x, y) (((x) & 0xFF00) != ((y) & 0xFF00));
 
 #define CARRY_FLAG 0
 #define ZERO_FLAG 1
@@ -173,6 +171,10 @@ void ResetCPU(NES* nes);
 void PowerCPU(NES* nes);
 void InitCPU(NES* nes);
 CPUStep StepCPU(NES* nes);
+
+void CPURequestReset(NES* nes);
+void CPUSetNMILine(NES* nes, bool asserted);
+void CPUSetIRQSource(NES* nes, u32 sourceMask, bool asserted);
 
 static inline void StepCPUCycles(NES* nes, s32 cycles)
 {

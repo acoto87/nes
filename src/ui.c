@@ -553,7 +553,7 @@ internal void DrawAudioPanel()
         igText("CYCLES: %lld", apu->cycles);
         igText("FRAME MODE: %02X", apu->frameMode);
         igText("SAMPLE RATE: %04X", APU_SAMPLES_PER_SECOND);
-        igText("FRAME IRQ: %02X", !apu->inhibitIRQ);
+        igText("FRAME IRQ: %02X", apu->frameIRQ);
         igText("FRAME VALUE: %02X", apu->frameValue);
         igText("SAMPLE COUNTER: %02X", apu->sampleCounter);
         igText("DMC IRQ: %02X", apu->dmcIRQ);
@@ -698,7 +698,7 @@ internal void DrawInstructionsPanel()
 
                 memset(debugBuffer + col, ' ', 18 - col);
                 col = 18;
-                col += sprintf(debugBuffer + col, "%s", GetInstructionStr(instruction->instruction));
+                col += sprintf(debugBuffer + col, "%s", GetInstructionStr(instruction->mnemonic));
 
                 switch (instruction->addressingMode) {
                     case AM_IMM:
@@ -753,7 +753,7 @@ internal void DrawInstructionsPanel()
                         break;
                 }
 
-                if (instruction->instruction == CPU_RTS) {
+                if (instruction->mnemonic == CPU_RTS) {
                     col += sprintf(debugBuffer + col, " -------------");
                 }
 

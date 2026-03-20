@@ -20,6 +20,7 @@
 #include "nes.h"
 #include "cpu.h"
 #include "cpu_debug.h"
+#include "cpu_trace.h"
 #include "ppu.h"
 #include "ppu_debug.h"
 #include "apu.h"
@@ -34,6 +35,7 @@
 #include "mapper66.h"
 #include "memory.h"
 #include "oam.h"
+#include "headless.h"
 
 #define nes (app.runtime.nes)
 
@@ -242,8 +244,71 @@ internal void UpdateControllerInput(SDL_GameController* controller)
     }
 }
 
+#define shift_args(argc, argv) (ASSERT(*(argc) > 0), (*(argc))--, *(*(argv))++)
+
 int main(int argc, char** argv)
 {
+    bool headlessMode = false;
+    const char* logCPUPath = NULL;
+    u16 startPC = 0;
+    u64 maxInstructions = 0;
+    u64 maxCycles = 0;
+    const char* romPath = NULL;
+
+    int parse_argc = argc;
+    char** parse_argv = argv;
+    const char* program = shift_args(&parse_argc, &parse_argv);
+    (void)program;
+
+    while (parse_argc > 0) {
+        const char* flag = shift_args(&parse_argc, &parse_argv);
+        if (strncmp(flag, "--headless", strlen("--headless")) == 0) {
+            headlessMode = true;
+        } else if (strncmp(flag, "--log-cpu", strlen("--log-cpu")) == 0) {
+            if (parse_argc == 0) {
+                fprintf(stderr, "Error: --log-cpu requires a path\n");
+                return 1;
+            }
+            logCPUPath = shift_args(&parse_argc, &parse_argv);
+        } else if (strncmp(flag, "--pc", strlen("--pc")) == 0) {
+            if (parse_argc == 0) {
+                fprintf(stderr, "Error: --pc requires a value\n");
+                return 1;
+            }
+            startPC = (u16)strtoul(shift_args(&parse_argc, &parse_argv), NULL, 16);
+        } else if (strncmp(flag, "--max-instructions", strlen("--max-instructions")) == 0) {
+            if (parse_argc == 0) {
+                fprintf(stderr, "Error: --max-instructions requires a value\n");
+                return 1;
+            }
+            maxInstructions = strtoull(shift_args(&parse_argc, &parse_argv), NULL, 0);
+        } else if (strncmp(flag, "--max-cycles", strlen("--max-cycles")) == 0) {
+            if (parse_argc == 0) {
+                fprintf(stderr, "Error: --max-cycles requires a value\n");
+                return 1;
+            }
+            maxCycles = strtoull(shift_args(&parse_argc, &parse_argv), NULL, 0);
+        } else {
+            if (!romPath) {
+                romPath = flag;
+            } else {
+                fprintf(stderr, "Unknown flag or multiple ROMs specified: %s\n", flag);
+                return 1;
+            }
+        }
+    }
+
+    if (headlessMode) {
+        HeadlessConfig config = {0};
+        config.romPath = romPath;
+        config.logPath = logCPUPath;
+        config.startPC = startPC;
+        config.maxInstructions = maxInstructions;
+        config.maxCycles = maxCycles;
+        config.logCPU = logCPUPath != NULL;
+        return RunHeadless(&config);
+    }
+
     SDL_Window* win;
     SDL_GLContext glContext;
     int windowWidth, windowHeight;
@@ -324,8 +389,16 @@ int main(int argc, char** argv)
         }
     }
 
-    if (argc > 1) {
-        LoadFileIntoApp(win, argv[1]);
+    if (romPath) {
+        LoadFileIntoApp(win, romPath);
+    }
+
+    FILE* guiLogFile = NULL;
+    if (logCPUPath) {
+        guiLogFile = fopen(logCPUPath, "w");
+        if (!guiLogFile) {
+            fprintf(stderr, "Warning: could not open log file for writing: %s\n", logCPUPath);
+        }
     }
 
     u64 startCounter = SDL_GetPerformanceCounter();
@@ -344,7 +417,7 @@ int main(int argc, char** argv)
     // APU accumulator: add PPU_CYCLES_PER_FRAME every frame, take the integer
     // CPU part, subtract PPU_CYCLES_PER_FRAME from the running total.
     // In practice: base = 29780, every 3 frames one frame gets 29781 cycles.
-    s32 cycleRemainder = 0; // accumulates sub-integer CPU cycles across frames
+    s64 cycleRemainder = 0; // accumulates sub-integer CPU cycles across frames
 
     while (!quit) {
         SDL_Event evt;
@@ -390,7 +463,7 @@ int main(int argc, char** argv)
             // and subtract 3 from the remainder.  This keeps the long-run
             // average at exactly 29780.666... cycles/frame with no float math.
             cycleRemainder += (PPU_CYCLES_PER_SCANLINE * PPU_SCANLINES_PER_FRAME) % 3; // += 2
-            s32 cycles = (PPU_CYCLES_PER_SCANLINE * PPU_SCANLINES_PER_FRAME) / 3;      // 29780
+            s64 cycles = (PPU_CYCLES_PER_SCANLINE * PPU_SCANLINES_PER_FRAME) / 3;      // 29780
             if (cycleRemainder >= 3) {
                 cycles++;
                 cycleRemainder -= 3;
@@ -420,6 +493,10 @@ int main(int argc, char** argv)
                 }
 
                 if (debugging && !stepping) break;
+
+                if (guiLogFile) {
+                    LogCPUState(nes, guiLogFile);
+                }
 
                 CPUStep step = StepCPU(nes);
                 cycles -= step.cycles;
@@ -488,6 +565,7 @@ int main(int argc, char** argv)
 #include "cpu.c"
 #include "cpu_io.c"
 #include "cpu_debug.c"
+#include "cpu_trace.c"
 #include "ppu.c"
 #include "ppu_debug.c"
 #include "apu.c"
@@ -499,5 +577,5 @@ int main(int argc, char** argv)
 #include "mapper2.c"
 #include "mapper3.c"
 #include "mapper66.c"
-
 #include "ui.c"
+#include "headless.c"
