@@ -564,9 +564,7 @@ internal inline void CPUServiceInterrupt(NES* nes)
             break;
         }
         case CPU_INTERRUPT_IRQ: {
-            if (!GetBitFlag(cpu->p, INTERRUPT_FLAG)) {
-                HandleInterrupt(nes, CPU_IRQ_ADDRESS, false);
-            }
+            HandleInterrupt(nes, CPU_IRQ_ADDRESS, false);
             break;
         }
         case CPU_INTERRUPT_NON: {
