@@ -15,81 +15,302 @@
 #include "gui.h"
 #include "controller.h"
 
-#include "IconsFontAwesome5.h"
+#include "IconsCodicon.h"
 
 #define nes (app.runtime.nes)
+
+#define UI_FONT_SIZE 17.0f
+#define UI_MONO_FONT_SIZE 15.0f
+#define UI_PAGE_TITLE_FONT_SIZE 26.0f
+#define UI_WELCOME_HEADLINE_FONT_SIZE 28.0f
+
+typedef enum ThemeMode {
+    THEME_DARK = 0,
+    THEME_LIGHT,
+} ThemeMode;
+
+typedef struct UiFontSet {
+    ImFont* ui;
+    ImFont* mono;
+} UiFontSet;
+
+global UiFontSet uiFonts = {0};
+global ThemeMode uiThemeMode = THEME_DARK;
+
+static const ImWchar codicon_ranges[] = {ICON_MIN_CI, ICON_MAX_CI, 0};
+
+internal bool UiFileExists(const char* path)
+{
+    FILE* file = path ? fopen(path, "rb") : NULL;
+    if (!file) return false;
+    fclose(file);
+    return true;
+}
+
+internal const char* FindUIFontPath(void)
+{
+#if defined(_WIN32)
+    static const char* candidates[] = {
+        "C:/Windows/Fonts/segoeui.ttf",
+        NULL,
+    };
+#elif defined(__APPLE__)
+    static const char* candidates[] = {
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/Library/Fonts/Arial.ttf",
+        "/System/Library/Fonts/Arial.ttf",
+        NULL,
+    };
+#else
+    static const char* candidates[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        NULL,
+    };
+#endif
+
+    for (s32 i = 0; candidates[i]; ++i) {
+        if (UiFileExists(candidates[i])) return candidates[i];
+    }
+
+    return NULL;
+}
+
+internal ImFont* AddFontIfPresent(ImFontAtlas* atlas, const char* path, f32 size, const ImFontConfig* cfg,
+                                  const ImWchar* ranges)
+{
+    if (!path || !UiFileExists(path)) return NULL;
+    return ImFontAtlas_AddFontFromFileTTF(atlas, path, size, cfg, ranges);
+}
+
+internal UiFontSet LoadUIFontSet(const char* uiFontPath, const char* iconFontPath, const char* monoFontPath,
+                                 const ImWchar* iconRanges)
+{
+    UiFontSet fonts = {0};
+    ImGuiIO* io = igGetIO_Nil();
+
+    fonts.ui = AddFontIfPresent(io->Fonts, uiFontPath, UI_FONT_SIZE, NULL, NULL);
+    if (!fonts.ui) {
+        ImFontConfig* defaultCfg = ImFontConfig_ImFontConfig();
+        defaultCfg->SizePixels = UI_FONT_SIZE;
+        fonts.ui = ImFontAtlas_AddFontDefault(io->Fonts, defaultCfg);
+        ImFontConfig_destroy(defaultCfg);
+    }
+    io->FontDefault = fonts.ui;
+
+    if (iconFontPath && iconRanges) {
+        ImFontConfig* iconCfg = ImFontConfig_ImFontConfig();
+        iconCfg->MergeMode = true;
+        iconCfg->PixelSnapH = true;
+        iconCfg->GlyphOffset = (ImVec2){0.0f, 4.0f};
+        AddFontIfPresent(io->Fonts, iconFontPath, UI_FONT_SIZE, iconCfg, iconRanges);
+        ImFontConfig_destroy(iconCfg);
+    }
+
+    fonts.mono = AddFontIfPresent(io->Fonts, monoFontPath, UI_MONO_FONT_SIZE, NULL, NULL);
+    return fonts;
+}
+
+internal ImVec4 UiAccentForMode(ThemeMode mode)
+{
+    return mode == THEME_DARK ? (ImVec4){0.35f, 0.83f, 0.72f, 1.0f} : (ImVec4){0.04f, 0.42f, 0.35f, 1.0f};
+}
+
+internal ImVec4 ui_accent(void)
+{
+    return UiAccentForMode(uiThemeMode);
+}
+
+internal ImVec4 ui_text_muted(void)
+{
+    return igGetStyle()->Colors[ImGuiCol_TextDisabled];
+}
+
+internal ImVec4 ui_text_danger(void)
+{
+    return (ImVec4){0.65f, 0.20f, 0.22f, 1.0f};
+}
+
+internal ImU32 UiColorToU32(ImVec4 color)
+{
+    return igColorConvertFloat4ToU32(color);
+}
+
+internal void ApplyUiTheme(ThemeMode mode)
+{
+    const bool dark = mode == THEME_DARK;
+    ImVec4 accent = UiAccentForMode(mode);
+
+    if (dark) {
+        igStyleColorsDark(NULL);
+    } else {
+        igStyleColorsLight(NULL);
+    }
+
+    ImGuiStyle* style = igGetStyle();
+    style->WindowPadding = (ImVec2){16.0f, 14.0f};
+    style->FramePadding = (ImVec2){10.0f, 7.0f};
+    style->ItemSpacing = (ImVec2){10.0f, 10.0f};
+    style->ItemInnerSpacing = (ImVec2){8.0f, 6.0f};
+
+    style->WindowRounding = 10.0f;
+    style->ChildRounding = 10.0f;
+    style->FrameRounding = 6.0f;
+    style->PopupRounding = 8.0f;
+    style->GrabRounding = 6.0f;
+    style->ScrollbarRounding = 8.0f;
+    style->ScrollbarSize = 12.0f;
+
+    style->FrameBorderSize = 1.0f;
+    style->WindowBorderSize = 0.0f;
+    style->ChildBorderSize = 1.0f;
+
+    ImVec4* c = style->Colors;
+    c[ImGuiCol_Text] = dark ? (ImVec4){0.89f, 0.92f, 0.94f, 1.0f} : (ImVec4){0.15f, 0.20f, 0.23f, 1.0f};
+    c[ImGuiCol_TextDisabled] = dark ? (ImVec4){0.59f, 0.66f, 0.70f, 1.0f} : (ImVec4){0.40f, 0.46f, 0.49f, 1.0f};
+    c[ImGuiCol_WindowBg] = dark ? (ImVec4){0.075f, 0.10f, 0.12f, 1.0f} : (ImVec4){0.94f, 0.95f, 0.94f, 1.0f};
+    c[ImGuiCol_ChildBg] = dark ? (ImVec4){0.105f, 0.135f, 0.155f, 1.0f} : (ImVec4){0.99f, 0.99f, 0.98f, 1.0f};
+    c[ImGuiCol_PopupBg] = c[ImGuiCol_ChildBg];
+    c[ImGuiCol_Border] = dark ? (ImVec4){0.22f, 0.28f, 0.31f, 0.65f} : (ImVec4){0.76f, 0.81f, 0.79f, 0.75f};
+    c[ImGuiCol_BorderShadow] = (ImVec4){0.0f, 0.0f, 0.0f, 0.0f};
+    c[ImGuiCol_FrameBg] = dark ? (ImVec4){0.075f, 0.105f, 0.125f, 1.0f} : (ImVec4){0.95f, 0.97f, 0.96f, 1.0f};
+    c[ImGuiCol_FrameBgHovered] = dark ? (ImVec4){0.15f, 0.23f, 0.25f, 1.0f} : (ImVec4){0.88f, 0.94f, 0.92f, 1.0f};
+    c[ImGuiCol_FrameBgActive] = c[ImGuiCol_FrameBgHovered];
+    c[ImGuiCol_TitleBg] = c[ImGuiCol_ChildBg];
+    c[ImGuiCol_TitleBgActive] = dark ? (ImVec4){0.14f, 0.25f, 0.26f, 1.0f} : (ImVec4){0.83f, 0.91f, 0.87f, 1.0f};
+    c[ImGuiCol_TitleBgCollapsed] = c[ImGuiCol_TitleBg];
+    c[ImGuiCol_MenuBarBg] = c[ImGuiCol_WindowBg];
+    c[ImGuiCol_ScrollbarBg] = c[ImGuiCol_FrameBg];
+    c[ImGuiCol_CheckMark] = accent;
+    c[ImGuiCol_SliderGrab] = accent;
+    c[ImGuiCol_SliderGrabActive] = accent;
+    c[ImGuiCol_Button] = dark ? (ImVec4){0.17f, 0.24f, 0.27f, 1.0f} : (ImVec4){0.87f, 0.92f, 0.90f, 1.0f};
+    c[ImGuiCol_ButtonHovered] = dark ? (ImVec4){0.22f, 0.34f, 0.36f, 1.0f} : (ImVec4){0.77f, 0.87f, 0.83f, 1.0f};
+    c[ImGuiCol_ButtonActive] = dark ? (ImVec4){0.20f, 0.40f, 0.38f, 1.0f} : (ImVec4){0.67f, 0.81f, 0.76f, 1.0f};
+    c[ImGuiCol_ScrollbarGrab] = c[ImGuiCol_Button];
+    c[ImGuiCol_ScrollbarGrabHovered] = c[ImGuiCol_ButtonHovered];
+    c[ImGuiCol_ScrollbarGrabActive] = c[ImGuiCol_ButtonActive];
+    c[ImGuiCol_Header] = dark ? (ImVec4){0.16f, 0.32f, 0.30f, 1.0f} : (ImVec4){0.80f, 0.91f, 0.86f, 1.0f};
+    c[ImGuiCol_HeaderHovered] = c[ImGuiCol_ButtonHovered];
+    c[ImGuiCol_HeaderActive] = c[ImGuiCol_ButtonActive];
+    c[ImGuiCol_Separator] = c[ImGuiCol_Border];
+    c[ImGuiCol_SeparatorHovered] = c[ImGuiCol_ButtonHovered];
+    c[ImGuiCol_SeparatorActive] = c[ImGuiCol_ButtonActive];
+    c[ImGuiCol_ResizeGrip] = c[ImGuiCol_Border];
+    c[ImGuiCol_ResizeGripHovered] = c[ImGuiCol_ButtonHovered];
+    c[ImGuiCol_ResizeGripActive] = c[ImGuiCol_ButtonActive];
+    c[ImGuiCol_InputTextCursor] = c[ImGuiCol_Text];
+    c[ImGuiCol_TabHovered] = c[ImGuiCol_ButtonHovered];
+    c[ImGuiCol_Tab] = c[ImGuiCol_ChildBg];
+    c[ImGuiCol_TabSelected] = c[ImGuiCol_TitleBgActive];
+    c[ImGuiCol_TabSelectedOverline] = accent;
+    c[ImGuiCol_TabDimmed] = c[ImGuiCol_TitleBg];
+    c[ImGuiCol_TabDimmedSelected] = c[ImGuiCol_Header];
+    c[ImGuiCol_TabDimmedSelectedOverline] = accent;
+    c[ImGuiCol_DockingPreview] = (ImVec4){accent.x, accent.y, accent.z, 0.28f};
+    c[ImGuiCol_DockingEmptyBg] = c[ImGuiCol_WindowBg];
+    c[ImGuiCol_PlotLines] = accent;
+    c[ImGuiCol_PlotLinesHovered] = c[ImGuiCol_ButtonHovered];
+    c[ImGuiCol_PlotHistogram] = accent;
+    c[ImGuiCol_PlotHistogramHovered] = c[ImGuiCol_ButtonActive];
+    c[ImGuiCol_TableHeaderBg] = c[ImGuiCol_FrameBg];
+    c[ImGuiCol_TableBorderStrong] = c[ImGuiCol_Border];
+    c[ImGuiCol_TableBorderLight] = c[ImGuiCol_Border];
+    c[ImGuiCol_TableRowBgAlt] =
+        dark ? (ImVec4){0.12f, 0.15f, 0.17f, 0.35f} : (ImVec4){0.89f, 0.92f, 0.91f, 0.45f};
+    c[ImGuiCol_TextLink] = accent;
+    c[ImGuiCol_TextSelectedBg] = (ImVec4){0.22f, 0.65f, 0.53f, 0.35f};
+    c[ImGuiCol_TreeLines] = c[ImGuiCol_Border];
+    c[ImGuiCol_DragDropTarget] = accent;
+    c[ImGuiCol_DragDropTargetBg] = (ImVec4){accent.x, accent.y, accent.z, 0.35f};
+    c[ImGuiCol_UnsavedMarker] = accent;
+    c[ImGuiCol_NavCursor] = accent;
+    c[ImGuiCol_NavWindowingHighlight] = accent;
+    c[ImGuiCol_NavWindowingDimBg] = (ImVec4){0.02f, 0.04f, 0.05f, dark ? 0.65f : 0.30f};
+    c[ImGuiCol_ModalWindowDimBg] = (ImVec4){0.02f, 0.04f, 0.05f, dark ? 0.65f : 0.30f};
+}
 
 void SetupImGui(void)
 {
     ImGuiIO* io = igGetIO_Nil();
-    (void)io;
     io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    ImFontConfig* fontConfig = ImFontConfig_ImFontConfig();
-    fontConfig->MergeMode = true;
-    fontConfig->PixelSnapH = true;
+    uiFonts = LoadUIFontSet(FindUIFontPath(), "fonts/codicon.ttf", "fonts/JetBrainsMono-Regular.ttf", codicon_ranges);
+    ApplyUiTheme(uiThemeMode);
+}
 
-    // Define the icon ranges for the specific font you are using (e.g., Font Awesome)
-    static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
-    ImFontAtlas_AddFontDefault(io->Fonts, NULL);
-    ImFontAtlas_AddFontFromFileTTF(io->Fonts, "fonts/fontawesome-webfont.ttf", 13.0f, fontConfig, icon_ranges);
-    // ImFontConfig_destroy(fontConfig);
+internal void UiPushPrimaryButtonStyle(void)
+{
+    igPushStyleColor_Vec4(ImGuiCol_Button, (ImVec4){0.10f, 0.46f, 0.37f, 1.0f});
+    igPushStyleColor_Vec4(ImGuiCol_ButtonHovered, (ImVec4){0.13f, 0.56f, 0.45f, 1.0f});
+    igPushStyleColor_Vec4(ImGuiCol_ButtonActive, (ImVec4){0.08f, 0.38f, 0.30f, 1.0f});
+    igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){1.0f, 1.0f, 1.0f, 1.0f});
+}
 
-    ImGuiStyle* style = igGetStyle();
-    ImVec4* colors = style->Colors;
+internal void UiPopPrimaryButtonStyle(void)
+{
+    igPopStyleColor(4);
+}
 
-    colors[ImGuiCol_Text] = (ImVec4){0.78f, 0.78f, 0.78f, 1.00f};
-    colors[ImGuiCol_TextDisabled] = (ImVec4){0.40f, 0.40f, 0.40f, 1.00f};
-    colors[ImGuiCol_WindowBg] = (ImVec4){0.05f, 0.05f, 0.05f, 1.00f};
-    colors[ImGuiCol_ChildBg] = (ImVec4){0.08f, 0.08f, 0.08f, 1.00f};
-    colors[ImGuiCol_PopupBg] = (ImVec4){0.08f, 0.08f, 0.08f, 0.94f};
-    colors[ImGuiCol_Border] = (ImVec4){0.13f, 0.13f, 0.13f, 1.00f};
-    colors[ImGuiCol_BorderShadow] = (ImVec4){0.00f, 0.00f, 0.00f, 0.00f};
-    colors[ImGuiCol_FrameBg] = (ImVec4){0.10f, 0.10f, 0.10f, 1.00f};
-    colors[ImGuiCol_FrameBgHovered] = (ImVec4){0.14f, 0.14f, 0.14f, 1.00f};
-    colors[ImGuiCol_FrameBgActive] = (ImVec4){0.20f, 1.00f, 0.40f, 0.30f};
-    colors[ImGuiCol_TitleBg] = (ImVec4){0.07f, 0.07f, 0.07f, 1.00f};
-    colors[ImGuiCol_TitleBgActive] = (ImVec4){0.10f, 0.10f, 0.10f, 1.00f};
-    colors[ImGuiCol_TitleBgCollapsed] = (ImVec4){0.05f, 0.05f, 0.05f, 1.00f};
-    colors[ImGuiCol_MenuBarBg] = (ImVec4){0.07f, 0.07f, 0.07f, 1.00f};
-    colors[ImGuiCol_ScrollbarBg] = (ImVec4){0.05f, 0.05f, 0.05f, 1.00f};
-    colors[ImGuiCol_ScrollbarGrab] = (ImVec4){0.13f, 0.13f, 0.13f, 1.00f};
-    colors[ImGuiCol_ScrollbarGrabHovered] = (ImVec4){0.16f, 0.16f, 0.16f, 1.00f};
-    colors[ImGuiCol_ScrollbarGrabActive] = (ImVec4){0.20f, 1.00f, 0.40f, 1.00f};
-    colors[ImGuiCol_CheckMark] = (ImVec4){0.20f, 1.00f, 0.40f, 1.00f};
-    colors[ImGuiCol_SliderGrab] = (ImVec4){0.13f, 0.13f, 0.13f, 1.00f};
-    colors[ImGuiCol_SliderGrabActive] = (ImVec4){0.20f, 1.00f, 0.40f, 1.00f};
-    colors[ImGuiCol_Button] = (ImVec4){0.10f, 0.10f, 0.10f, 1.00f};
-    colors[ImGuiCol_ButtonHovered] = (ImVec4){0.14f, 0.14f, 0.14f, 1.00f};
-    colors[ImGuiCol_ButtonActive] = (ImVec4){0.20f, 1.00f, 0.40f, 1.00f};
-    colors[ImGuiCol_Header] = (ImVec4){0.14f, 0.14f, 0.14f, 1.00f};
-    colors[ImGuiCol_HeaderHovered] = (ImVec4){0.18f, 0.18f, 0.18f, 1.00f};
-    colors[ImGuiCol_HeaderActive] = (ImVec4){0.20f, 1.00f, 0.40f, 0.40f};
-    colors[ImGuiCol_Separator] = (ImVec4){0.13f, 0.13f, 0.13f, 1.00f};
-    colors[ImGuiCol_SeparatorHovered] = (ImVec4){0.16f, 0.16f, 0.16f, 1.00f};
-    colors[ImGuiCol_SeparatorActive] = (ImVec4){0.20f, 1.00f, 0.40f, 1.00f};
-    colors[ImGuiCol_ResizeGrip] = (ImVec4){0.13f, 0.13f, 0.13f, 1.00f};
-    colors[ImGuiCol_ResizeGripHovered] = (ImVec4){0.16f, 0.16f, 0.16f, 1.00f};
-    colors[ImGuiCol_ResizeGripActive] = (ImVec4){0.20f, 1.00f, 0.40f, 1.00f};
-    colors[ImGuiCol_Tab] = (ImVec4){0.07f, 0.07f, 0.07f, 1.00f};
-    colors[ImGuiCol_TabHovered] = (ImVec4){0.14f, 0.14f, 0.14f, 1.00f};
-    colors[ImGuiCol_TabSelected] = (ImVec4){0.10f, 0.10f, 0.10f, 1.00f};
-    colors[ImGuiCol_TabDimmed] = (ImVec4){0.05f, 0.05f, 0.05f, 1.00f};
-    colors[ImGuiCol_TabDimmedSelected] = (ImVec4){0.07f, 0.07f, 0.07f, 1.00f};
+bool ui_primary_button(const char* label, ImVec2 size)
+{
+    UiPushPrimaryButtonStyle();
+    bool clicked = igButton(label, size);
+    UiPopPrimaryButtonStyle();
+    return clicked;
+}
 
-    style->WindowRounding = 0.0f;
-    style->ChildRounding = 0.0f;
-    style->FrameRounding = 0.0f;
-    style->PopupRounding = 0.0f;
-    style->ScrollbarRounding = 0.0f;
-    style->GrabRounding = 0.0f;
-    style->TabRounding = 0.0f;
-    style->WindowBorderSize = 1.0f;
-    style->ChildBorderSize = 1.0f;
-    style->PopupBorderSize = 1.0f;
-    style->FrameBorderSize = 1.0f;
-    style->TabBorderSize = 1.0f;
+bool ui_danger_button(const char* label, ImVec2 size)
+{
+    igPushStyleColor_Vec4(ImGuiCol_Button, (ImVec4){0.65f, 0.20f, 0.22f, 1.0f});
+    igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){1.0f, 1.0f, 1.0f, 1.0f});
+    bool clicked = igButton(label, size);
+    igPopStyleColor(2);
+    return clicked;
+}
+
+internal bool UiPushMonoFont(void)
+{
+    if (!uiFonts.mono) return false;
+    igPushFont(uiFonts.mono, UI_MONO_FONT_SIZE);
+    return true;
+}
+
+internal void UiSectionTitle(const char* label)
+{
+    igPushStyleColor_Vec4(ImGuiCol_Text, ui_accent());
+    igSeparatorText(label);
+    igPopStyleColor(1);
+}
+
+internal void UiCenteredText(const char* text, f32 fontSize, ImVec4 color)
+{
+    if (fontSize > 0.0f) igPushFont(NULL, fontSize);
+
+    ImVec2 size = igCalcTextSize(text, NULL, false, -1.0f);
+    f32 offsetX = (igGetContentRegionAvail().x - size.x) * 0.5f;
+    if (offsetX > 0.0f) {
+        igSetCursorPosX(igGetCursorPosX() + offsetX);
+    }
+
+    igTextColored(color, "%s", text);
+
+    if (fontSize > 0.0f) igPopFont();
+}
+
+internal void DrawEmptyState(const char* headline, const char* title, const char* body)
+{
+    ImVec2 avail = igGetContentRegionAvail();
+    f32 blockHeight = UI_WELCOME_HEADLINE_FONT_SIZE + UI_PAGE_TITLE_FONT_SIZE + UI_FONT_SIZE + 40.0f;
+    f32 top = igGetCursorPosY() + MAX(0.0f, (avail.y - blockHeight) * 0.5f);
+
+    igSetCursorPosY(top);
+    UiCenteredText(headline, UI_WELCOME_HEADLINE_FONT_SIZE, ui_accent());
+    igSpacing();
+    UiCenteredText(title, UI_PAGE_TITLE_FONT_SIZE, igGetStyle()->Colors[ImGuiCol_Text]);
+    igSpacing();
+    UiCenteredText(body, 0.0f, ui_text_muted());
 }
 
 
@@ -108,8 +329,8 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
             romName = s ? s + 1 : loadedFilePath;
         }
 
-        igTextColored((ImVec4){0.4f, 0.4f, 0.4f, 1.0f}, "ROM:");
-        igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, " %s", romName);
+        igTextColored(ui_text_muted(), "ROM:");
+        igTextColored(ui_accent(), " %s", romName);
         igSeparator();
 
         bool hitF5 = igIsKeyPressed_Bool(ImGuiKey_F5, false);
@@ -130,7 +351,7 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
         }
 
         if (debugging) {
-            if (igButton(ICON_FA_PLAY " Run (F5)", (ImVec2){0, 0}) || hitF5) {
+            if (ui_primary_button(ICON_CI_PLAY " Run (F5)", (ImVec2){0, 0}) || hitF5) {
                 if (!nes) {
                     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Run", "Load a ROM first.", win);
                 } else {
@@ -138,11 +359,11 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
                     debugging = false;
                     stepping = false;
 
-                    igSetWindowFocus_Str(ICON_FA_DESKTOP " NES Screen");
+                    igSetWindowFocus_Str(ICON_CI_DEVICE_DESKTOP " NES Screen");
                 }
             }
         } else {
-            if (igButton(ICON_FA_PAUSE " Pause (F5)", (ImVec2){0, 0}) || hitF5) {
+            if (igButton(ICON_CI_DEBUG_PAUSE " Pause (F5)", (ImVec2){0, 0}) || hitF5) {
                 debugging = true;
                 stepping = false;
             }
@@ -150,7 +371,7 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
 
         igSameLine(0, 5);
 
-        if (igButton(ICON_FA_UNDO " Reset (F9)", (ImVec2){0, 0}) || hitF9) {
+        if (igButton(ICON_CI_DEBUG_RESTART " Reset (F9)", (ImVec2){0, 0}) || hitF9) {
             if (nes) {
                 ResetNES(nes);
                 debugging = true;
@@ -159,7 +380,7 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
 
         igSameLine(0, 5);
 
-        if (igButton(ICON_FA_SAVE " Save (F10)", (ImVec2){0, 0}) || hitF10) {
+        if (ui_primary_button(ICON_CI_SAVE " Save (F10)", (ImVec2){0, 0}) || hitF10) {
             if (nes) {
                 debugging = true;
                 stepping = false;
@@ -173,13 +394,9 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
         bool dbgToggle = (bool)app.ui.debugToggle;
         if (hitF12) dbgToggle = !dbgToggle;
 
-        if (dbgToggle) {
-            igPushStyleColor_Vec4(ImGuiCol_Button, (ImVec4){0.2f, 0.6f, 0.2f, 1.0f});
-            igPushStyleColor_Vec4(ImGuiCol_ButtonHovered, (ImVec4){0.3f, 0.8f, 0.3f, 1.0f});
-            igPushStyleColor_Vec4(ImGuiCol_ButtonActive, (ImVec4){0.4f, 1.0f, 0.4f, 1.0f});
-        }
-        bool clickedDebug = igButton(ICON_FA_BUG " Debug (F12)", (ImVec2){0, 0});
-        if (dbgToggle) igPopStyleColor(3);
+        if (dbgToggle) UiPushPrimaryButtonStyle();
+        bool clickedDebug = igButton(ICON_CI_BUG " Debug (F12)", (ImVec2){0, 0});
+        if (dbgToggle) UiPopPrimaryButtonStyle();
         if (clickedDebug) dbgToggle = !dbgToggle;
         app.ui.debugToggle = dbgToggle;
         debugMode = app.ui.debugToggle;
@@ -187,7 +404,7 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
         if (debugMode) {
             igSameLine(0, 5);
 
-            if (igButton(ICON_FA_STEP_FORWARD " Step (F11)", (ImVec2){0, 0}) || hitF11) {
+            if (igButton(ICON_CI_DEBUG_STEP_OVER " Step (F11)", (ImVec2){0, 0}) || hitF11) {
                 if (nes) stepping = true;
             }
         }
@@ -207,13 +424,9 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
 
         bool oneCyc = (bool)app.ui.oneCycleToggle;
         if (hitF8) oneCyc = !oneCyc;
-        if (oneCyc) {
-            igPushStyleColor_Vec4(ImGuiCol_Button, (ImVec4){0.2f, 0.6f, 0.2f, 1.0f});
-            igPushStyleColor_Vec4(ImGuiCol_ButtonHovered, (ImVec4){0.3f, 0.8f, 0.3f, 1.0f});
-            igPushStyleColor_Vec4(ImGuiCol_ButtonActive, (ImVec4){0.4f, 1.0f, 0.4f, 1.0f});
-        }
-        bool clickedOneCyc = igButton(ICON_FA_CLOCK " 1-cycle (F8)", (ImVec2){0, 0});
-        if (oneCyc) igPopStyleColor(3);
+        if (oneCyc) UiPushPrimaryButtonStyle();
+        bool clickedOneCyc = igButton(ICON_CI_CLOCK " 1-cycle (F8)", (ImVec2){0, 0});
+        if (oneCyc) UiPopPrimaryButtonStyle();
         if (clickedOneCyc) oneCyc = !oneCyc;
         app.ui.oneCycleToggle = oneCyc;
         oneCycleAtTime = app.ui.oneCycleToggle;
@@ -230,30 +443,30 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
 
 internal void DrawLeftSidebar(f32 dt)
 {
-    igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "SYSTEM");
-    igSeparator();
+    (void)dt;
+    UiSectionTitle("SYSTEM");
 
     if (nes) {
         if (igCollapsingHeader_TreeNodeFlags("CPU Registers", ImGuiTreeNodeFlags_DefaultOpen)) {
             CPU* cpu = &nes->cpu;
-            igTextColored((ImVec4){0.5f, 0.5f, 0.5f, 1.0f}, "PC:");
+            igTextColored(ui_text_muted(), "PC:");
             igSameLine(40, 0);
-            igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "$%04X", cpu->pc);
-            igTextColored((ImVec4){0.5f, 0.5f, 0.5f, 1.0f}, "SP:");
+            igTextColored(ui_accent(), "$%04X", cpu->pc);
+            igTextColored(ui_text_muted(), "SP:");
             igSameLine(40, 0);
-            igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "$%02X", cpu->sp);
-            igTextColored((ImVec4){0.5f, 0.5f, 0.5f, 1.0f}, "A:");
+            igTextColored(ui_accent(), "$%02X", cpu->sp);
+            igTextColored(ui_text_muted(), "A:");
             igSameLine(40, 0);
-            igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "$%02X", cpu->a);
-            igTextColored((ImVec4){0.5f, 0.5f, 0.5f, 1.0f}, "X:");
+            igTextColored(ui_accent(), "$%02X", cpu->a);
+            igTextColored(ui_text_muted(), "X:");
             igSameLine(40, 0);
-            igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "$%02X", cpu->x);
-            igTextColored((ImVec4){0.5f, 0.5f, 0.5f, 1.0f}, "Y:");
+            igTextColored(ui_accent(), "$%02X", cpu->x);
+            igTextColored(ui_text_muted(), "Y:");
             igSameLine(40, 0);
-            igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "$%02X", cpu->y);
-            igTextColored((ImVec4){0.5f, 0.5f, 0.5f, 1.0f}, "P:");
+            igTextColored(ui_accent(), "$%02X", cpu->y);
+            igTextColored(ui_text_muted(), "P:");
             igSameLine(40, 0);
-            igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "$%02X", cpu->p);
+            igTextColored(ui_accent(), "$%02X", cpu->p);
         }
 
         if (igCollapsingHeader_TreeNodeFlags("Flags", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -419,8 +632,8 @@ internal void DrawAudioWaveform(s16* buffer, s32 pointCount)
     ImVec2 p_max = (ImVec2){p_min.x + avail.x, p_min.y + rectHeight};
 
     ImDrawList* draw_list = igGetWindowDrawList();
-    ImDrawList_AddRectFilled(draw_list, p_min, p_max, 0xFF1A1A1A, 0.0f, 0);
-    ImDrawList_AddRect(draw_list, p_min, p_max, 0xFF333333, 0.0f, 0, 1.0f);
+    ImDrawList_AddRectFilled(draw_list, p_min, p_max, UiColorToU32((ImVec4){0.15f, 0.17f, 0.20f, 1.0f}), 6.0f, 0);
+    ImDrawList_AddRect(draw_list, p_min, p_max, UiColorToU32((ImVec4){0.25f, 0.28f, 0.32f, 1.0f}), 6.0f, 0, 1.0f);
 
     if (pointCount > 0) {
         ImVec2 points[1024]; // APU_BUFFER_LENGTH
@@ -440,7 +653,7 @@ internal void DrawAudioWaveform(s16* buffer, s32 pointCount)
             points[i] = (ImVec2){p_min.x + x, p_min.y + y};
         }
 
-        ImDrawList_AddPolyline(draw_list, points, pointCount, 0xFF33FF66, 0, 1.5f);
+        ImDrawList_AddPolyline(draw_list, points, pointCount, UiColorToU32(ui_accent()), 0, 1.5f);
     }
 
     igDummy((ImVec2){avail.x, rectHeight}); // Advance cursor
@@ -466,15 +679,15 @@ internal void DrawOAMTable(NES* nesPtr)
 
             igTableNextRow(ImGuiTableRowFlags_None, 0);
             igTableNextColumn();
-            igTextColored((ImVec4){0.5f, 0.5f, 0.5f, 1.0f}, "%d", i);
+            igTextColored(ui_text_muted(), "%d", i);
             igTableNextColumn();
             igText("%02X", spriteX);
             igTableNextColumn();
             igText("%02X", spriteY);
             igTableNextColumn();
-            igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "%02X", spriteIdx);
+            igTextColored(ui_accent(), "%02X", spriteIdx);
             igTableNextColumn();
-            igTextColored((ImVec4){0.5f, 0.5f, 0.5f, 1.0f}, "%02X", spriteAttr);
+            igTextColored(ui_text_muted(), "%02X", spriteAttr);
         }
         igEndTable();
     }
@@ -483,7 +696,7 @@ internal void DrawOAMTable(NES* nesPtr)
 internal void DrawVideoPanel(Device* device)
 {
     if (nes) {
-        igText("Pattern Tables");
+        UiSectionTitle("Pattern Tables");
         UpdatePatternTableTextures(device, nes);
 
         for (int i = 0; i < 2; i++) {
@@ -512,14 +725,12 @@ internal void DrawVideoPanel(Device* device)
 
                 igEndTooltip();
             }
-            if (i == 0) igSameLine(0, 4);
+            if (i == 0) igSameLine(0, 10);
         }
 
         igSpacing();
-        igSeparator();
-        igSpacing();
 
-        igText("Nametables");
+        UiSectionTitle("Nametables");
         igRadioButton_IntPtr("$2000", &app.ui.nametableOption, 0);
         igSameLine(0, 10);
         igRadioButton_IntPtr("$2400", &app.ui.nametableOption, 1);
@@ -534,11 +745,11 @@ internal void DrawVideoPanel(Device* device)
                 (ImVec2){1, 1});
 
         igSpacing();
-        igSeparator();
-        igSpacing();
 
-        igText("OAM (Object Attribute Memory)");
+        UiSectionTitle("Object Attribute Memory");
+        bool usingMono = UiPushMonoFont();
         DrawOAMTable(nes);
+        if (usingMono) igPopFont();
     } else {
         igTextDisabled("No ROM loaded");
     }
@@ -549,7 +760,7 @@ internal void DrawAudioPanel()
     if (nes) {
         APU* apu = &nes->apu;
 
-        igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "GENERAL");
+        UiSectionTitle("General");
         igText("CYCLES: %lld", apu->cycles);
         igText("FRAME MODE: %02X", apu->frameMode);
         igText("SAMPLE RATE: %04X", APU_SAMPLES_PER_SECOND);
@@ -561,10 +772,8 @@ internal void DrawAudioPanel()
         igText("BUFFER INDEX: %04X", apu->bufferIndex);
 
         igSpacing();
-        igSeparator();
-        igSpacing();
 
-        igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "CHANNELS");
+        UiSectionTitle("Channels");
 
         bool sq1 = app.ui.square1Enabled;
         bool sq2 = app.ui.square2Enabled;
@@ -579,10 +788,8 @@ internal void DrawAudioPanel()
         igCheckbox("DMC", &dmc);
 
         igSpacing();
-        igSeparator();
-        igSpacing();
 
-        igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "AUDIO FILTERS");
+        UiSectionTitle("Audio Filters");
 
         bool hp1 = app.ui.hpFilter1Enabled;
         bool hp2 = app.ui.hpFilter2Enabled;
@@ -613,8 +820,6 @@ internal void DrawAudioPanel()
         app.ui.hpFilter2Enabled = hp2;
         app.ui.lpFilterEnabled = lp;
 
-        igSpacing();
-        igSeparator();
         igSpacing();
 
         DrawAudioWaveform(apu->buffer, apu->bufferIndex);
@@ -648,6 +853,7 @@ internal void DrawInstructionsPanel()
                 ImGuiInputTextFlags_CharsHexadecimal, NULL, NULL);
     igInputText("Breakpoint", app.ui.instructionBreakpointText, sizeof(app.ui.instructionBreakpointText),
                 ImGuiInputTextFlags_CharsHexadecimal, NULL, NULL);
+    UiSectionTitle("Disassembly");
 
     if (nes) {
         CPU* cpu = &nes->cpu;
@@ -663,6 +869,7 @@ internal void DrawInstructionsPanel()
             breakpoint = (u16)strtol(app.ui.instructionBreakpointText, NULL, 16);
         }
 
+        bool usingMono = UiPushMonoFont();
         bool child_visible = igBeginChild_Str("DisassemblyList", (ImVec2){0, 0}, false, ImGuiWindowFlags_None);
         if (child_visible) {
             for (s32 i = 0; i < 100; ++i) {
@@ -675,9 +882,9 @@ internal void DrawInstructionsPanel()
                 bool breakpointHit = (pc == breakpoint);
 
                 if (currentInstr) {
-                    igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){0.2f, 1.0f, 0.4f, 1.0f});
+                    igPushStyleColor_Vec4(ImGuiCol_Text, ui_accent());
                 } else if (breakpointHit) {
-                    igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){1.0f, 0.2f, 0.2f, 1.0f});
+                    igPushStyleColor_Vec4(ImGuiCol_Text, ui_text_danger());
                 }
 
                 col += currentInstr ? (breakpointHit ? sprintf(debugBuffer, "O>%04X %02X", pc, instruction->opcode)
@@ -767,6 +974,7 @@ internal void DrawInstructionsPanel()
             }
         }
         igEndChild();
+        if (usingMono) igPopFont();
     } else {
         igTextDisabled("No ROM loaded");
     }
@@ -784,6 +992,7 @@ internal void DrawMemoryPanel()
 
     igInputText("Address", app.ui.memoryAddressText, sizeof(app.ui.memoryAddressText),
                 ImGuiInputTextFlags_CharsHexadecimal, NULL, NULL);
+    UiSectionTitle("Hex Dump");
 
     if (nes) {
         u16 baseAddress = 0x0000;
@@ -791,6 +1000,7 @@ internal void DrawMemoryPanel()
             baseAddress = (u16)strtol(app.ui.memoryAddressText, NULL, 16);
         }
 
+        bool usingMono = UiPushMonoFont();
         bool child_visible = igBeginChild_Str("MemoryView", (ImVec2){0, 0}, false, ImGuiWindowFlags_None);
         if (child_visible) {
             if (igBeginTable("HexDump", 33, ImGuiTableFlags_HighlightHoveredColumn | ImGuiTableFlags_PadOuterX,
@@ -814,7 +1024,7 @@ internal void DrawMemoryPanel()
                 for (s32 i = 0; i < 64; ++i) {
                     igTableNextRow(ImGuiTableRowFlags_None, 0);
                     igTableNextColumn();
-                    igTextColored((ImVec4){0.2f, 1.0f, 0.4f, 1.0f}, "%04X", baseAddress + i * 16);
+                    igTextColored(ui_accent(), "%04X", baseAddress + i * 16);
 
                     for (s32 j = 0; j < 16; ++j) {
                         igTableNextColumn();
@@ -856,6 +1066,7 @@ internal void DrawMemoryPanel()
             }
         }
         igEndChild();
+        if (usingMono) igPopFont();
     } else {
         igTextDisabled("No ROM loaded");
     }
@@ -886,6 +1097,9 @@ internal void DrawGameScreen(Device* device)
         igSetCursorPos((ImVec2){startX + ox, startY + oy});
         igImage((ImTextureRef_c){NULL, (ImTextureID)(intptr_t)device->screen}, (ImVec2){drawW, drawH}, (ImVec2){0, 0},
                 (ImVec2){1, 1});
+    } else {
+        DrawEmptyState("NES Emulator", "Drop a ROM to get started",
+                       "Drag a .nes or .nsave file into the window, or launch with a file path.");
     }
 }
 
@@ -893,7 +1107,7 @@ internal void DrawGameScreen(Device* device)
 internal void DrawPalettesPanel()
 {
     if (nes) {
-        igText("Background Palettes");
+        UiSectionTitle("Background Palettes");
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 u16 addr = 0x3F00 + i * 4 + j;
@@ -913,7 +1127,7 @@ internal void DrawPalettesPanel()
         }
 
         igSpacing();
-        igText("Sprite Palettes");
+        UiSectionTitle("Sprite Palettes");
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 u16 addr = 0x3F10 + i * 4 + j;
@@ -944,12 +1158,12 @@ internal void DrawControllerPanel()
     }
 
     u8 state = nes->controllers[0].state;
-    ImVec4 activeCol = (ImVec4){1.0f, 0.0f, 0.0f, 1.0f};   // Red
-    ImVec4 inactiveCol = (ImVec4){0.3f, 0.3f, 0.3f, 1.0f}; // Dark gray
+    ImVec4 activeCol = ui_accent();
+    ImVec4 inactiveCol = ui_text_muted();
 
 #define GET_COL(btn) (GetBitFlag(state, btn) ? activeCol : inactiveCol)
 
-    igText("Player 1 Controller:");
+    UiSectionTitle("Player 1 Controller");
     igSpacing();
     igSpacing();
 
@@ -1002,44 +1216,44 @@ void DrawUI(SDL_Window* win, Device* device, f32 dt)
     igDockSpaceOverViewport(0, viewport, ImGuiDockNodeFlags_PassthruCentralNode, NULL);
 
     if (debugMode) {
-        if (igBegin(ICON_FA_MICROCHIP " SYSTEM", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_CI_CHIP " SYSTEM", NULL, ImGuiWindowFlags_None)) {
             DrawLeftSidebar(dt);
         }
         igEnd();
 
-        if (igBegin(ICON_FA_TV " VIDEO", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_CI_DEVICE_CAMERA_VIDEO " VIDEO", NULL, ImGuiWindowFlags_None)) {
             DrawVideoPanel(device);
         }
         igEnd();
 
-        if (igBegin(ICON_FA_MUSIC " AUDIO", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_CI_MUSIC " AUDIO", NULL, ImGuiWindowFlags_None)) {
             DrawAudioPanel();
         }
         igEnd();
 
-        if (igBegin(ICON_FA_CODE " INSTRUCTIONS", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_CI_CODE " INSTRUCTIONS", NULL, ImGuiWindowFlags_None)) {
             DrawInstructionsPanel();
         }
         igEnd();
 
-        if (igBegin(ICON_FA_MEMORY " MEMORY", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_CI_DATABASE " MEMORY", NULL, ImGuiWindowFlags_None)) {
             DrawMemoryPanel();
         }
         igEnd();
 
-        if (igBegin(ICON_FA_PALETTE " PALETTES", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_CI_SYMBOL_COLOR " PALETTES", NULL, ImGuiWindowFlags_None)) {
             DrawPalettesPanel();
         }
         igEnd();
 
-        if (igBegin(ICON_FA_GAMEPAD " CONTROLLER", NULL, ImGuiWindowFlags_None)) {
+        if (igBegin(ICON_CI_GAME " CONTROLLER", NULL, ImGuiWindowFlags_None)) {
             DrawControllerPanel();
         }
         igEnd();
     }
 
     ImGuiWindowFlags screenFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-    if (igBegin(ICON_FA_DESKTOP " NES Screen", NULL, screenFlags)) {
+    if (igBegin(ICON_CI_DEVICE_DESKTOP " NES Screen", NULL, screenFlags)) {
         DrawGameScreen(device);
     }
     igEnd();

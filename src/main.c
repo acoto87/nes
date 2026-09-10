@@ -512,7 +512,7 @@ int main(int argc, char** argv)
         DrawUI(win, &device, dt);
 
         glViewport(0, 0, windowWidth, windowHeight);
-        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+        glClearColor(0.075f, 0.10f, 0.12f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());
         SDL_GL_SwapWindow(win);
