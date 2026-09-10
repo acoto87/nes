@@ -136,6 +136,12 @@ internal ImU32 UiColorToU32(ImVec4 color)
     return igColorConvertFloat4ToU32(color);
 }
 
+internal f32 UiCalcButtonWidth(const char* label)
+{
+    ImVec2 textSize = igCalcTextSize(label, NULL, false, -1.0f);
+    return textSize.x + igGetStyle()->FramePadding.x * 2.0f;
+}
+
 internal void ApplyUiTheme(ThemeMode mode)
 {
     const bool dark = mode == THEME_DARK;
@@ -341,6 +347,9 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
         bool hitF12 = igIsKeyPressed_Bool(ImGuiKey_F12, false);
 
         f32 windowWidth = igGetWindowWidth();
+        const char* oneCycleLabel = ICON_CI_CLOCK " 1-cycle (F8)";
+        const char* themeLabel = uiThemeMode == THEME_DARK ? ICON_CI_SYMBOL_COLOR " Light theme"
+                                                            : ICON_CI_SYMBOL_COLOR " Dark theme";
 
         f32 centerWidth = 570.0f;
         f32 startX = (windowWidth - centerWidth) * 0.5f;
@@ -414,7 +423,9 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
         snprintf(fpsText, sizeof(fpsText), "FPS: %d", (s32)(1.0f / dt));
         snprintf(dtText, sizeof(dtText), "dt: %.4f", dt);
 
-        f32 rightWidth = 320.0f;
+        const f32 rightSpacing = 5.0f;
+        f32 rightWidth = UiCalcButtonWidth(oneCycleLabel) + UiCalcButtonWidth(fpsText) + UiCalcButtonWidth(dtText) +
+                         UiCalcButtonWidth(themeLabel) + rightSpacing * 3.0f;
         f32 rightX = windowWidth - rightWidth;
         if (rightX > igGetCursorPosX()) {
             igSetCursorPosX(rightX);
@@ -425,16 +436,22 @@ internal void DrawTopBar(SDL_Window* win, f32 dt)
         bool oneCyc = (bool)app.ui.oneCycleToggle;
         if (hitF8) oneCyc = !oneCyc;
         if (oneCyc) UiPushPrimaryButtonStyle();
-        bool clickedOneCyc = igButton(ICON_CI_CLOCK " 1-cycle (F8)", (ImVec2){0, 0});
+        bool clickedOneCyc = igButton(oneCycleLabel, (ImVec2){0, 0});
         if (oneCyc) UiPopPrimaryButtonStyle();
         if (clickedOneCyc) oneCyc = !oneCyc;
         app.ui.oneCycleToggle = oneCyc;
         oneCycleAtTime = app.ui.oneCycleToggle;
 
-        igSameLine(0, 5);
+        igSameLine(0, rightSpacing);
         igButton(fpsText, (ImVec2){0, 0});
-        igSameLine(0, 5);
+        igSameLine(0, rightSpacing);
         igButton(dtText, (ImVec2){0, 0});
+        igSameLine(0, rightSpacing);
+
+        if (igButton(themeLabel, (ImVec2){0, 0})) {
+            uiThemeMode = uiThemeMode == THEME_DARK ? THEME_LIGHT : THEME_DARK;
+            ApplyUiTheme(uiThemeMode);
+        }
 
         igEndMainMenuBar();
     }
